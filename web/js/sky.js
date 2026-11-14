@@ -79,21 +79,43 @@ try {
  * same tiles again some time after any change of size; a repeat of a tile already here does not count.
  */
 function outstanding() {
-  let n = 0;
+  let n = mendWait;
   for (const [u, t] of asked) if (!answered.has(u)) for (const at of t) if (at >= since) n++;
   return n;
 }
+// A tile the archive fails to deliver would stay a hole in the map: the map library does not ask
+// again. (The archive drops requests that have queued for some ten seconds, which happens on a
+// first visit to a large screen.) Such a tile is fetched once more here, twice at most, and when it
+// has arrived the library is made to look at its tiles again: it then finds it in the browser's store.
+const mending = new Map();           // tile address -> tries so far
+let mendWait = 0, mended = 0, nudgeTimer = 0;      // repairs under way count as tiles the map is waiting for
+function mend(u) {
+  const tries = mending.get(u) || 0;
+  if (tries >= 2 || navigator.onLine === false || mending.size > 120) return;
+  mending.set(u, tries + 1); mendWait++;
+  nap(350 * (tries + 1)).then(() => quietFetch(u, { mode: 'cors' })).then(r => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('no tile'))))
+    .then(() => { mended++; clearTimeout(nudgeTimer); nudgeTimer = setTimeout(nudge, 150); }, () => { mendWait = Math.max(0, mendWait - 1); mend(u); });
+}
+function nudge() {
+  const n = mended; mended = 0;
+  try { if (al) al.setFoV(al.getFov()[0] * (1 + 1e-7)); } catch { /* the hole stays until the view next changes */ }      // any change of view makes the library ask for its tiles again
+  frame().then(frame).then(frame).then(() => { mendWait = Math.max(0, mendWait - n); });
+}
 window.fetch = function (input, init) {
+  let lost = null;
   try {
     const url = typeof input === 'string' ? input : input?.url || '';
     if (isTile(url)) {
       const u = new URL(url, location.href).href, at = performance.now();
       if (!asked.has(u)) asked.set(u, []);
       asked.get(u).push(at);
-      setTimeout(() => { const t = asked.get(u), i = t ? t.indexOf(at) : -1; if (i >= 0) { t.splice(i, 1); if (!t.length) asked.delete(u); } }, 8000);      // never wait for ever on a lost download
+      lost = () => { const t = asked.get(u), i = t ? t.indexOf(at) : -1; if (i >= 0) { t.splice(i, 1); if (!t.length) asked.delete(u); } };
+      setTimeout(lost, 30000);                    // never wait for ever on a download that leaves no trace
     }
   } catch { /* keeping count must never break a request */ }
-  return plainFetch(input, init);
+  const answer = plainFetch(input, init);
+  if (lost) answer.catch(e => { lost(); if (e?.name !== 'AbortError') mend(new URL(typeof input === 'string' ? input : input.url, location.href).href); });      // failed: nothing more will come of this request
+  return answer;
 };
 /** fetch for this site's own background work: not counted as the map waiting for something. */
 export const quietFetch = (url, init) => {
@@ -122,6 +144,7 @@ let deadline = 0;                    // when, at the latest, the current change 
 let hue = null;                      // a colour of the cube was asked for and is not on show yet: when, and how its tiles are recognised
 let firstShown = () => {};
 const firstSeen = new Promise(r => { firstShown = r; });
+let opened = false;                  // the live map has been on show at least once
 let underWay = Promise.resolve();          // resolves once the map, sent to a new place, has its first tiles
 
 function buildVeil() {
@@ -131,7 +154,50 @@ function buildVeil() {
   al.view.catalogCanvas.after(veil);              // over the map and its markers, under the library's own controls
 }
 const stopAnims = () => { for (const el of [veil, pic]) for (const a of el.getAnimations()) a.cancel(); };
-function hideVeil() { if (!veil) return; stopAnims(); veil.hidden = true; veilUp = false; lifting = false; moved = false; firstShown(); }
+function hideVeil() { if (!veil) return; stopAnims(); veil.hidden = true; veilUp = false; lifting = false; moved = false; opened = true; firstShown(); }
+
+// The archive takes several seconds to deliver a first view of the sky: one to three dozen tiles
+// of about 200 kB each. A still picture of that same view ships with the site and is shown at once;
+// the live map dissolves in over it when it is complete. The picture is a copy of the map's own
+// canvas: a square centred on the opening position that reaches `reach` (in units of the radius of
+// the sky globe) to each side, which holds the opening view of a screen of any shape.
+const OPENING = { src: 'opening.jpg', ra: 266.4, dec: -29.0, fov: 100, reach: 0.8 };
+const openingPic = new Image();
+let openingOk = false;
+const openingLoaded = new Promise(r => { openingPic.onload = () => { openingOk = true; r(true); }; openingPic.onerror = () => r(false); });
+openingPic.src = OPENING.src;
+/** Where that picture lies on a map of the given size and width in degrees: left, top and side, in pixels. */
+function openingBox(w, h, fovDeg) {
+  const side = 2 * OPENING.reach * (w / 2) / Math.sin(Math.min(fovDeg, 179.9) / 2 * Math.PI / 180);
+  return [(w - side) / 2, (h - side) / 2, side];
+}
+/** Until the map library has started, the picture is the background of the map's box. */
+function backdrop() {
+  try {
+    const w = host.clientWidth, h = host.clientHeight;
+    if (!w || !h) return;
+    const [x, y, side] = openingBox(w, h, fitFov(OPENING.fov, w, h));
+    host.style.background = `${BG} url(${OPENING.src}) ${x}px ${y}px / ${side}px ${side}px no-repeat`;
+  } catch { /* cosmetic */ }
+}
+/** Once it has started: the picture as the still copy over the map, in place of plain darkness. */
+function still() {
+  if (!al || !openingOk) return false;
+  // The library has not sized its own canvas yet at this point: go by the map's box.
+  const cw = host.clientWidth, ch = host.clientHeight, dpr = Math.min(window.devicePixelRatio || 1, 2), w = Math.round(cw * dpr), h = Math.round(ch * dpr);
+  if (!cw || !ch) return false;
+  if (!veil) buildVeil();
+  stopAnims();
+  for (const c of [pic, tags]) { c.width = w; c.height = h; Object.assign(c.style, { width: `${cw}px`, height: `${ch}px`, transform: 'none', transformOrigin: '50% 50%', opacity: '1', display: '' }); }
+  tags.style.display = 'none';
+  const [x0, y0, side] = openingBox(cw, ch, fitFov(OPENING.fov, cw, ch)), x = pic.getContext('2d');
+  x.fillStyle = BG; x.fillRect(0, 0, w, h);
+  x.imageSmoothingQuality = 'high';
+  x.drawImage(openingPic, x0 * w / cw, y0 * h / ch, side * w / cw, side * h / ch);
+  pic.dataset.w = cw; pic.dataset.h = ch;
+  veil.style.opacity = '1'; veil.hidden = false; veilUp = true; lifting = false; moved = false;
+  return true;
+}
 
 /**
  * Put a still copy of the map, exactly as it looks now, over the map: the sky on one layer, the
@@ -253,8 +319,10 @@ export function settled({ max = 3200, expect = false, level: tag = '' } = {}) {
  * (ox, oy) of the copy while that point moves by (dx, dy). It starts at once, so the visitor sees
  * the move begin with the click; the new picture dissolves in as soon as it is complete.
  */
-function drift({ ox, oy, dx = 0, dy = 0, k = 1, ms = 1000, dim = false, ease = null }) {
+function drift(move) {
   if (veilUp) tags.style.display = 'none';         // the ring and the name belong to the view being left
+  if (!move) return;                               // the same view: the copy stays as it is
+  const { ox, oy, dx = 0, dy = 0, k = 1, ms = 1000, dim = false, ease = null } = move;
   if (!veilUp || !pic.animate || pic.style.display === 'none' || calm()) return;
   if (dim) { pic.animate([{ opacity: getComputedStyle(pic).opacity }, { opacity: 0 }], { duration: 260, easing: 'ease-out', fill: 'forwards' }); return; }
   const from = getComputedStyle(pic).transform;
@@ -268,7 +336,7 @@ function lift(fade = 420) {
   if (!veilUp) return Promise.resolve();
   if (calm() || !veil.animate) { hideVeil(); return Promise.resolve(); }
   const my = gen; lifting = true;
-  firstShown();                                   // from here on the map has a picture to show
+  opened = true; firstShown();                    // from here on the map has a picture to show
   const a = veil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: fade, easing: 'ease-in-out', fill: 'forwards' });
   return a.finished.then(() => { if (my === gen && lifting) hideVeil(); }).catch(() => {});
 }
@@ -286,7 +354,8 @@ export function change(fn, opts = {}) {
   if (!jobs.length) { since = performance.now(); answered.clear(); deadline = 0; }      // a new change: tile requests from here on belong to it
   lifting = false;
   fadeFor = Math.max(fadeFor, opts.fade ?? 420);      // changes that share a veil: the slowest dissolve asked for,
-  deadline = Math.max(deadline, performance.now() + (opts.patience ?? 1800));      // and the longest wait
+  const patience = opts.patience ?? 1800;         // before the map's very first picture there is a still picture to look at, and more to load
+  deadline = Math.max(deadline, performance.now() + (opened ? patience : Math.max(patience, 12000)));      // and the longest wait
   let job; try { job = Promise.resolve(fn?.()); } catch (e) { job = Promise.reject(e); }
   jobs.push(job.catch(() => {}));
   return (async () => {
@@ -301,7 +370,15 @@ export function change(fn, opts = {}) {
     return my === gen;
   })();
 }
-/** The visitor has taken hold of the map: show it live at once. */
+/**
+ * The visitor has taken hold of the map: show it live at once. Only while the live map is blank
+ * (its first picture, or a new colour, is still on its way) the still copy stays where it is, for
+ * letting go would show the blank map. The gesture reaches the map all the same, so a click on a
+ * star opens it; a drag shows when the copy lifts, a moment later.
+ */
+function grab() {
+  if (veilUp && opened && !hue) letGo();
+}
 function letGo() {
   if (!veilUp) return;
   gen++; jobs = []; fadeFor = 0; level = ''; hue = null; lifting = true;
@@ -326,6 +403,7 @@ function project(ra0, dec0, fovDeg, w, h, ra, dec) {
 function cameraMove(a, b) {
   const k = (a.fov / a.w) / (b.fov / b.w);        // how much larger the same patch of sky is drawn after the move
   const grew = b.w > a.w * 1.1 || b.h > a.h * 1.1;      // the copy no longer covers the map
+  if (!grew && Math.abs(k - 1) < 0.03 && Math.abs(b.w - a.w) < 3 && Math.abs(b.h - a.h) < 3 && sepDeg(a.ra, a.dec, b.ra, b.dec) < 0.01 * a.fov) return null;      // the same view
   const close = (q, w, h) => q && q[0] > -2 * w && q[0] < 3 * w && q[1] > -2 * h && q[1] < 3 * h;
   if (k >= 1.05 && !grew) {
     // Dive: the copy grows around the point nearest the destination that it actually contains,
@@ -368,11 +446,12 @@ export function reshape(fn = null) {
   }, { fade: 320, patience: 1800 });
 }
 
-export async function init(selector, { onClick, onFov } = {}) {
-  await A.init;
+export async function init(selector, { onClick, onFov, still: wanted = true } = {}) {
   host = document.querySelector(selector); fovCb = onFov || null;
+  if (wanted) backdrop();          // not when the page opens straight on an object somewhere else in the sky
+  await A.init;
   al = A.aladin(selector, {
-    survey: LAYERS[0].url, target: '266.4 -29.0', fov: fitFov(100), projection: 'SIN', cooFrame: 'ICRS',
+    survey: layerFor(LAYERS[0]), target: `${OPENING.ra} ${OPENING.dec}`, fov: fitFov(OPENING.fov), projection: 'SIN', cooFrame: 'ICRS',
     showReticle: false, showLayersControl: false, showProjectionControl: false, showFullscreenControl: false,
     showFrame: false, showCooGridControl: false, showSettingsControl: false, showShareControl: false,
     showZoomControl: false, showCooLocation: true, showFov: false, showStatusBar: false, showContextMenu: false,
@@ -394,16 +473,21 @@ export async function init(selector, { onClick, onFov } = {}) {
   ready = true; tellFov();
   if (/[?&]debug\b/.test(location.search)) window.__chrono = { al, A };
   // Dragging or zooming by hand must act on the live map straight away.
-  for (const ev of ['pointerdown', 'wheel']) host.addEventListener(ev, letGo, { passive: true, capture: true });
-  // The cube opens on a blank frame: stay dark until a real one has been chosen and drawn.
+  for (const ev of ['pointerdown', 'wheel']) host.addEventListener(ev, grab, { passive: true, capture: true });
+  // The cube opens on a blank frame. Until a real one has been chosen and drawn, the map is covered
+  // by the still picture of the opening view, or by plain darkness if that picture has not arrived.
   const first = firstFrame();
   try {
     darken();
     const my = ++gen; since = performance.now(); answered.clear(); jobs.push(first);
+    let tries = 0;
+    const show = () => { if (my === gen && veilUp && !lifting && pic.style.display === 'none' && !still() && ++tries < 40) requestAnimationFrame(show); };
+    if (!wanted) { /* plain darkness until the map is there */ } else if (openingOk) show(); else openingLoaded.then(ok => { if (ok) show(); });
     (async () => {
       await Promise.race([Promise.all(jobs), nap(9000)]);
       if (my !== gen) return;
-      await settled({ max: 9000, expect: true });      // until then the map would be blank white, or white in patches
+      // Until then the map would be blank white, or white in patches. With a picture to look at, the wait may be longer.
+      await settled({ max: pic.style.display === 'none' ? 9000 : 16000, expect: true });
       if (my !== gen) return;
       jobs = []; hue = null; lift(800);
     })();
@@ -414,13 +498,24 @@ export async function init(selector, { onClick, onFov } = {}) {
   }).catch(() => {});
   return al;
 }
-/** Resolves once the cube layer exists and has been moved to the wanted frame. */
+/**
+ * A layer of the map, ready to hand to the map library. The library opens a cube on its middle
+ * frame, which is blank in the SPHEREx cube, and would ask for those tiles: so a cube is sent to
+ * the wanted frame in the very call in which the library adds it, before it has asked for anything.
+ */
+function layerFor(L) {
+  const opts = { name: L.label };
+  if (L.cube) opts.successCallback = h => { try { if (rawSlice(slice, h)) { shown = slice; h.onFrame = true; } } catch { /* firstFrame does it a moment later */ } };
+  return A.HiPS(L.url, opts);
+}
+/** Resolves once the cube layer exists and shows the wanted frame. */
 function firstFrame() {
   return new Promise(resolve => {
     const t0 = Date.now();
     const kick = () => {
-      if (al.getBaseImageLayer()?.cubeDepth) { rawSlice(slice); shown = slice; resolve(true); }
-      else if (Date.now() - t0 < 15000) requestAnimationFrame(kick); else resolve(false);      // every frame: until then the library asks for tiles of the blank frame
+      const h = al.getBaseImageLayer();
+      if (h?.cubeDepth) { if (!h.onFrame) { rawSlice(slice, h); h.onFrame = true; } shown = slice; resolve(true); }
+      else if (Date.now() - t0 < 15000) requestAnimationFrame(kick); else resolve(false);
     };
     kick();
   });
@@ -428,8 +523,7 @@ function firstFrame() {
 
 const legal = z => { z = clamp(Math.round(z), 0, WAVES.length - 1); while (BLANK.has(z)) z++; return z; };
 /** Tell the map library to show frame z of the cube (0-based, ascending wavelength). */
-function rawSlice(z) {
-  const h = al?.getBaseImageLayer();
+function rawSlice(z, h = al?.getBaseImageLayer()) {
   if (!h || !h.cubeDepth) return false;
   // Aladin addresses cube frames by frequency, linearly between the cube's band edges.
   const c = 299792458, fMin = c / h.emMax, fMax = c / h.emMin;
@@ -472,7 +566,7 @@ export function setLayer(id) {
   const L = LAYERS.find(l => l.id === id) || LAYERS[0];
   layerId = L.id;
   return change(async () => {
-    al.setBaseImageLayer(al.newImageSurvey(L.url, { name: L.label }));
+    al.setBaseImageLayer(layerFor(L));
     if (L.cube) await firstFrame(); else await nap(350);
   }, { fade: 500, patience: 3500 });
 }
@@ -523,6 +617,9 @@ export function flyTo(ra, dec, targetFov = 0.6, { layout = null } = {}) {
     const [w1, h1] = boxSize(), f = fitFov(targetFov, w1, h1);
     // The copy starts moving with the click; the map itself jumps there out of sight.
     moved = true; drift(cameraMove({ ra: ra0, dec: dec0, fov: f0, w: w0, h: h0 }, { ra, dec, fov: f, w: w1, h: h1 }));
+    // Before the map's first picture the copy is the opening picture, and the wait can be long:
+    // enlarged, it is not worth looking at for seconds, so it gives way to darkness.
+    if (!opened) { const g = gen; nap(1500).then(() => { if (g === gen && veilUp && !lifting && !opened) drift({ dim: true }); }); }
     // The map takes its new size and its new place in the same breath. Left to itself, the map library
     // would first ask for tiles of the old place at the new size, and those would hold up the ones that matter.
     resizeNow();

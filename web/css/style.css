@@ -65,7 +65,10 @@ select option { background: var(--surface-2); color: var(--ink); }
 .zoom output { display: block; border-top: 1px solid var(--line-2); font: 10.5px var(--mono); color: var(--ink-2); text-align: center; padding: 4px 0 3px; width: 36px; overflow: hidden; }
 .mapnote { position: absolute; z-index: 8; left: 50%; top: 14px; transform: translateX(-50%); background: #0a0908e6; border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 16px; font-size: 13.5px; white-space: nowrap; max-width: 88%; overflow: hidden; text-overflow: ellipsis; }
 
-.hero { position: absolute; z-index: 6; left: 0; bottom: 0; padding: 120px 44px 92px 40px; max-width: 720px; background: radial-gradient(120% 100% at 0% 100%, #0a0908f2 0%, #0a0908c4 42%, transparent 72%); pointer-events: none; }
+@container stage (max-width: 700px) { .mapnote { top: 56px; max-width: calc(100% - 110px); white-space: normal; text-align: center; border-radius: 12px; } }      /* a narrow map: below the controls in its corners */
+.hero { position: absolute; z-index: 6; left: 0; bottom: 0; padding: 150px 210px 92px 40px; max-width: 890px; pointer-events: none; }
+/* The shade behind the words: even across their whole width (the Milky Way is bright behind them), fading out to the right and to the top. */
+.hero::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, #0a0908eb 0%, #0a0908db 46%, #0a0908a6 70%, transparent 100%); -webkit-mask-image: linear-gradient(0deg, #000 70%, transparent 100%); mask-image: linear-gradient(0deg, #000 70%, transparent 100%); }
 .hero > * { pointer-events: auto; }
 .eyebrow { margin: 0 0 10px; font: 500 12px/1.4 var(--mono); letter-spacing: 1.4px; text-transform: uppercase; color: var(--ember); }
 .hero h1 { margin: 0; font: 400 clamp(44px, 6vw, 78px)/0.98 var(--serif); letter-spacing: -.5px; }
@@ -369,6 +372,7 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
   .aladin-location { display: none !important; }
   .aladin-logo-container { right: auto !important; left: 10px !important; bottom: 70px !important; }          /* the zoom buttons own the right edge of a short map */
   .hero { padding: 70px 18px 84px; max-width: none; right: 0; background: linear-gradient(0deg, #0a0908f5 0%, #0a0908d8 55%, transparent 100%); }
+  .hero::before { display: none; }
   .hero h1 { font-size: clamp(38px, 11vw, 56px); }
   .eyebrow { font-size: 11px; letter-spacing: 1.1px; }
   .lede { font-size: 15.5px; margin-top: 12px; }

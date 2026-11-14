@@ -1931,7 +1931,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   $('layer').innerHTML = Sky.LAYERS.map(l => `<option value="${l.id}">${l.label}</option>`).join('');
   if (!S.embed) {
     try {
-      await Sky.init('#map', { onClick: openAt, onFov: f => { $('fovlabel').textContent = f >= 10 ? `${Math.round(f)}°` : f >= 1 ? `${f.toFixed(1)}°` : `${Math.round(f * 60)}′`; } });
+      await Sky.init('#map', { still: !(q.has('target') || (q.has('ra') && q.has('dec'))), onClick: openAt, onFov: f => { $('fovlabel').textContent = f >= 10 ? `${Math.round(f)}°` : f >= 1 ? `${f.toFixed(1)}°` : `${Math.round(f * 60)}′`; } });
       setWave(25);
       // On a slow connection the first picture takes a few seconds: say so, instead of an empty map.
       const slow = setTimeout(() => { if ($('mapnote').hidden) note('Loading the sky map…'); }, 1800);

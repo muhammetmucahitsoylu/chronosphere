@@ -16,6 +16,8 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 - **Roam the sky.** The map is the SPHEREx all-sky data cube served by NASA/IPAC, shown with Aladin Lite. A
   slider moves through all 102 wavelengths; 2MASS, WISE and visible-light maps are one click away. A new
   colour, a new place or a new zoom dissolves in as a whole: the map never flashes or shows half-loaded sky.
+  The sky is on screen in under half a second, also on a first visit: a still picture of the opening view
+  comes with the site, and the live map dissolves in over it.
 - **Click any object, or search by name or coordinates.** The map dives there. The object is identified
   through SIMBAD (type, spectral type, distance, proper motion), with a Wikipedia card when one exists. A
   click picks the brightest catalogued object within a few screen pixels, so the star you aimed at is the one
@@ -96,6 +98,12 @@ talking directly to NASA's open data.
    destination; the site follows each of the library's tile requests, and the copy dissolves into the new
    picture when that picture is complete. Tiles are fetched ahead of the change, so a slow connection delays
    the change instead of showing it half done.
+9. **A sky at once, and no holes.** The archive needs several seconds to deliver the first view: one to
+   three dozen tiles of about 200 kB each. A still picture of exactly that view (`web/opening.jpg`, a copy
+   of the map's own canvas, made by pointing the map at a square that holds the opening view of a screen of
+   any shape) is shown at once and is clickable; the live map replaces it when complete. The archive also
+   drops tile requests that have queued for about ten seconds, and the map library does not ask again: such
+   a tile is fetched once more and the library is made to look at its tiles again, so no hole stays.
 
 ## How the numbers were checked
 
@@ -128,6 +136,12 @@ talking directly to NASA's open data.
   white. A probe inside the page then watched some 35,000 frames while the tour was stepped through at
   awkward moments (forwards and back in the middle of a change of colour or of place): the blank map was
   never in view. Moving to an object takes about one second.
+- **First visit.** With nothing stored, on eight screen shapes from a small phone to an ultra-wide monitor:
+  the still picture is up 0.4 s after the page starts to load and lies within one pixel of the live map
+  that replaces it 4 to 14 s later, at the same brightness. Before, the map stayed dark for that time. A
+  visitor who does not wait (clicks a star, starts the tour, drags, zooms, or arrives by a link to an
+  object) never sees the blank map either. With five tile requests held back and then dropped, as the
+  archive does, the map ends up without a hole; without the repair the hole stays.
 - **Clicks.** Ten well-known stars were clicked dead on and a few arcseconds off, at the tolerance of a wide
   map and of a close view, in empty and in crowded fields: 40 of 40 clicks opened the star that was clicked.
   The earlier catalogue query, which did not ask for the nearest objects first, managed 32.
