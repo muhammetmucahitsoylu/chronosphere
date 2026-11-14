@@ -62,7 +62,7 @@ export async function findFrames(ra, dec, signal) {
   const m = await manifest(), rec = m.recordBytes || 18;
   const cells = cellsNear(ra, dec, FIELD_RADIUS, m.cellDeg);
   const bufs = await Promise.all(cells.map(([b, i]) =>
-    fetch(`${m.base}c/${b}_${i}.bin`, { signal }).then(r => (r.ok ? r.arrayBuffer() : null)).catch(() => null)));
+    fetch(`${m.base}c/${b}_${i}.bin?v=${encodeURIComponent(m.built || '')}`, { signal }).then(r => (r.ok ? r.arrayBuffer() : null)).catch(() => null)));
   const out = [];
   for (const buf of bufs) {
     if (!buf) continue;

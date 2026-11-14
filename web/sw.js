@@ -1,9 +1,11 @@
 // Offline support. After one visit the page, the tour objects and every sky-map tile already seen
 // are served from this device, so a poor connection does not stop a demonstration.
 
-const SHELL = 'chrono-shell-v7', DATA = 'chrono-data-v1', TILES = 'chrono-tiles-v1', LOOKUP = 'chrono-lookup-v1';
+// VERSION is replaced with the commit id when the site is published, so every release is its own set.
+const VERSION = 'dev-8';
+const SHELL = `chrono-shell-${VERSION}`, DATA = 'chrono-data-v2', TILES = 'chrono-tiles-v1', LOOKUP = 'chrono-lookup-v1';
 const KEEP = new Set([SHELL, DATA, TILES, LOOKUP, 'chrono-live-v1']);
-const SHELL_FILES = ['./', 'index.html', 'css/style.css', 'css/fonts.css', 'config.js', 'vendor/aladin.js', 'data/targets.json',
+const SHELL_FILES = ['./', 'css/style.css', 'css/fonts.css', 'config.js', 'vendor/aladin.js', 'data/targets.json',
   'js/app.js', 'js/core.js', 'js/plot.js', 'js/sky.js', 'js/info.js', 'js/tour.js', 'js/pages.js', 'js/archive.js', 'js/healpix.js',
   'fonts/IBMPlexMono-400-latin-ext.woff2', 'fonts/IBMPlexMono-400-latin.woff2', 'fonts/IBMPlexMono-500-latin-ext.woff2', 'fonts/IBMPlexMono-500-latin.woff2', 'fonts/IBMPlexSans-400-latin-ext.woff2', 'fonts/IBMPlexSans-400-latin.woff2', 'fonts/IBMPlexSans-500-latin-ext.woff2', 'fonts/IBMPlexSans-500-latin.woff2', 'fonts/IBMPlexSans-600-latin-ext.woff2', 'fonts/IBMPlexSans-600-latin.woff2', 'fonts/InstrumentSerif-400-latin-ext.woff2', 'fonts/InstrumentSerif-400-latin.woff2', 'fonts/InstrumentSerif-400i-latin-ext.woff2', 'fonts/InstrumentSerif-400i-latin.woff2'];
 
@@ -15,14 +17,15 @@ const MAPS = [`${HIPS}/SPHEREx/spherex_allsky_cube`, `${HIPS}/CDS/2MASS/Color`, 
 const MAP_FILES = [...MAPS.map(m => `${m}/properties`), `${MAPS[0]}/Moc.fits`];
 
 self.addEventListener('install', e => {
-  e.waitUntil(Promise.all([
-    caches.open(SHELL).then(c => Promise.all(SHELL_FILES.map(f => c.add(f).catch(() => null)))),
-    caches.open(LOOKUP).then(c => Promise.all(MAP_FILES.map(f => c.add(f).catch(() => null)))),
-  ]).then(() => self.skipWaiting()));
+  // Only the site's own files hold up a new version; they come from one place and arrive together.
+  e.waitUntil(caches.open(SHELL).then(c => Promise.all(SHELL_FILES.map(f => c.add(new Request(f, { cache: 'reload' })).catch(() => null))))
+    .then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('chrono-') && !KEEP.has(k)).map(k => caches.delete(k))))
-    .then(() => self.clients.claim()));
+    .then(() => self.clients.claim())
+    // The archive can be slow to answer, so its small map files are fetched after taking over, not before.
+    .then(() => caches.open(LOOKUP)).then(c => Promise.all(MAP_FILES.map(f => c.match(f).then(hit => hit || c.add(f)).catch(() => null)))));
 });
 
 const storable = r => r && r.ok && r.status === 200 && (r.type === 'basic' || r.type === 'cors');
@@ -52,6 +55,16 @@ async function cacheFirst(req, name, limit) {
     c.put(req, r.clone());
     if (limit && Math.random() < 0.02) c.keys().then(ks => ks.slice(0, Math.max(0, ks.length - limit)).forEach(k => c.delete(k)));
   }
+  return r;
+}
+/** The page and its code are stored as one set per version, so a slow connection can never mix
+ *  new files with old ones. A new version is fetched whole, then takes over. */
+async function shell(req) {
+  const c = await caches.open(SHELL);
+  const hit = await c.match(req, { ignoreSearch: req.mode === 'navigate', ignoreVary: true });
+  if (hit) return hit;
+  const r = await fetch(req);
+  if (storable(r)) c.put(req, r.clone());
   return r;
 }
 async function networkFirst(req, name, timeoutMs) {
@@ -93,8 +106,9 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (url.origin === self.location.origin) {
     if (url.pathname.includes('/__live/')) return;
-    if (/\/(data|fonts|vendor)\//.test(url.pathname) || /\/index\/c\//.test(url.pathname)) e.respondWith(cacheFirst(req, DATA));
-    else e.respondWith(networkFirst(req, SHELL, 3000));                 // page and code: fresh when online, cached when not
+    if (/\/index\/manifest\.json$/.test(url.pathname)) e.respondWith(networkFirst(req, LOOKUP, 4000));        // says whether the sky index was rebuilt
+    else if (/\/(data\/[^/]+\/|fonts\/|vendor\/|index\/c\/)/.test(url.pathname)) e.respondWith(cacheFirst(req, DATA));   // big, versioned by their address
+    else e.respondWith(shell(req));                                    // the page and its code: one consistent set
     return;
   }
   if (url.hostname === 'irsa.ipac.caltech.edu' && url.pathname.startsWith('/data/hips/')) {

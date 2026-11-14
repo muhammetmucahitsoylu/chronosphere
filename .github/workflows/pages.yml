@@ -2,6 +2,12 @@ name: Publish site
 on:
   push:
     branches: [main]
+  # The weekly index refresh commits with the workflow token, which does not count as a push:
+  # publish again when it has finished.
+  workflow_run:
+    workflows: ["Refresh sky index"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -12,12 +18,15 @@ concurrency:
   cancel-in-progress: true
 jobs:
   deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Stamp this release
+        run: sed -i "s/const VERSION = '[^']*'/const VERSION = '${GITHUB_SHA::10}'/" web/sw.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

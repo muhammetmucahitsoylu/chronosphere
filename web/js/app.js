@@ -13,6 +13,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const isNarrow = () => window.matchMedia('(max-width: 900px)').matches;
 const calmMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const yearNow = () => 1970 + Date.now() / 31557600000;
+const nExp = n => `${(+n).toLocaleString('en')} exposure${+n === 1 ? '' : 's'}`;
 
 const MODES = {
   epochs: 'One stacked image per SPHEREx visit to this spot, played in a loop. Anything that moved between visits jumps.',
@@ -28,7 +29,7 @@ const S = {
   head: null, grid: null, det: 2, dets: {}, mode: 'epochs',
   seq: [], idx: 0, playing: false, fps: 2, timer: null,
   sel: null, view: { z: 1, cx: 0, cy: 0 }, white: 0, invert: false, smooth: false, mask: false,
-  showGaia: true, marks: true, gaia: null, off: new Set(), abort: null, deep: null, hi: 1, gen: 0,
+  showGaia: true, marks: true, busyUntil: 0, gaia: null, off: new Set(), abort: null, deep: null, hi: 1, gen: 0,
   info: null, infoState: 'idle', wiki: null, openTok: 0, showBands: true, embed: false,
 };
 
@@ -39,6 +40,8 @@ const lcPlot = new Plot($('lc'), $('lc').nextElementSibling);
 
 // ------------------------------------------------------------ loading
 const isPreset = () => !!(S.target && S.size === S.target.size);
+/** Address of a showcase file. It carries the build date, so a rebuilt showcase is fetched afresh. */
+const dataUrl = (t, file) => `data/${t.slug}/${file}?v=${encodeURIComponent(t.built || '')}`;
 
 // Finished live queries are kept on this device, so a repeat visit is instant and works offline.
 const Store = {
@@ -69,9 +72,11 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   const gen = ++S.gen;
   stop();
   Object.assign(S, { ra, dec, size: size || 5, target, track: track || (target && target.resolved) || null,
-    head: null, grid: null, dets: {}, seq: [], idx: 0, sel: null, gaia: null, catwise: null, deep: null, off: new Set(), stacks: null, epochs: null, pts: [], bandCache: {}, haloDets: [] });
-  S.info = info; S.infoState = info ? 'done' : 'loading'; S.wiki = null; S.found = null;
+    head: null, grid: null, dets: {}, seq: [], idx: 0, sel: null, gaia: null, catwise: null, deep: null, off: new Set(), stacks: null, epochs: null, pts: [], bandCache: {}, stackCache: {}, haloDets: [] });
+  S.info = info; S.infoState = info ? 'done' : 'loading'; S.wiki = null; S.found = null; S.moved = null;
+  S.detPicked = !!det; S.autoNote = '';
   S.wantPlay = !calmMotion();          // the sequence starts playing by itself once it has loaded
+  S.busyUntil = performance.now() + 9000;
   if (det) S.det = det;
   if (mode && MODES[mode]) S.mode = mode;
   openPanel();
@@ -91,7 +96,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
       if (gen !== S.gen) return;
       if (!S.dets[d] && +S.head.avail[d] > 0) await loadDet(d, gen);
     }
-    if (gen === S.gen) { setStatus(''); maybeAutoplay(); }
+    if (gen === S.gen) { setStatus(''); autoDetector(); renderMotion(); maybeAutoplay(); }
   } catch (e) {
     if (e.name === 'AbortError' || gen !== S.gen) return;
     console.error(e);
@@ -132,7 +137,7 @@ async function loadDet(det, gen) {
     }
   };
   if (isPreset()) {
-    await C.loadStream(`data/${S.target.slug}/d${det}.ndjson`, handle, S.abort.signal);
+    await C.loadStream(dataUrl(S.target, `d${det}.ndjson`), handle, S.abort.signal);
   } else {
     const key = `${S.ra.toFixed(5)}_${S.dec.toFixed(5)}_${S.size}_${det}`;
     const cached = await Store.get(key);
@@ -174,6 +179,29 @@ function onData(det) {
   if (D.done) maybeAutoplay();
 }
 
+/**
+ * Once everything has arrived: if the detector in use cannot show the target (its core is saturated
+ * there, or it is too faint to see), move to the one that shows it best. Never after the visitor
+ * has chosen a detector, and never for the showcase objects, whose view is chosen by hand.
+ */
+function autoDetector() {
+  if (S.detPicked || isPreset() || !S.grid || !S.sel) return;
+  const pts = measureAll(), med = v => { const s = [...v].sort((a, b) => a - b); return s[s.length >> 1]; };
+  const score = d => {                       // typical signal-to-noise of the target in a detector; saturated ones do not count
+    const v = pts.filter(p => p.det === d && !p.halo);
+    return v.length >= 5 ? med(v.map(p => p.flux / p.err)) : 0;
+  };
+  const here = score(S.det), sat = (S.haloDets || []).includes(S.det);
+  if (!sat && here >= 5) return;
+  const others = [1, 2, 3, 4, 5, 6].filter(d => d !== S.det), flux = d => med(pts.filter(p => p.det === d).map(p => p.flux));
+  const good = others.filter(d => score(d) >= 15).sort((a, b) => flux(a) - flux(b));
+  const best = good[0] || others.sort((a, b) => score(b) - score(a))[0];
+  if (!best || score(best) < 8) return;
+  S.autoNote = sat ? `Showing D${best}: in D${S.det} the star's core is saturated.` : `Showing D${best}: the spot is too faint to see in D${S.det}.`;
+  S.det = best; S.seq = []; S.idx = 0;
+  renderDets(); rebuild(); refreshPlots(); syncUrl();
+}
+
 /** Start the sequence by itself, once, when everything it needs has arrived. */
 function maybeAutoplay() {
   if (!S.wantPlay || !S.head || S.playing) return;
@@ -188,7 +216,7 @@ function maybeAutoplay() {
 async function loadCatalog(gen) {
   try {
     let js;
-    if (isPreset()) js = await (await fetch(`data/${S.target.slug}/gaia.json`, { signal: S.abort.signal })).json();
+    if (isPreset()) js = await (await fetch(dataUrl(S.target, 'gaia.json'), { signal: S.abort.signal })).json();
     else if (API) js = await (await fetch(`${API}/api/catalog?ra=${S.ra.toFixed(5)}&dec=${S.dec.toFixed(5)}&size=${S.size}&cat=gaia`, { signal: S.abort.signal })).json();
     else {                                                                  // Gaia DR3 from VizieR; if that fails, stars with known motion from SIMBAD
       const r = S.size * 0.75 + 0.5;
@@ -204,7 +232,7 @@ async function loadCatwise() {
   try {
     setStatus('Loading WISE sources…');
     let js;
-    if (isPreset()) js = await (await fetch(`data/${S.target.slug}/catwise.json`, { signal: S.abort.signal })).json();
+    if (isPreset()) js = await (await fetch(dataUrl(S.target, 'catwise.json'), { signal: S.abort.signal })).json();
     else if (API) js = await (await fetch(`${API}/api/catalog?ra=${S.ra.toFixed(5)}&dec=${S.dec.toFixed(5)}&size=${S.size}&cat=catwise`, { signal: S.abort.signal })).json();
     else js = await Info.wiseSources(S.ra, S.dec, S.size * 0.75 + 0.5);
     if (gen === S.gen) { S.catwise = js; setStatus(''); paint(); }
@@ -235,7 +263,7 @@ function rebuild() {
   const stacks = S.epochs.map(e => {
     const img = C.medianStack(e.frames, npx);
     return { kind: 'stack', img, sig: C.robustStats(img).sig, mjd: e.mid, n: e.frames.length, ep: e,
-      title: `${S.head?.split ? '' : `Visit ${gEpoch(e.mid) + 1} · `}${C.fmtMonth(e.mid)}`, sub: `${e.frames.length} exposures · ${C.fmtRange(e.t0, e.t1)}` };
+      title: `${S.head?.split ? '' : `Visit ${gEpoch(e.mid) + 1} · `}${C.fmtMonth(e.mid)}`, sub: `${nExp(e.frames.length)} · ${C.fmtRange(e.t0, e.t1)}` };
   });
   S.stacks = stacks;
   const deepFrames = frames.length > 80 ? frames.filter((_, i) => i % Math.ceil(frames.length / 80) === 0) : frames;
@@ -251,7 +279,7 @@ function rebuild() {
   } else if (S.mode === 'epochs') seq = stacks;
   else if (S.mode === 'deep') {
     if (S.deep) seq = [{ kind: 'stack', img: S.deep, sig: S.deepSig, mjd: frames[frames.length >> 1].mjd, n: frames.length,
-      title: 'Deep sum', sub: `${frames.length} exposures, all visits` }];
+      title: 'Deep sum', sub: `${nExp(frames.length)}, all visits` }];
   } else if (S.mode === 'bands') {
     S.bandCache = S.bandCache || {};
     const per = {};
@@ -262,7 +290,7 @@ function rebuild() {
         const sub = fr.length > 80 ? fr.filter((_, i) => i % Math.ceil(fr.length / 80) === 0) : fr;
         const img = C.medianStack(sub, npx), st = C.robustStats(img);
         S.bandCache[d] = { key, kind: 'stack', det: d, img, sig: st.sig, hi: Math.max(st.p(0.997), 25 * st.sig), mjd: fr[fr.length >> 1].mjd,
-          n: fr.length, title: `${C.DET_BANDS[d][0]} to ${C.DET_BANDS[d][1]} µm`, sub: `${fr.length} exposures, all visits` };
+          n: fr.length, title: `${C.DET_BANDS[d][0]} to ${C.DET_BANDS[d][1]} µm`, sub: `${nExp(fr.length)}, all visits` };
       }
       per[d] = S.bandCache[d]; seq.push(per[d]);
     }
@@ -312,8 +340,15 @@ function defaultSelection() {
   const hit = S.deep && C.centroid(S.deep, n, bx, by, 2.5);
   S.sel = hit ? { x: hit.x, y: hit.y } : { x: c, y: c };
 }
+/** Where the catalogued target should be on a date: its year-2000 position, moved by its proper
+ *  motion and, for nearby stars, by its parallax. Returned in grid pixels. */
 function trackPos(mjd) {
-  const [ra, dec] = C.propagate({ ra: S.track.ra2000, dec: S.track.dec2000, pmra: S.track.pmra, pmdec: S.track.pmdec }, 2000, C.mjdToYear(mjd));
+  let [ra, dec] = C.propagate({ ra: S.track.ra2000, dec: S.track.dec2000, pmra: S.track.pmra, pmdec: S.track.pmdec }, 2000, C.mjdToYear(mjd));
+  const plx = S.target?.dist?.plx ?? S.track.plx;
+  if (plx > 20) {
+    const [dE, dN] = C.parallaxOffset(ra, dec, plx, mjd);
+    ra += dE / 3600 / Math.max(Math.cos(dec * Math.PI / 180), 1e-6); dec += dN / 3600;
+  }
   return C.skyToGrid(S.grid, ra, dec);
 }
 function selPos(mjd) {
@@ -568,7 +603,7 @@ function drawPlots() {
   const ymax = fl.length ? pct(fl, 0.98) * 1.25 * u : 1, ymin = fl.length ? Math.min(0, pct(fl, 0.02)) * u : 0;
   specPlot.set(sp, {
     xlabel: 'wavelength (µm)', ylabel: relative ? 'relative brightness' : `flux (${unit})`, ylim: [ymin - (ymax - ymin) * 0.04, ymax > ymin ? ymax : ymin + 1],
-    xlim: [0.7, 5.1], empty: S.sel ? 'Measuring…' : 'Click a star in the image',
+    xlim: [0.7, 5.1], empty: S.sel ? 'Measuring…' : 'Click or tap a star in the image',
     shade: [...(S.grid ? [{ x0: C.DET_BANDS[S.det][0], x1: C.DET_BANDS[S.det][1], color: '#ff7b3916' }] : []),
       ...(S.showBands ? C.MOLECULES.map((m, i) => ({ x0: m.band[0], x1: m.band[1], color: '#ffffff12', label: m.f, row: i % 2 })) : [])],
     tipText: p => `${p.x.toFixed(3)} µm · ${relative ? `×${p.y.toFixed(2)}` : `${p.src.halo ? '≈ ' : ''}${p.y.toFixed(p.y >= 100 ? 0 : 2)}${p.src.halo ? '' : ` ± ${p.err.toFixed(2)}`} ${unit}`} · ${C.fmtDate(p.src.mjd)} · D${p.src.det}`,
@@ -589,7 +624,7 @@ function drawPlots() {
   lcPlot.set(lc, {
     xlabel: 'date', ylabel: 'relative brightness', ylim: [lo - 0.1, hi + 0.1], hline: 1, errors: lc.length < 400,
     band: check?.steady != null ? { y0: 1 - check.steady, y1: 1 + check.steady } : null,
-    xTicks: dateTicks, empty: pts.length ? `Too faint (or saturated) in D${S.det} to measure changes` : 'Click a star in the image',
+    xTicks: dateTicks, empty: pts.length ? `Too faint (or saturated) in D${S.det} to measure changes` : 'Click or tap a star in the image',
     tipText: p => `${C.fmtDate(p.x)} · ×${p.y.toFixed(2)} · ${p.src.lam.toFixed(2)} µm`,
     onPick: p => jumpTo(p.src),
   });
@@ -621,22 +656,25 @@ function renderMolecules(pts) {
   const el = $('molecules');
   if (!S.showBands || pts.length < 30) { el.innerHTML = ''; return; }
   const rowsData = C.bandDepths(pts);
+  let glow = false;
   const rows = rowsData.map(m => {
     let cls = 'none', txt = m.why || 'not enough data';
     if (m.depth !== null) {
       const pc = Math.round(Math.abs(m.depth) * 100), sure = Math.abs(m.depth) > 4 * m.err;
       if (m.depth > 0.12 && sure) { cls = 'dip'; txt = `${pc}% dip`; }
-      else if (m.depth < -0.12 && sure) { cls = 'peak'; txt = `${pc}% bump`; }
+      else if (m.depth < -0.12 && sure) { cls = 'peak'; txt = `${pc}% brighter`; glow = true; }
       else txt = 'flat';
     }
-    return `<tr><td>${m.name} <span class="none">${m.f}</span></td><td>${m.band[0].toFixed(2)}–${m.band[1].toFixed(2)}</td><td class="${cls}">${txt}</td></tr>`;
+    // Brighter inside the band than beside it: nothing absorbs there, something glows.
+    const label = cls === 'peak' ? `${m.glow || 'Something glowing'} <span class="none">emission</span>` : `${m.name} <span class="none">${m.f}</span>`;
+    return `<tr><td>${label}</td><td>${m.band[0].toFixed(2)}–${m.band[1].toFixed(2)}</td><td class="${cls}">${txt}</td></tr>`;
   }).join('');
   if (rowsData.every(m => m.depth === null)) {
     el.innerHTML = `<p class="hint">Molecule bands cannot be measured here: ${rowsData.some(m => m.why === 'star too bright to tell') ? 'the star is too bright for the camera' : rowsData.some(m => m.why === 'too faint to tell') ? 'the spot is too faint' : rowsData.some(m => m.why === 'too uneven to tell') ? 'the measurements scatter too much' : 'there are not enough measurements yet'}.</p>`;
     return;
   }
   el.innerHTML = `<table class="t mol"><thead><tr><th>Molecule</th><th>Band, µm</th><th>Measured</th></tr></thead><tbody>${rows}</tbody></table>
-    <p class="hint">How much fainter the spot is inside each band than just outside it. A dip is a hint that the molecule is there, not proof.</p>`;
+    <p class="hint">How much fainter the spot is inside each band than just outside it. A dip is a hint that the molecule is there, not proof.${glow ? ' Where a band is brighter instead, hot gas or dust is glowing at that wavelength.' : ''}</p>`;
 }
 function markCurrent() {
   const cur = S.seq[S.idx]?.frame;
@@ -775,7 +813,8 @@ function scanField() {
   const usableStars = stars.filter(s =>
     !sat.some(([i, j]) => Math.hypot(i - s.x, j - s.y) * g.scale < 90)                                   // in the glow of a saturated star
     && !stars.some(b => b !== s && b.flux > s.flux && s.flux < b.flux * 0.006 * Math.pow(40 / Math.max(40, dist(s, b)), 2.2))   // in the glow of a brighter one
-    && !stars.some(b => b !== s && b.flux > 0.3 * s.flux && dist(s, b) < 13));                           // blended with a neighbour
+    && !stars.some(b => b !== s && b.flux > 0.3 * s.flux && dist(s, b) < 13)                             // blended with a neighbour
+    && !stars.some(b => b !== s && b.flux > s.flux && dist(s, b) < 25));                                 // a brighter star close enough to pull its position
   if (usableStars.length < 4) return { checked: usableStars.length, flags: [] };
   const eps = S.head.epochs;
   for (const s of usableStars) {
@@ -791,6 +830,7 @@ function scanField() {
     const seen = s.pos.filter(Boolean);
     if (seen.length >= 2) {
       const a = seen[0], b = seen[seen.length - 1];
+      s.real = lightMoved(stacks[s.pos.indexOf(a)], stacks[s.pos.lastIndexOf(b)], a, b);
       s.dE = -(b.x - a.x) * g.scale; s.dN = (b.y - a.y) * g.scale; s.shift = Math.hypot(s.dE, s.dN);
       s.fuzz = Math.hypot(8 / Math.max(4, a.sn), 8 / Math.max(4, b.sn)); s.years = Math.max((b.mjd - a.mjd) / 365.25, 0.05);
     }
@@ -820,7 +860,7 @@ function scanField() {
   const flags = [];
   for (const s of usableStars) {
     const own = S.track && eps.some(e => { const t = trackPos((e[0] + e[1]) / 2); return Math.hypot(t[0] - s.x, t[1] - s.y) < 4; });
-    if (s.shift != null && s.shift > Math.max(3.5 * Math.hypot(align, s.fuzz), 2)) {
+    if (s.shift != null && s.real && s.shift > Math.max(3.5 * Math.hypot(align, s.fuzz), 2)) {
       flags.push({ s, own, kind: 'moved', text: `Moved ${s.shift.toFixed(1)}″ ${compass(s.dE, s.dN)}`, note: `about ${(s.shift / s.years).toFixed(1)}″ per year` });
     } else if (s.change && Math.abs(s.change.ch) >= Math.max(0.15, 5 * steady) && s.change.sig >= 6) {
       const mon = k => C.fmtMonth((eps[k][0] + eps[k][1]) / 2);
@@ -860,7 +900,8 @@ function renderChips() {
     b.type = 'button'; b.textContent = t.label; b.onclick = () => openTarget(t);
     el.appendChild(b);
   }
-  $('suggest').innerHTML = [...S.targets.map(t => t.label), 'Proxima Centauri', 'Betelgeuse', 'Vega', 'Sirius', 'Andromeda Galaxy', 'Orion Nebula', 'Pleiades']
+  // Suggestions on which the tool has been tried: nearby fast movers, brown dwarfs, a nebula, a galaxy.
+  $('suggest').innerHTML = [...S.targets.map(t => t.label), 'Proxima Centauri', 'Luhman 16', 'Wolf 359', "Teegarden's Star", "Kapteyn's Star", 'NGC 7027', 'Andromeda Galaxy']
     .map(n => `<option value="${n.replace(/"/g, '&quot;')}">`).join('');
 }
 const openTarget = t => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, info: t.info || null, ...(t.view || { mode: 'epochs' }) });
@@ -882,15 +923,22 @@ function closePanel() {
 async function loadInfo(gen) {
   try {
     if (!S.info) {
-      S.info = await Info.identify(S.ra, S.dec, 10).catch(() => null);
+      const found = await Info.identifyFull(S.ra, S.dec, 10).catch(() => ({ best: null, moved: null }));
       if (gen !== S.gen) return;
+      S.info = found.best; S.moved = found.moved;
       if (S.info && !S.target && Sky.isReady()) Sky.mark(S.ra, S.dec, S.size, S.info.name);      // now the marker can carry its name
     }
     S.infoState = 'done'; renderAbout();
     if (S.target && 'info' in S.target) { S.wiki = S.target.wikiCard || null; renderAbout(); return; }      // baked in: no look-up needed
     const titles = [];
     if (S.target?.wiki) titles.push(S.target.wiki);
-    if (S.info) titles.push(...Info.wikiTitles([S.info.mainId, ...(await Info.aliases(S.info.oid))]));
+    if (S.info) {
+      const ids = await Info.aliases(S.info.oid);
+      if (gen !== S.gen) return;
+      const common = Info.commonName(ids);          // "Kapteyn's Star" reads better than "HD 33793"
+      if (common && !S.target) { S.info.name = common; renderAbout(); if (Sky.isReady()) Sky.mark(S.ra, S.dec, S.size, common); }
+      titles.push(...Info.wikiTitles([S.info.mainId, ...ids]));
+    }
     if (gen !== S.gen || !titles.length) return;
     S.wiki = await Info.wikipedia(titles);
     if (gen === S.gen && S.wiki) renderAbout();
@@ -910,8 +958,12 @@ function renderAbout() {
   const sp = t?.sp || i?.sptype;
   const spHtml = sp ? ` · spectral type <span class="asis">${esc(sp)}</span>` : '';
   const kind = t?.type ? `${esc(t.type)}${spHtml}` : i ? `${esc(i.type)}${spHtml}`
-    : S.infoState === 'loading' ? 'Identifying…' : 'Nothing catalogued at this spot';
-  const gloss = t ? t.blurb : i ? Info.gloss(i.otype) : S.infoState === 'done' ? 'No catalogue lists an object exactly here. SPHEREx still has images of this patch: what do you see?' : '';
+    : S.infoState === 'loading' ? 'Identifying…' : S.moved ? 'The star that was here has moved on' : 'Nothing catalogued at this spot';
+  // A star that catalogues list here, at its year-2000 place, but that has moved on since.
+  const mv = !t && !i ? S.moved : null, mvPm = mv ? Math.hypot(mv.pmra, mv.pmdec) / 1000 : 0;
+  const gloss = t ? t.blurb : i ? Info.gloss(i.otype, i.sptype)
+    : mv ? `${mv.name} was at this spot in the year 2000, which is where catalogues still list it. It moves ${mvPm.toFixed(1)}″ a year and is now ${(mv.dist / 60).toFixed(1)}′ away.`
+      : S.infoState === 'done' ? 'No catalogue lists an object exactly here. SPHEREx still has images of this patch: what do you see?' : '';
   const facts = [];
   const fact = (label, value, small, title) => facts.push(`<div${title ? ` title="${esc(title)}"` : ''}><dt>${label}</dt><dd>${value}${small ? `<small>${small}</small>` : ''}</dd></div>`);
 
@@ -937,7 +989,7 @@ function renderAbout() {
   if (i?.redshift > 0.002) fact('Redshift', i.redshift.toFixed(4), 'its light is stretched by the expanding universe');
   if (S.head) {
     const eps = S.head.epochs, split = !!S.head.split;
-    fact('SPHEREx has', `${S.head.estimated ? 'about ' : ''}${S.head.total.toLocaleString('en')} exposures`,
+    fact('SPHEREx has', `${S.head.estimated ? 'about ' : ''}${nExp(S.head.total)}`,
       `${eps.length} ${split ? 'time slice' : 'visit'}${eps.length === 1 ? '' : 's'}, ${C.fmtMonth(eps[0]?.[0] ?? 0)} to ${C.fmtMonth(eps.at(-1)?.[1] ?? 0)}`);
   }
   const w = S.wiki;
@@ -945,12 +997,17 @@ function renderAbout() {
   const links = [...(w ? [{ label: 'Wikipedia', title: `Encyclopedia article: ${w.title}`, url: w.url }] : []), ...Info.externalLinks(S.ra, S.dec, i)]
     .map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.title)}">${l.label}</a>`).join('');
   el.innerHTML = `<div class="toprow">
-      <div class="idblock"><p class="kind">${kind}</p><h1>${esc(name)}</h1>${gloss ? `<p class="gloss">${esc(gloss)}</p>` : ''}</div>
+      <div class="idblock"><p class="kind">${kind}</p><h1>${esc(name)}</h1>${gloss ? `<p class="gloss">${esc(gloss)}</p>` : ''}${mv ? '<p class="gomoved"><button type="button" class="cta" id="gomoved">Go to where it is now</button></p>' : ''}</div>
       ${thumb}<button type="button" class="close" id="closepanel" title="Close and return to the map" aria-label="Close">×</button>
     </div>
     <dl class="facts">${facts.join('')}</dl>
     <div class="links"><span>Check it in</span>${links}</div>`;
   $('closepanel').onclick = closePanel;
+  if (mv) $('gomoved').onclick = () => {
+    const preset = S.targets.find(x => sepArcsec(mv.ra, mv.dec, x.ra, x.dec) < 20);
+    if (preset && +$('fov').value === preset.size) openTarget(preset);
+    else go({ ra: mv.ra, dec: mv.dec, size: +$('fov').value, track: mv, info: mv });
+  };
   renderLook(); renderWiki(); renderMotion();
 }
 /** Guidance for the showcase objects. The guided tour says the same thing in its own card. */
@@ -967,6 +1024,24 @@ function renderWiki() {
   el.hidden = !w && !others;
   el.innerHTML = `${w ? `<h2>From Wikipedia</h2><div class="wiki">${w.thumb ? `<img src="${esc(w.thumb)}" alt="" loading="lazy">` : ''}<div><p>${esc(w.extract)}</p><small><a href="${esc(w.url)}" target="_blank" rel="noopener">Read the article: ${esc(w.title)}</a></small></div></div>` : ''}${others}`;
 }
+/**
+ * Real motion moves the light: in the first visit it sits at the old spot, in the last visit at
+ * the new one. A position that merely "jumps" between two neighbouring stars shows no such
+ * change, because both stars are there all along. The test compares the balance of light between
+ * the two spots in the two visits, so it does not matter if one visit's image is brighter overall.
+ * a and b are the first and last measured positions {x, y}, in the stacks stA and stB.
+ */
+function lightMoved(stA, stB, a, b) {
+  const n = S.grid.n;
+  const at = (st, p) => {                                   // brightness at an exact position (bilinear)
+    const i = Math.floor(p.x), j = Math.floor(p.y), fx = p.x - i, fy = p.y - j;
+    if (i < 0 || j < 0 || i >= n - 1 || j >= n - 1) return NaN;
+    const v = st.img[j * n + i] * (1 - fx) * (1 - fy) + st.img[j * n + i + 1] * fx * (1 - fy) + st.img[(j + 1) * n + i] * (1 - fx) * fy + st.img[(j + 1) * n + i + 1] * fx * fy;
+    return Math.max(v, 0.5 * st.sig);
+  };
+  const before = at(stA, a) / at(stA, b), after = at(stB, a) / at(stB, b);
+  return before / after > 1.3;
+}
 const COMPASS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
 const compass = (dE, dN) => COMPASS[Math.round((((Math.atan2(dE, dN) * 180 / Math.PI) + 360) % 360) / 45) % 8];
 
@@ -975,6 +1050,68 @@ const compass = (dE, dN) => COMPASS[Math.round((((Math.atan2(dE, dN) * 180 / Mat
  * compared with how well ordinary stars in the same images repeat. For a catalogued fast mover
  * the measurement is also set against the catalogue prediction.
  */
+/** One stacked image per visit for any detector (the viewer keeps these only for the selected one). */
+function visitStacks(det) {
+  const frames = usable(det), key = `${S.gen}:${frames.length}:${[...S.off].join()}`;
+  S.stackCache ||= {};
+  if (S.stackCache[det]?.key === key) return S.stackCache[det].stacks;
+  const npx = S.grid.n * S.grid.n, byEp = new Map();
+  for (const f of frames) { const k = gEpoch(f.mjd); if (!byEp.has(k)) byEp.set(k, []); byEp.get(k).push(f); }
+  const stacks = [...byEp.keys()].sort((x, y) => x - y).map(k => {
+    const fr = byEp.get(k), img = C.medianStack(fr, npx);
+    return { img, sig: C.robustStats(img).sig, mjd: (fr[0].mjd + fr[fr.length - 1].mjd) / 2, n: fr.length };
+  });
+  S.stackCache[det] = { key, stacks };
+  return stacks;
+}
+/** The spot's position in every visit of one detector: predicted place first (catalogued target), or followed from visit to visit. */
+function positionsIn(stacks, tracked) {
+  const g = S.grid, n = g.n, rows = []; let last = tracked ? null : [S.sel.x, S.sel.y];
+  for (const st of stacks) {
+    const p = tracked ? trackPos(st.mjd) : last;
+    let m = C.locate(st.img, n, p[0], p[1], 3);
+    if (m && !(m.peak > 4 * st.sig)) m = null;                                       // not clearly above the noise
+    if (m && C.coreMasked(st.img, n, g.scale, m.x, m.y, 6) > 0) m = null;              // a hole in the middle: saturated, no position
+    // A catalogued target counts as found only if something sits at its place. At wavelengths where a
+    // cold object is invisible, the nearest source is a neighbouring star, which must not be measured instead.
+    if (m && tracked && Math.hypot(m.x - p[0], m.y - p[1]) > 1.3) m = null;
+    if (m && !tracked) last = [m.x, m.y];
+    rows.push({ st, p, m });
+  }
+  return rows;
+}
+/**
+ * The same motion measured independently in every detector that sees the spot without saturating.
+ * Returns the median yearly motion [east, north], how well the detectors agree, and which ones took part.
+ */
+function motionEverywhere(tracked) {
+  const g = S.grid, plx = tracked ? (S.target?.dist?.plx ?? S.track.plx ?? 0) : 0, rates = [];
+  for (let det = 1; det <= 6; det++) {
+    if (!S.dets[det]?.done || S.dets[det].frames.length < 6) continue;
+    const seen = positionsIn(visitStacks(det), tracked).filter(r => r.m && r.m.peak > 8 * r.st.sig);
+    if (seen.length < 2) continue;
+    const a = seen[0], b = seen[seen.length - 1], years = (b.st.mjd - a.st.mjd) / 365.25;
+    if (years < 0.3) continue;
+    let dE = -(b.m.x - a.m.x) * g.scale, dN = (b.m.y - a.m.y) * g.scale;
+    if (plx > 20) {                             // take out the yearly wobble, which is not motion through space
+      const [ra, dec] = C.gridToSky(g, a.m.x, a.m.y), pa = C.parallaxOffset(ra, dec, plx, a.st.mjd), pb = C.parallaxOffset(ra, dec, plx, b.st.mjd);
+      dE -= pb[0] - pa[0]; dN -= pb[1] - pa[1];
+    }
+    rates.push({ det, e: dE / years, n: dN / years });
+  }
+  if (!rates.length) return null;
+  const med = v => { const q = [...v].sort((x, y) => x - y); return q.length % 2 ? q[q.length >> 1] : (q[q.length / 2 - 1] + q[q.length / 2]) / 2; };
+  const e = med(rates.map(r => r.e)), n = med(rates.map(r => r.n)), rate = Math.hypot(e, n);
+  const spread = Math.max(...rates.map(r => Math.hypot(r.e - e, r.n - n)));
+  if (rates.length > 1 && spread > Math.max(1.5, 0.5 * rate)) return null;      // the detectors tell different stories: do not average them
+  return { e, n, rate, spread, dets: rates.map(r => r.det) };
+}
+
+/**
+ * Did the circled spot move? Its position is measured in the stacked image of every visit and
+ * compared with how well ordinary stars in the same images repeat. For a catalogued fast mover
+ * the measurement is also set against the catalogue prediction (proper motion and parallax).
+ */
 function renderMotion() {
   const el = $('motion');
   if (!el) return;
@@ -982,21 +1119,16 @@ function renderMotion() {
   const g = S.grid, n = g.n, as = v => (v * g.scale).toFixed(1);
   const tracked = !!(S.sel.follow && S.track && S.track.pmra != null);
   const catPm = tracked ? Math.hypot(S.track.pmra, S.track.pmdec) / 1000 : 0;          // arcseconds per year, from the catalogue
-  // Where the spot is in each visit: start from the prediction (catalogued target) or from where it was last seen.
-  const rows = []; let last = tracked ? null : [S.sel.x, S.sel.y];
-  for (const st of S.stacks) {
-    const p = tracked ? trackPos(st.mjd) : last;
-    let m = C.locate(st.img, n, p[0], p[1], 3);
-    if (m && !(m.peak > 4 * st.sig)) m = null;                                       // not clearly above the noise
-    if (m && C.coreMasked(st.img, n, g.scale, m.x, m.y, 6) > 0) m = null;              // a hole in the middle: saturated, no position
-    if (m && !tracked) last = [m.x, m.y];
-    rows.push({ st, p, m });
-  }
+  const rows = positionsIn(S.stacks, tracked);
   const seen = rows.filter(r => r.m);
+  const allIn = !!S.head && [1, 2, 3, 4, 5, 6].every(d => !+S.head.avail[d] || S.dets[d]?.done);
+  const every = allIn ? motionEverywhere(tracked) : null;                              // all detectors, once they have arrived
+  const list = d => d.map(x => 'D' + x).join(', ').replace(/, (D\d)$/, ' and $1');
   if (seen.length < 2) {
     const holes = rows.filter(r => C.coreMasked(r.st.img, n, g.scale, r.p[0], r.p[1], 6) > 0).length > rows.length / 2;
-    el.innerHTML = holes ? `<p class="hint">The star's core is saturated in D${S.det}, so its position cannot be measured here.</p>`
-      : tracked && catPm >= 0.1 ? '<p class="hint">The target is too faint in this detector to be located, so its motion cannot be measured here. Try another detector.</p>' : '';
+    const elsewhere = every ? ` In ${list(every.dets)} it can be measured: ${every.rate.toFixed(1)}″ per year towards the ${compass(every.e, every.n)}${tracked && catPm >= 0.1 ? ` (catalogue: ${catPm.toFixed(1)}″ towards the ${compass(S.track.pmra, S.track.pmdec)})` : ''}.` : '';
+    el.innerHTML = holes ? `<p class="hint">The star's core is saturated in D${S.det}, so its position cannot be measured here.${elsewhere}</p>`
+      : tracked && catPm >= 0.1 ? `<p class="hint">The target is too faint in this detector to be located, so its motion cannot be measured here.${elsewhere || ' Try another detector.'}</p>` : '';
     return;
   }
   // How well do positions repeat from visit to visit? Ordinary stars in the same images are the yardstick.
@@ -1015,23 +1147,34 @@ function renderMotion() {
   const sigma = Math.hypot(align, fuzz(first), fuzz(end));
   const span = `${C.fmtMonth(first.st.mjd)} and ${C.fmtMonth(end.st.mjd)}`;
   const yard = comp.length >= 3 ? `Ordinary stars in the same images stay put to within ${align.toFixed(1)}″.` : '';
+  const agree = every && every.dets.length > 1 ? `, measured independently in ${list(every.dets)}, which agree to ${Math.max(0.1, every.spread).toFixed(1)}″ per year` : every ? `, measured in ${list(every.dets)}` : ` in these D${S.det} images`;
 
   if (tracked && catPm >= 0.1) {
+    // Measured minus predicted for every visit. One common offset is taken out (the catalogue position
+    // itself may be slightly off); what remains shows how well each visit fits the prediction.
+    const res = seen.map(r => [-(r.m.x - r.p[0]) * g.scale, (r.m.y - r.p[1]) * g.scale]);
+    const mid = v => { const q = [...v].sort((x, y) => x - y); return q.length % 2 ? q[q.length >> 1] : (q[q.length / 2 - 1] + q[q.length / 2]) / 2; };
+    const off = [mid(res.map(v => v[0])), mid(res.map(v => v[1]))];
     const m0 = first.m, p0 = first.p;
     const body = rows.map(({ st, p, m }) => {
-      const pe = -(p[0] - p0[0]), pn = p[1] - p0[1];
       const dot = `<i style="background:${epochColor(st.mjd)}"></i>${C.fmtMonth(st.mjd)}`;
       if (!m) return `<tr><td>${dot}</td><td colspan="3">not detected</td></tr>`;
-      const me = -(m.x - m0.x), mn = m.y - m0.y;
-      return `<tr><td>${dot}</td><td>${as(Math.hypot(me, mn))}″</td><td>${as(Math.hypot(pe, pn))}″</td><td>${as(Math.hypot(me - pe, mn - pn))}″</td></tr>`;
+      const r = [-(m.x - p[0]) * g.scale - off[0], (m.y - p[1]) * g.scale - off[1]];
+      return `<tr><td>${dot}</td><td>${as(Math.hypot(m.x - m0.x, m.y - m0.y))}″</td><td>${as(Math.hypot(p[0] - p0[0], p[1] - p0[1]))}″</td><td>${Math.hypot(r[0], r[1]).toFixed(1)}″</td></tr>`;
     }).join('');
-    el.innerHTML = `<table class="t"><thead><tr><th>${S.head?.split ? 'Month' : 'Visit'}</th><th>Measured</th><th>Predicted</th><th>Off by</th></tr></thead><tbody>${body}</tbody></table>
-      <p class="hint verdict"><b>Measured in these D${S.det} images: ${(d / years).toFixed(1)}″ per year towards the ${compass(dE, dN)}.</b> The catalogue says ${catPm.toFixed(1)}″ per year towards the ${compass(S.track.pmra, S.track.pmdec)}. ${yard} One SPHEREx pixel is 6.15″.</p>`;
+    const rate = every ? every.rate : d / years, dir = every ? compass(every.e, every.n) : compass(dE, dN);
+    el.innerHTML = `<table class="t"><thead><tr><th>${S.head?.split ? 'Month' : 'Visit'}</th><th title="How far it has moved since the first visit, in these images">Moved</th><th title="How far the catalogue says it should have moved: proper motion and parallax">Predicted</th><th title="Distance between the measured and the predicted position, after taking out one offset common to all visits">Off by</th></tr></thead><tbody>${body}</tbody></table>
+      <p class="hint verdict"><b>Measured: ${rate.toFixed(1)}″ per year towards the ${dir}</b>${agree}. The catalogue says ${catPm.toFixed(1)}″ per year towards the ${compass(S.track.pmra, S.track.pmdec)}. ${yard} One SPHEREx pixel is 6.15″.</p>`;
+    return;
+  }
+  if (d > Math.max(3 * sigma, 1.5) && !lightMoved(first.st, end.st, first.m, end.m)) {
+    el.innerHTML = `<p class="hint verdict"><b>Probably two stars, not motion.</b> The measured position differs by ${d.toFixed(1)}″ between ${span} in D${S.det}, but the light did not leave the old spot or build up at the new one. That is what a close pair of stars looks like. ${yard}</p>`;
     return;
   }
   if (d > Math.max(3 * sigma, 1.5)) {
     const cat = S.info?.pmra != null && !tracked ? ` SIMBAD lists ${(Math.hypot(S.info.pmra, S.info.pmdec) / 1000).toFixed(2)}″ per year for the object catalogued here.` : ' Check the tools above: if no catalogue lists a fast mover here, it deserves a closer look.';
-    el.innerHTML = `<p class="hint verdict"><b>This spot moved.</b> ${d.toFixed(1)}″ towards the ${compass(dE, dN)} between ${span} in D${S.det}: about ${(d / years).toFixed(1)}″ per year. ${yard}${cat}</p>`;
+    const rate = every ? every.rate : d / years, dir = every ? compass(every.e, every.n) : compass(dE, dN);
+    el.innerHTML = `<p class="hint verdict"><b>This spot moved.</b> ${d.toFixed(1)}″ towards the ${compass(dE, dN)} between ${span} in D${S.det}: about ${rate.toFixed(1)}″ per year towards the ${dir}${agree}. ${yard}${cat}</p>`;
     return;
   }
   el.innerHTML = `<p class="hint verdict"><b>No motion detected.</b> Between ${span} its position in D${S.det} is the same to within ${Math.max(d, 0.1).toFixed(1)}″. ${yard} Anything slower than about ${(Math.max(3 * sigma, 1.5) / years).toFixed(1)}″ per year would not show here (one SPHEREx pixel is 6.15″).</p>`;
@@ -1050,13 +1193,13 @@ function renderDets() {
     b.setAttribute('aria-pressed', d === S.det);
     b.disabled = avail === 0;
     if (D?.loading) b.classList.add('loading');
-    b.title = `Detector ${d}: ${a} to ${z} microns${avail ? `, ${avail} exposures` : avail === 0 ? ', no exposures here' : ''}`;
-    b.onclick = () => { S.det = d; renderDets(); rebuild(); refreshPlots(); syncUrl(); if (!S.dets[d]) setStatus(`Detector ${d} is still loading…`); };
+    b.title = `Detector ${d}: ${a} to ${z} microns${avail ? `, ${nExp(avail)}` : avail === 0 ? ', no exposures here' : ''}`;
+    b.onclick = () => { S.det = d; S.detPicked = true; S.autoNote = ''; renderDets(); rebuild(); refreshPlots(); syncUrl(); if (!S.dets[d]) setStatus(`Detector ${d} is still loading…`); };
     el.appendChild(b);
   }
   const D = S.dets[S.det], [a, z] = C.DET_BANDS[S.det];
   const n = D ? (D.loading ? `loading ${D.frames.length} of ${D.total || '…'} exposures` : `${D.frames.length} exposures`) : S.head ? `${S.head.avail[S.det]} exposures` : '';
-  $('detnote').textContent = `Detector ${S.det}: ${a} to ${z} µm${n ? ` · ${n}` : ''}. Pick a wavelength band above.`;
+  $('detnote').textContent = `${S.autoNote ? S.autoNote + ' ' : ''}Detector ${S.det}: ${a} to ${z} µm${n ? ` · ${n}` : ''}. Pick a wavelength band above.`;
 }
 function renderReleases() {
   const el = $('releases'); el.innerHTML = '';
@@ -1064,7 +1207,7 @@ function renderReleases() {
     const lab = document.createElement('label'), cb = document.createElement('input');
     cb.type = 'checkbox'; cb.checked = !S.off.has(name);
     cb.onchange = () => { cb.checked ? S.off.delete(name) : S.off.add(name); rebuild(); refreshPlots(); };
-    lab.append(cb, ` ${name} `, Object.assign(document.createElement('span'), { className: 'hint', textContent: `${n} exposures` }));
+    lab.append(cb, ` ${name} `, Object.assign(document.createElement('span'), { className: 'hint', textContent: nExp(n) }));
     el.appendChild(lab);
   }
 }
@@ -1135,7 +1278,7 @@ async function search(text) {
   const size = +$('fov').value;
   const co = C.parseCoords(text);
   if (co) {
-    await go({ ...co, size });
+    go({ ...co, size });
     // Old coordinates of a fast mover we know? Offer to jump to where it is now.
     for (const t of S.targets) {
       const k = t.resolved;
@@ -1167,6 +1310,7 @@ async function search(text) {
 
 /** A click on the map: work out what is there today and open it. */
 async function openAt(ra, dec, mapFov) {
+  S.busyUntil = performance.now() + 9000;
   if (mapFov > 12) {                       // too far out to mean one object: dive in first
     note('Zooming in. Pick an object when you are closer.', 3500);
     Sky.flyTo(ra, dec, Math.max(mapFov / 6, 2));
@@ -1224,6 +1368,7 @@ document.addEventListener('keydown', e => {
   if (tourIdx >= 0 && (e.key === 'PageDown' || e.key === 'n')) { e.preventDefault(); return tourGo(tourIdx + 1); }
   if (tourIdx >= 0 && (e.key === 'PageUp' || e.key === 'b')) { e.preventDefault(); return tourGo(tourIdx - 1); }
   if (!$('sheetwrap').hidden && e.key === 'Escape') return closeSheet();
+  if (e.key === 'Escape' && $('nav').classList.contains('open')) return closeMenu();
   if (tourIdx >= 0 && e.key === 'Escape') return tourEnd();
   if (e.key === ' ') { e.preventDefault(); S.wantPlay = false; S.playing ? stop() : play(); }
   else if (e.key === 'ArrowRight') { S.wantPlay = false; stop(); step(1); }
@@ -1320,7 +1465,7 @@ $('savepng').onclick = () => {
 };
 $('savecsv').onclick = () => {
   const pts = S.pts || [];
-  if (!pts.length) return exportNote('No measurements yet: click a star in the image.');
+  if (!pts.length) return exportNote('No measurements yet: pick a star in the image.');
   const relative = S.haloDets?.length > 0 && !S.haloAnchored, q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const head = ['date_utc', 'mjd', 'detector', 'wavelength_um', relative ? 'relative_brightness' : 'flux_mJy', relative ? 'relative_error' : 'flux_error_mJy', 'method', 'release', 'exposure', 'source_file'];
   const rows = [...pts].sort((a, b) => a.mjd - b.mjd).map(p => [C.fmtDate(p.mjd, true).replace(' UTC', ''), p.mjd.toFixed(5), p.det, p.lam.toFixed(4),
@@ -1396,8 +1541,15 @@ const tourApi = {
   layer: id => { if (Sky.isReady() && Sky.currentLayer() !== id) setLayer(id); },
   slice: z => { if (Sky.isReady()) setWave(z); },
   sweep: on => { if (Sky.isReady()) sweep(on, TOUR_FRAMES); },
-  fly: (ra, dec, fov) => { if (Sky.isReady()) Sky.flyTo(ra, dec, Sky.fitFov(fov)); },
+  fly: (ra, dec, fov) => { if (Sky.isReady()) { S.busyUntil = performance.now() + 9000; Sky.flyTo(ra, dec, Sky.fitFov(fov)); } },
   open: t => openTarget(t),
+  // Getting the next step ready while the current one is being read: its map tiles and its first images.
+  warm: (ra, dec, fov, layout = 'open') => {
+    if (!Sky.isReady() || !Sky.isSpherex()) return;
+    const [w, h] = tourSizes()[layout];                    // the size the map will have at that step, not the size it has now
+    warm(Sky.tiles({ ra, dec, fov: Sky.fitFov(fov, w, h), w, h }));
+  },
+  preload: t => { fetch(dataUrl(t, `d${t.view?.det || 2}.ndjson`), { priority: 'low' }).then(r => r.arrayBuffer()).catch(() => {}); },
 };
 /** The tour card docks under the map or floats over it, which changes the map's size. */
 function relayout() {
@@ -1415,9 +1567,18 @@ function tourGo(i) {
   $('tourmini').textContent = `${i + 1} / ${tourSteps.length}`;
   $('tourprog').style.width = `${(i + 1) / tourSteps.length * 100}%`;
   $('tourtitle').textContent = st.title; $('tourtext').textContent = st.text;
+  const links = $('tourlinks');
+  links.hidden = !st.tryNext; links.textContent = st.tryNext ? 'Try next: ' : '';
+  for (const name of st.tryNext || []) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = name;
+    b.onclick = () => { tourEnd(); $('q').value = name; search(name); };
+    links.appendChild(b);
+  }
   $('tourback').disabled = i === 0;
   $('tournext').textContent = i === tourSteps.length - 1 ? 'Finish' : 'Next';
   st.run(tourApi);
+  setTimeout(() => { if (tourIdx === i) tourSteps[i + 1]?.prep?.(tourApi); }, 1500);
   renderLook(); relayout();
   if (isNarrow()) window.scrollTo({ top: 0, behavior: calmMotion() ? 'auto' : 'smooth' });
 }
@@ -1432,21 +1593,29 @@ $('tourclose').onclick = tourEnd;
 $('hidewelcome').onclick = () => { $('welcome').hidden = true; };
 
 // ------------------------------------------------------------ article sheets
+let sheetOpener = null;
 function openSheet(id) {
   if (!SHEETS[id]) return;
+  sheetOpener = document.activeElement;
   const wrap = $('sheetwrap'), sh = $('sheet');
   sh.innerHTML = `<button type="button" class="close" aria-label="Close">×</button>${SHEETS[id]()}`;
   sh.querySelector('.close').onclick = closeSheet;
   wrap.hidden = false; wrap.scrollTop = 0; sh.focus();
 }
-function closeSheet() { $('sheetwrap').hidden = true; }
+function closeSheet() {
+  $('sheetwrap').hidden = true;
+  if (sheetOpener?.isConnected) sheetOpener.focus();          // back to where the reader was
+  sheetOpener = null;
+}
 $('sheetwrap').addEventListener('click', e => { if (e.target === $('sheetwrap')) closeSheet(); });
 document.querySelectorAll('[data-sheet]').forEach(b => { b.onclick = () => { closeMenu(); openSheet(b.dataset.sheet); }; });
 function closeMenu() { $('nav').classList.remove('open'); $('menubtn').setAttribute('aria-expanded', 'false'); }
 $('menubtn').onclick = () => { const open = $('nav').classList.toggle('open'); $('menubtn').setAttribute('aria-expanded', String(open)); };
 document.addEventListener('click', e => { if (!e.target.closest('#nav')) closeMenu(); });
-$('zoomin').onclick = () => Sky.zoomBy(0.5);
-$('zoomout').onclick = () => Sky.zoomBy(2);
+$('zoomin').onclick = () => { S.busyUntil = performance.now() + 6000; Sky.zoomBy(0.5); };
+$('zoomout').onclick = () => { S.busyUntil = performance.now() + 6000; Sky.zoomBy(2); };
+// Dragging or zooming the map by hand also asks for tiles: let those go first.
+for (const ev of ['pointerdown', 'wheel']) $('map').addEventListener(ev, () => { S.busyUntil = performance.now() + 6000; }, { passive: true, capture: true });
 // Phones: the map fills what is left under the header, whatever its height.
 const setTopH = () => document.documentElement.style.setProperty('--toph', `${$('top').offsetHeight}px`);
 new ResizeObserver(setTopH).observe($('top')); setTopH();
@@ -1458,14 +1627,21 @@ $('layer').onchange = e => setLayer(e.target.value);
 
 // ------------------------------------------------------------ offline
 /** Sky-map tiles the guided tour shows: the wide views, the colour sweep and each of the five stops. */
+/** Size of the map, in pixels, during the tour: with no object open (wide) and with one open (open). */
+function tourSizes() {
+  const W = window.innerWidth, H = window.innerHeight - $('top').offsetHeight, narrow = isNarrow();
+  return {
+    full: [W, H],
+    wide: narrow ? [W, Math.max(200, H - 300)] : [W, H],
+    open: narrow ? [W, Math.max(170, Math.round(window.innerHeight * 0.26))] : [W - Math.min(0.62 * W, 1000), Math.max(240, H - 290)],
+  };
+}
 function tourTiles() {
   if (!Sky.isReady()) return [];
-  const W = window.innerWidth, H = window.innerHeight - $('top').offsetHeight, narrow = isNarrow();
-  const wide = narrow ? [W, Math.max(200, H - 300)] : [W, H];                                    // no object open
-  const open = narrow ? [W, Math.max(170, Math.round(window.innerHeight * 0.26))] : [W - Math.min(0.62 * W, 1000), Math.max(240, H - 290)];
+  const { full, wide, open } = tourSizes();
   const urls = new Set();
   const add = (ra, dec, fov, [w, h], z = 25) => Sky.tiles({ ra, dec, fov: Sky.fitFov(fov, w, h), z, w, h }).forEach(u => urls.add(u));
-  for (const size of [wide, [W, H]]) {
+  for (const size of [wide, full]) {
     for (const z of TOUR_FRAMES) add(266.4, -29.0, 110, size, z);
     add(83.82, -5.39, 60, size);
   }
@@ -1482,24 +1658,28 @@ async function saveTourOffline(full) {
   const files = [];
   for (const t of S.targets) {
     const d = t.view?.det || 2;
-    files.push(`data/${t.slug}/d${d}.ndjson`, `data/${t.slug}/gaia.json`);       // what each tour step shows first
+    files.push(dataUrl(t, `d${d}.ndjson`), dataUrl(t, 'gaia.json'));       // what each tour step shows first
     if (t.wikiCard?.thumb) files.push(t.wikiCard.thumb);
   }
   if (full) {
-    for (const t of S.targets) for (let d = 1; d <= 6; d++) if (d !== (t.view?.det || 2)) files.push(`data/${t.slug}/d${d}.ndjson`);
-    for (const t of S.targets) files.push(`data/${t.slug}/catwise.json`);
+    for (const t of S.targets) for (let d = 1; d <= 6; d++) if (d !== (t.view?.det || 2)) files.push(dataUrl(t, `d${d}.ndjson`));
+    for (const t of S.targets) files.push(dataUrl(t, 'catwise.json'));
     files.push(...tourTiles());
   }
   let done = 0, failed = 0, next = 0;
+  // Saving happens behind the scenes and must never slow down what the visitor is looking at:
+  // it waits whenever something is being loaded or the map is on the move.
+  const busy = () => performance.now() < S.busyUntil || sweeping || Object.values(S.dets).some(d => d.loading);
   const worker = async () => {
     while (next < files.length) {
+      while (busy()) await nap(600);
       const f = files[next++];
       try { const r = await fetch(f, { mode: 'cors', priority: 'low' }); if (r.ok) await r.arrayBuffer(); else failed++; } catch { failed++; }
       done++;
       if (done % 3 === 0 || done === files.length) say(`Saving the tour for offline use: ${Math.round(done / files.length * 100)}%`);
     }
   };
-  await Promise.all([worker(), worker(), worker(), worker()]);
+  await Promise.all([worker(), worker(), worker()]);
   const ok = failed <= files.length * 0.02;
   try { localStorage.setItem('chrono-offline', ok ? (full ? 'full' : 'lite') : ''); } catch { /* private mode */ }
   if (full && ok) say('The guided tour is saved on this device and works offline.');
@@ -1515,14 +1695,23 @@ function startOfflineSave() {
   saveTourOffline(roomy);
 }
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(() => setTimeout(startOfflineSave, 3000)).catch(() => {});
+  // A newer version of the site that turns up in the first seconds, before anything has been touched,
+  // is applied by reloading once. Later it simply waits for the next visit: never in the middle of a demonstration.
+  const hadWorker = !!navigator.serviceWorker.controller, opened = performance.now();
+  let touched = false;
+  for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, () => { touched = true; }, { once: true, capture: true });
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadWorker && !touched && performance.now() - opened < 8000 && tourIdx < 0) location.reload();
+  });
+  navigator.serviceWorker.register('sw.js').then(reg => { reg.update().catch(() => {}); return navigator.serviceWorker.ready; })      // look for a newer version straight away
+    .then(() => setTimeout(startOfflineSave, 3000)).catch(() => {});
 }
 
 // ------------------------------------------------------------ start
 (async function init() {
   const q = new URLSearchParams(location.search);
   S.embed = q.has('embed');
-  if (q.has('debug')) window.__app = { S, C, findComparisons, usable, gEpoch };      // for inspection from the console
+  if (q.has('debug')) window.__app = { S, C, findComparisons, usable, gEpoch, scan: () => scanResult };      // for inspection from the console
   if (S.embed) document.body.classList.add('embed');
   renderModes(); renderDets();
   try { S.targets = await (await fetch('data/targets.json')).json(); } catch { S.targets = []; }

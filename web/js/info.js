@@ -52,26 +52,35 @@ function shape(row, ra, dec) {
  * Barnard's Star has moved 270 arcseconds since. So fast movers in a wider area are fetched too
  * and every candidate is moved to today's date before matching.
  */
-export async function identify(ra, dec, radiusArcsec = 12) {
+export const identify = (ra, dec, radiusArcsec = 12) => identifyFull(ra, dec, radiusArcsec).then(x => x.best);
+
+/**
+ * Like identify, and also: `moved`, a star that catalogues list at this spot (where it was in
+ * 2000) but that has since moved away. Typing a nearby star's catalogue coordinates lands here.
+ */
+export async function identifyFull(ra, dec, radiusArcsec = 12) {
   const r = Math.max(radiusArcsec, 4);
   const [near, movers] = await Promise.all([
     adql(`SELECT TOP 12 ${COLS} ${FROM} WHERE ${cone(ra, dec, (r + 3) / 3600)}`),
     adql(`SELECT TOP 40 ${COLS} ${FROM} WHERE ${cone(ra, dec, 0.13)} AND (b.pmra*b.pmra + b.pmdec*b.pmdec) > 40000`).catch(() => []),
   ]);
-  const seen = new Set(), cands = [];
+  // Planets and sub-components share their host's coordinates: prefer the host.
+  const minor = c => /^(Pl|Pl\?|ev|err|reg|\?)$/.test(c.otype) ? 1 : 0;
+  const seen = new Set(), cands = [], gone = [];
   for (const row of [...near, ...movers]) {
     if (row.ra == null || seen.has(row.oid)) continue;
     seen.add(row.oid);
     const c = shape(row, ra, dec);
     if (c.dist <= r) cands.push(c);
+    else if (c.dist > 15 && sep(ra, dec, row.ra, row.dec) <= r + 3 && Math.hypot(row.pmra || 0, row.pmdec || 0) >= 100) gone.push(c);
   }
-  if (!cands.length) return null;
-  // Planets and sub-components share their host's coordinates: prefer the host.
-  const minor = c => /^(Pl|Pl\?|ev|err|reg|\?)$/.test(c.otype) ? 1 : 0;
+  gone.sort((a, b) => minor(a) - minor(b) || Math.hypot(b.pmra, b.pmdec) - Math.hypot(a.pmra, a.pmdec) || (a.mags.K ?? 99) - (b.mags.K ?? 99));
+  const moved = gone[0] || null;
+  if (!cands.length) return { best: null, moved };
   cands.sort((a, b) => minor(a) - minor(b) || a.dist - b.dist || (a.mags.K ?? 99) - (b.mags.K ?? 99));
   const best = cands[0];
   best.others = cands.slice(1, 5).map(c => ({ name: c.name, type: c.type, dist: c.dist }));
-  return best;
+  return { best, moved: null };
 }
 
 /** Look an object up by name in SIMBAD itself. Used when the name resolvers cannot be reached. */
@@ -90,6 +99,14 @@ export async function aliases(oid) {
     const rows = await adql(`SELECT id FROM ident WHERE oidref = ${+oid}`);
     return rows.map(r => r.id);
   } catch { return []; }
+}
+
+/** The everyday name of an object, when SIMBAD knows one ("Kapteyn's Star" rather than "HD 33793"). */
+export function commonName(ids) {
+  const names = ids.filter(id => /^NAME /.test(id)).map(id => id.slice(5).trim()).filter(n => n.length > 2 && !/^[A-Z0-9 +.-]+$/.test(n));
+  if (!names.length) return null;
+  names.sort((a, b) => b.length - a.length);
+  return names[0].replace(/(^|\s)([a-z])(?=[a-z']{2,})/g, (m, sp, c) => sp + c.toUpperCase());
 }
 
 // ---------------------------------------------------------------- Wikipedia
@@ -182,7 +199,17 @@ const GLOSS = [
   [/^\*$/, 'A star.'],
 ];
 /** One plain sentence for a SIMBAD object type code. */
-export function gloss(otype) {
+export function gloss(otype, sptype = '') {
+  // Spectral classes T and Y are brown dwarfs, whatever heading the catalogue files them under.
+  // Class L straddles the line between the smallest stars and brown dwarfs, so it is described as such.
+  const sp = (sptype || '').trim(), pair = /\+\s*[LTY]\d/.test(sp);
+  if (/^[LTY]\d/.test(sp) && !/^(BD\*|BD\?)$/.test(otype || '')) {
+    if (/[TY]\d/.test(sp)) {
+      return pair ? 'A pair of brown dwarfs: objects too big to be planets and too small to shine like stars, orbiting each other.'
+        : 'A brown dwarf: too big to be a planet, too small to shine like a star. It glows faintly in infrared from leftover heat.';
+    }
+    return `${pair ? 'A pair of very cool dwarfs' : 'A very cool dwarf'} on the borderline between the smallest stars and brown dwarfs, brightest in infrared.`;
+  }
   for (const [re, text] of GLOSS) if (re.test(otype || '')) return text;
   return '';
 }

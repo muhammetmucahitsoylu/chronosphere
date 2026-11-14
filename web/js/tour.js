@@ -34,11 +34,18 @@ export function buildTour(targets) {
     },
   ];
   for (const t of targets) {
-    steps.push({ title: t.label, text: STORY[t.slug] || `${t.blurb} ${t.look || ''}`, run: api => { api.sweep(false); api.open(t); } });
+    steps.push({
+      title: t.label, text: STORY[t.slug] || `${t.blurb} ${t.look || ''}`,
+      prep: api => { api.warm(t.ra, t.dec, Math.max(3, t.size / 5)); api.preload(t); },      // made ready while the previous step is on screen
+      run: api => { api.sweep(false); api.open(t); },
+    });
   }
   steps.push({
     title: 'Now it is your turn',
     text: 'Every point of the sky works the same way: search a name, type coordinates, or just click. Each object links to independent tools so anyone can check what they see. Nothing here claims a discovery. It helps more people look.',
+    // Objects outside the test list on which the tool has been checked: each is read live from NASA's archive.
+    tryNext: ['Proxima Centauri', 'Luhman 16', "Teegarden's Star", 'NGC 7027'],
+    prep: api => api.warm(83.82, -5.39, 60, 'wide'),
     run: api => { api.closePanel(); api.fly(83.82, -5.39, 60); },
   });
   return steps;

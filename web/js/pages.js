@@ -66,7 +66,7 @@ export const SHEETS = {
     <h2>How to read what you see</h2>
     <ul>
       <li><b>Visits.</b> SPHEREx comes back to most parts of the sky about every six months, and each visit lasts from a few days to a few weeks. One stacked image per visit, shown in turn, makes a small shift easy to see. Near the poles of the solar system's plane it looks almost every orbit, so there the images are grouped by month instead.</li>
-      <li><b>The shift table.</b> For a moving object, the position measured in each visit is compared with what its catalogued motion predicts.</li>
+      <li><b>The shift table.</b> For a moving object, the position measured in each visit is compared with what the catalogue predicts: its steady motion across the sky plus, for the nearest stars, the yearly wobble caused by Earth's own orbit. The motion is measured separately in every detector that sees the object, and the detectors are compared with each other.</li>
       <li><b>The spectrum.</b> Each dot is one exposure: its wavelength, and how bright the circled spot was. Dots are coloured by visit.</li>
       <li><b>Molecule bands.</b> Shaded strips mark where common molecules absorb light. The table reports how deep a dip was measured there.</li>
       <li><b>Checked against its neighbours.</b> Under the brightness curve, the change of the circled spot between visits is set against ordinary stars in the same images. If they stayed steady and the spot did not, the change is real and not a quirk of the camera. The same is done for its position.</li>
@@ -77,7 +77,7 @@ export const SHEETS = {
       <li>One SPHEREx pixel covers 6.15 arcseconds. Even the fastest star in the sky moves less than two pixels a year, so motion is a small hop between visits, never a streak.</li>
       <li>Measurements use a simple fixed circle and are meant for exploring, not for publication. Very bright stars overload the detector; for those, the star's faint outer glow is measured instead and converted with a factor measured on ordinary stars, which is good to about a fifth.</li>
       <li>A dip at a molecule's wavelength is a hint, not a detection.</li>
-      <li>Predicted positions use catalogued motion only, without the yearly wobble caused by Earth's orbit.</li>
+      <li>Positions repeat to a few tenths of an arcsecond for ordinary stars, but a star close to overloading the camera can be off by an arcsecond or more in a single visit.</li>
       <li>Nothing here claims a discovery. Something that looks new is a reason to check it in the other tools linked from every object.</li>
     </ul>`,
 

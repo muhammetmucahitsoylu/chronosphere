@@ -94,6 +94,21 @@ export function propagate(src, epoch0, year) {
   const dt = year - epoch0;
   return [src.ra + (src.pmra || 0) * dt / 3.6e6 / Math.max(Math.cos(src.dec * rad), 1e-6), src.dec + (src.pmdec || 0) * dt / 3.6e6];
 }
+/**
+ * Parallax: the yearly wobble of a nearby star caused by the Earth's trip around the Sun.
+ * Returns the offset [east, north] in arcseconds at a given date for a parallax in milliarcseconds.
+ * The Earth's position comes from the low-precision solar formulae of the Astronomical Almanac,
+ * good to about 0.01 degrees: far better than a SPHEREx pixel needs.
+ */
+export function parallaxOffset(raDeg, decDeg, plxMas, mjd) {
+  const n = mjd - 51544.5, g = (357.528 + 0.9856003 * n) * rad, q = 280.459 + 0.98564736 * n;
+  const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad, R = 1.00014 - 0.01671 * Math.cos(g) - 0.00014 * Math.cos(2 * g);
+  const eps = (23.439 - 0.00000036 * n) * rad;
+  // Earth's position as seen from the Sun (equatorial axes, astronomical units) is minus the Sun's as seen from Earth.
+  const X = -R * Math.cos(L), Y = -R * Math.cos(eps) * Math.sin(L), Z = -R * Math.sin(eps) * Math.sin(L);
+  const a = raDeg * rad, d = decDeg * rad, p = plxMas / 1000;
+  return [p * (X * Math.sin(a) - Y * Math.cos(a)), p * (X * Math.cos(a) * Math.sin(d) + Y * Math.sin(a) * Math.sin(d) - Z * Math.cos(d))];
+}
 export function fmtSex(ra, dec) {
   const h = ra / 15, hh = Math.floor(h), mm = Math.floor((h - hh) * 60), ss = ((h - hh) * 60 - mm) * 60;
   const sg = dec < 0 ? '-' : '+', a = Math.abs(dec), dd = Math.floor(a), dm = Math.floor((a - dd) * 60), ds = ((a - dd) * 60 - dm) * 60;
@@ -362,14 +377,15 @@ export const MOLECULES = [
   // Comparison windows stay clear of detector edges, where sensitivity drops and
   // measurements scatter; each band is compared with clean spectrum on both sides.
   { name: 'Water vapour', f: 'H₂O', band: [1.34, 1.48], side: [[1.22, 1.31], [1.55, 1.62]] },
-  { name: 'Water vapour', f: 'H₂O', band: [1.80, 1.98], side: [[1.68, 1.75], [2.05, 2.15]] },
+  { name: 'Water vapour', f: 'H₂O', band: [1.80, 1.98], side: [[1.68, 1.75], [2.05, 2.15]], glow: 'Hydrogen gas (Paschen α)' },
   { name: 'Carbon monoxide, methane', f: 'CO, CH₄', band: [2.28, 2.38], side: [[2.05, 2.18], null] },
   // Beyond 3.5 microns a cold object's spectrum climbs steeply towards its 4-micron peak, so the
   // long-wavelength comparison window sits on that peak, where the spectrum is level again.
   { name: 'Water vapour', f: 'H₂O', band: [2.55, 2.85], side: [[2.05, 2.18], [3.90, 4.10]] },
-  { name: 'Methane', f: 'CH₄', band: [3.15, 3.50], side: [[2.05, 2.18], [3.90, 4.10]] },
-  { name: 'Carbon dioxide', f: 'CO₂', band: [4.20, 4.33], side: [[4.05, 4.15], [4.46, 4.54]] },
-  { name: 'Carbon monoxide', f: 'CO', band: [4.56, 4.80], side: [[4.46, 4.54], [4.90, 4.98]] },
+  // In a cold atmosphere this dip is methane gas; towards a young star inside a cloud it is water ice.
+  { name: 'Methane, or water ice', f: 'CH₄', band: [3.15, 3.50], side: [[2.05, 2.18], [3.90, 4.10]], glow: 'Carbon-rich dust (PAH)' },
+  { name: 'Carbon dioxide, gas or ice', f: 'CO₂', band: [4.20, 4.33], side: [[4.05, 4.15], [4.46, 4.54]] },
+  { name: 'Carbon monoxide', f: 'CO', band: [4.56, 4.80], side: [[4.46, 4.54], [4.90, 4.98]], glow: 'Hydrogen gas (Pfund β)' },
 ];
 
 function medMad(v) {

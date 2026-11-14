@@ -17,6 +17,8 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   slider moves through all 102 wavelengths; 2MASS, WISE and visible-light maps are one click away.
 - **Click any object, or search by name or coordinates.** The view flies there. The object is identified
   through SIMBAD (type, spectral type, distance, proper motion), with a Wikipedia card when one exists.
+  Catalogue coordinates of a nearby star point at where it was in the year 2000: the tool notices, says
+  how far the star has moved since, and takes you to where it is now.
 - **Watch it over time.** Every SPHEREx exposure covering the spot is read, aligned and played back.
   *Visits* stacks each SPHEREx visit and loops through them, *Time as colour* paints early red and late blue,
   *Difference* subtracts visits, *Wavelengths* steps through the six detectors.
@@ -76,16 +78,21 @@ talking directly to NASA's open data.
    moved since (Barnard's Star by about 280 arcseconds), so a plain coordinate search misses them. Chronosphere
    also fetches fast movers in a wider area and moves every candidate to today's date before matching.
 7. **Offline.** A service worker keeps the page, the five showcase objects, the sky-map tiles of the guided
-   tour, every other tile already seen and every position already opened on the device.
+   tour, every other tile already seen and every position already opened on the device. Each release of the
+   site is stored as one set, so a poor connection can never mix new files with old ones.
 
 ## How the numbers were checked
 
 - **The browser reader** (`web/js/archive.js`) against an independent Python implementation built on Astropy
   (`backend/spherex.py`): same pixel positions, wavelengths and sky levels, and images that agree to a small
   fraction of the noise.
-- **Motion.** Barnard's Star is measured to have moved 10.5 arcseconds between August 2025 and September 2026;
-  its Gaia proper motion predicts 10.7. Epsilon Indi B: 6.1 measured, 6.4 predicted. Ordinary stars in the
-  same images stay put to within 0.3 arcseconds.
+- **Motion.** Every moving target is measured independently in each detector that sees it. Barnard's Star:
+  10.4 arcseconds per year in two detectors, catalogue 10.4. Epsilon Indi B: 4.6 in all six detectors,
+  catalogue 4.7. WISE 0855, faint and with only half a year between its two detections: 7.0, catalogue 8.2.
+  Ordinary stars in the same images stay put to within 0.3 arcseconds.
+- **Parallax.** Predictions include the yearly wobble of nearby stars; the formula agrees with Astropy to
+  0.004 arcseconds. With it, Epsilon Indi B lands within 0.1 to 0.3 arcseconds of its prediction in every
+  visit, and Barnard's half-arcsecond east-west swing shows up in the data.
 - **Brightness.** Ordinary stars in the same images repeat to 1 or 2 per cent from visit to visit. Against
   that, RW Aurigae brightened by more than 40 per cent below 1.6 microns and faded by almost half beyond
   3.8 microns within a year.
@@ -94,6 +101,10 @@ talking directly to NASA's open data.
 - **Saturated stars.** The halo of an overloaded star does not scale simply with its brightness, so halo
   measurements are joined to the neighbouring detector rather than converted with a fixed factor. For
   Barnard's Star the joined spectrum lands within 15 per cent of 2MASS at H and K, and 40 per cent low at J.
+- **Beyond the test objects.** Read live from the archive, with no preparation: Teegarden's Star and
+  Luhman 16 are measured moving at 5.3 and 2.8 arcseconds per year, against catalogue values of 5.1 and 2.8.
+  The blind field check finds Luhman 16 from raw coordinates, and rejects a close pair of stars in the same
+  field that a naive position comparison would report as moving.
 - **Sky-map tiles.** The HEALPix code (`web/js/healpix.js`) agrees with `astropy-healpix`, and predicts
   exactly the tiles the map requests.
 - **Catalogue facts** shown for the five test objects are curated with their sources: Gaia DR3 parallaxes
@@ -163,7 +174,8 @@ No build step: plain HTML, CSS and JavaScript modules.
   the tool says so instead of comparing.
 - A dip at a molecule's wavelength is a hint, not a detection: other molecules and the shape of the spectrum
   itself can produce one.
-- Predicted positions use catalogue proper motion only (no parallax).
+- A star close to saturating the camera is located less faithfully: Barnard's Star is 1.7 arcseconds off its
+  prediction in its first visit in one detector, while its other visits agree to 0.2 to 0.4.
 - The all-sky map is coarser (about 13 arcseconds per pixel) than the images loaded for a selected spot.
 - Away from the five test objects, the number of exposures is an estimate until they have been read, and the
   WISE overlay is CatWISE2020 when the CDS catalogue service answers and AllWISE otherwise.

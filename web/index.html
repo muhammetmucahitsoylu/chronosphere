@@ -82,6 +82,7 @@
       <div class="tourstep"><span id="tourcount"></span><button type="button" id="tourclose" aria-label="End tour">×</button></div>
       <h2 id="tourtitle"></h2>
       <p id="tourtext"></p>
+      <p class="tourlinks" id="tourlinks" hidden></p>
       <div class="tourbtns">
         <span class="tourmini" id="tourmini"></span>
         <button type="button" class="ghost" id="tourback">Back</button>
@@ -145,7 +146,7 @@
             <label title="Pixels the pipeline masked: saturated, bad or missing"><input id="mask" type="checkbox"> Masked pixels</label>
             <button id="resetview" type="button">Reset zoom</button>
           </div>
-          <p id="readout" class="mono hint">Scroll or pinch to zoom, drag to pan, click a star to measure it.</p>
+          <p id="readout" class="mono hint">Scroll or pinch to zoom, drag to pan, click or tap a star to measure it.</p>
         </details>
         <div class="export" role="group" aria-label="Share and export">
           <button type="button" id="copylink" title="Copy a link that reopens exactly this view">Copy link</button>

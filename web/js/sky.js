@@ -131,7 +131,8 @@ export function mark(ra, dec, sizeArcmin, label = '') {
   } catch { /* marker is cosmetic */ }
   try {
     tag?.removeAll();
-    tag?.addSources([A.source(ra, dec, { name: label ? `\u2003\u2002${label}` : '' })]);
+    const short = label.length > 22 ? `${label.slice(0, 21)}…` : label;
+    tag?.addSources([A.source(ra, dec, { name: short ? `\u2003\u2002${short}` : '' })]);
   } catch { /* marker is cosmetic */ }
 }
 export function clearMark() { try { overlay?.removeAll(); tag?.removeAll(); } catch { /* ignore */ } }
