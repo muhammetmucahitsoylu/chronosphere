@@ -1,0 +1,7 @@
+astropy>=6
+numpy
+scipy
+requests
+pyvo
+fastapi
+uvicorn

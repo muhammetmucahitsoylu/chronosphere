@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blink102 — watch the SPHEREx sky change</title>
+<meta name="description" content="Enter any sky position and blink through NASA SPHEREx infrared images over time. Spot moving and variable objects, and build a 102-band spectrum with one click.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23090c12'/%3E%3Ccircle cx='12' cy='18' r='5' fill='%23ff5d8f'/%3E%3Ccircle cx='20' cy='13' r='5' fill='%234cc9f0' fill-opacity='.85'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Blink<span>102</span></h1>
+    <p>Watch the infrared sky change. NASA SPHEREx images, 102 colours, any position.</p>
+  </div>
+  <form id="search" autocomplete="off">
+    <label class="sr" for="q">Object name or coordinates</label>
+    <input id="q" type="text" inputmode="text" placeholder="Name or RA Dec, e.g.  08h55m10.8s -07d14m42s  or  269.446 4.771">
+    <label class="sr" for="fov">Field of view</label>
+    <select id="fov" title="Field of view. Larger fields take longer to load.">
+      <option value="3">3′ field</option>
+      <option value="5" selected>5′ field</option>
+      <option value="10">10′ field</option>
+      <option value="20">20′ field</option>
+      <option value="40">40′ field</option>
+    </select>
+    <button type="submit">Show</button>
+  </form>
+  <nav id="chips" aria-label="Test targets"></nav>
+</header>
+
+<main>
+  <section class="viewer" aria-label="Sky viewer">
+    <div class="stage">
+      <canvas id="sky" tabindex="0" aria-label="SPHEREx image sequence"></canvas>
+      <div id="caption" aria-live="polite"></div>
+      <div id="status" role="status"></div>
+      <div id="notice" hidden></div>
+    </div>
+
+    <div class="row transport">
+      <button id="prev" title="Previous (←)" aria-label="Previous image">◀</button>
+      <button id="play" class="primary" title="Play / pause (space)">▶ Play</button>
+      <button id="next" title="Next (→)" aria-label="Next image">▶</button>
+      <input id="seek" type="range" min="0" max="0" value="0" aria-label="Position in sequence">
+      <span id="count" class="mono"></span>
+      <label class="sr" for="fps">Speed</label>
+      <select id="fps" title="Playback speed">
+        <option value="1">1 / s</option><option value="2" selected>2 / s</option>
+        <option value="4">4 / s</option><option value="8">8 / s</option><option value="15">15 / s</option>
+      </select>
+    </div>
+
+    <div class="row" role="group" aria-label="View mode" id="modes">
+      <button data-mode="epochs" title="One stacked image per observing season. Best for spotting motion.">Seasons</button>
+      <button data-mode="frames" title="Every single exposure, in time order.">Exposures</button>
+      <button data-mode="color" title="Time shown as colour: anything that moved or changed shows up coloured.">Time as colour</button>
+      <button data-mode="diff" title="Later season minus earlier season.">Difference</button>
+      <button data-mode="deep" title="All exposures added together: the deepest image.">Deep sum</button>
+    </div>
+    <p id="explain" class="hint"></p>
+
+    <div class="row" role="group" aria-label="Detector (wavelength band)" id="dets"></div>
+
+    <div class="row tools">
+      <label>Brightness <input id="white" type="range" min="-1.5" max="1.5" step="0.05" value="0"></label>
+      <label><input id="invert" type="checkbox"> Negative</label>
+      <label><input id="smooth" type="checkbox"> Smooth</label>
+      <label title="Gaia DR3 stars at their position on the date shown. Fast movers get an arrow."><input id="gaia" type="checkbox" checked> Gaia stars</label>
+      <label title="CatWISE2020 infrared sources (squares)"><input id="wise" type="checkbox"> WISE sources</label>
+      <label><input id="mask" type="checkbox"> Show masked pixels</label>
+      <button id="resetview" title="Reset zoom">Reset zoom</button>
+    </div>
+    <p id="readout" class="mono hint">Scroll or pinch to zoom, drag to pan, click a star to measure it.</p>
+  </section>
+
+  <aside class="side">
+    <section id="about" class="card"></section>
+
+    <section class="card">
+      <h2>Spectrum of the circled spot</h2>
+      <div class="plotwrap"><canvas id="spec"></canvas><div class="tip" hidden></div></div>
+      <p class="hint" id="specnote">Every exposure sees the spot at a different wavelength, so stepping through time builds a spectrum. Click a point to jump to that exposure.</p>
+    </section>
+
+    <section class="card">
+      <h2>Brightness over time</h2>
+      <div class="plotwrap"><canvas id="lc"></canvas><div class="tip" hidden></div></div>
+      <p class="hint">Each measurement divided by the spot's own average spectrum at that wavelength. A steady star stays near 1.</p>
+    </section>
+
+    <section class="card">
+      <h2>This image</h2>
+      <dl id="meta"></dl>
+    </section>
+
+    <section class="card">
+      <h2>Data releases</h2>
+      <div id="releases"></div>
+      <p class="hint">Releases are discovered from the NASA/IPAC archive at load time. New releases appear here without any change to this site.</p>
+    </section>
+  </aside>
+</main>
+
+<footer>
+  <p>Images: NASA SPHEREx, served by the NASA/IPAC Infrared Science Archive (IRSA). Catalogues: ESA Gaia DR3, CatWISE2020, SIMBAD (CDS).
+  Built for the 2026 NASA Space Apps Challenge by The Bright Nobles.</p>
+</footer>
+
+<script src="config.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
