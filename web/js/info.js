@@ -1,0 +1,142 @@
+// Who is that? Object identification (SIMBAD), encyclopedia card (Wikipedia) and
+// one-click links that open the same coordinates in independent tools.
+
+import { propagate } from './core.js';
+
+const SIMBAD_TAP = [
+  'https://simbad.cds.unistra.fr/simbad/sim-tap/sync',
+  'https://simbad.harvard.edu/simbad/sim-tap/sync',      // mirror, used when Strasbourg is down
+];
+let simbadBase = null;
+
+async function adql(query) {
+  const order = simbadBase ? [simbadBase, ...SIMBAD_TAP.filter(u => u !== simbadBase)] : SIMBAD_TAP;
+  let last;
+  for (const base of order) {
+    try {
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 9000);
+      const r = await fetch(`${base}?request=doQuery&lang=adql&format=json&query=${encodeURIComponent(query)}`, { signal: ctl.signal });
+      clearTimeout(timer);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const js = await r.json(), cols = js.metadata.map(c => c.name);
+      simbadBase = base;
+      return js.data.map(row => Object.fromEntries(row.map((v, i) => [cols[i], v])));
+    } catch (e) { last = e; }
+  }
+  throw last;
+}
+export const simbadHost = () => (simbadBase || SIMBAD_TAP[0]).replace(/\/simbad\/.*/, '');
+
+const yearNow = () => 1970 + Date.now() / 31557600000;
+const sep = (ra1, dec1, ra2, dec2) => Math.hypot((ra1 - ra2) * Math.cos(dec1 * Math.PI / 180), dec1 - dec2) * 3600;
+export const cleanName = id => (id || '').replace(/^(NAME|V\*|\*\*|\*|EM\*|PN|Cl\*?)\s+/, '').replace(/\s+/g, ' ').trim();
+
+const COLS = `b.oid, b.main_id, b.otype, o.label, o.description, b.ra, b.dec, b.pmra, b.pmdec, b.plx_value, b.sp_type, b.rvz_redshift, f.V, f.J, f.K`;
+const FROM = `FROM basic AS b LEFT JOIN otypedef AS o ON o.otype = b.otype LEFT JOIN allfluxes AS f ON f.oidref = b.oid`;
+const cone = (ra, dec, rDeg) => `CONTAINS(POINT('ICRS', b.ra, b.dec), CIRCLE('ICRS', ${ra.toFixed(6)}, ${dec.toFixed(6)}, ${rDeg.toFixed(5)})) = 1`;
+
+function shape(row, ra, dec) {
+  const year = yearNow();
+  const [raNow, decNow] = propagate({ ra: row.ra, dec: row.dec, pmra: row.pmra, pmdec: row.pmdec }, 2000, year);
+  return {
+    oid: row.oid, mainId: row.main_id, name: cleanName(row.main_id), otype: row.otype,
+    type: row.description || row.label || row.otype, ra2000: row.ra, dec2000: row.dec, pmra: row.pmra, pmdec: row.pmdec,
+    plx: row.plx_value, sptype: row.sp_type, redshift: row.rvz_redshift, mags: { V: row.V, J: row.J, K: row.K },
+    ra: raNow, dec: decNow, epoch: year, dist: ra == null ? 0 : sep(ra, dec, raNow, decNow),
+  };
+}
+
+/**
+ * Identify what is at a sky position *today*.
+ * A plain cone search fails for nearby stars: catalogues store where they were in 2000, and
+ * Barnard's Star has moved 270 arcseconds since. So fast movers in a wider area are fetched too
+ * and every candidate is moved to today's date before matching.
+ */
+export async function identify(ra, dec, radiusArcsec = 12) {
+  const r = Math.max(radiusArcsec, 4);
+  const [near, movers] = await Promise.all([
+    adql(`SELECT TOP 12 ${COLS} ${FROM} WHERE ${cone(ra, dec, (r + 3) / 3600)}`),
+    adql(`SELECT TOP 40 ${COLS} ${FROM} WHERE ${cone(ra, dec, 0.13)} AND (b.pmra*b.pmra + b.pmdec*b.pmdec) > 40000`).catch(() => []),
+  ]);
+  const seen = new Set(), cands = [];
+  for (const row of [...near, ...movers]) {
+    if (row.ra == null || seen.has(row.oid)) continue;
+    seen.add(row.oid);
+    const c = shape(row, ra, dec);
+    if (c.dist <= r) cands.push(c);
+  }
+  if (!cands.length) return null;
+  // Planets and sub-components share their host's coordinates: prefer the host.
+  const minor = c => /^(Pl|Pl\?|ev|err|reg|\?)$/.test(c.otype) ? 1 : 0;
+  cands.sort((a, b) => minor(a) - minor(b) || a.dist - b.dist || (a.mags.K ?? 99) - (b.mags.K ?? 99));
+  const best = cands[0];
+  best.others = cands.slice(1, 5).map(c => ({ name: c.name, type: c.type, dist: c.dist }));
+  return best;
+}
+
+export async function aliases(oid) {
+  try {
+    const rows = await adql(`SELECT id FROM ident WHERE oidref = ${+oid}`);
+    return rows.map(r => r.id);
+  } catch { return []; }
+}
+
+// ---------------------------------------------------------------- Wikipedia
+const GREEK = { alf: 'Alpha', bet: 'Beta', gam: 'Gamma', del: 'Delta', eps: 'Epsilon', zet: 'Zeta', eta: 'Eta', tet: 'Theta', iot: 'Iota', kap: 'Kappa', lam: 'Lambda', mu: 'Mu', nu: 'Nu', ksi: 'Xi', omi: 'Omicron', pi: 'Pi', rho: 'Rho', sig: 'Sigma', tau: 'Tau', ups: 'Upsilon', phi: 'Phi', chi: 'Chi', psi: 'Psi', ome: 'Omega' };
+const GENITIVE = { And: 'Andromedae', Ant: 'Antliae', Aps: 'Apodis', Aqr: 'Aquarii', Aql: 'Aquilae', Ara: 'Arae', Ari: 'Arietis', Aur: 'Aurigae', Boo: 'Boötis', Cae: 'Caeli', Cam: 'Camelopardalis', Cnc: 'Cancri', CVn: 'Canum Venaticorum', CMa: 'Canis Majoris', CMi: 'Canis Minoris', Cap: 'Capricorni', Car: 'Carinae', Cas: 'Cassiopeiae', Cen: 'Centauri', Cep: 'Cephei', Cet: 'Ceti', Cha: 'Chamaeleontis', Cir: 'Circini', Col: 'Columbae', Com: 'Comae Berenices', CrA: 'Coronae Australis', CrB: 'Coronae Borealis', Crv: 'Corvi', Crt: 'Crateris', Cru: 'Crucis', Cyg: 'Cygni', Del: 'Delphini', Dor: 'Doradus', Dra: 'Draconis', Equ: 'Equulei', Eri: 'Eridani', For: 'Fornacis', Gem: 'Geminorum', Gru: 'Gruis', Her: 'Herculis', Hor: 'Horologii', Hya: 'Hydrae', Hyi: 'Hydri', Ind: 'Indi', Lac: 'Lacertae', Leo: 'Leonis', LMi: 'Leonis Minoris', Lep: 'Leporis', Lib: 'Librae', Lup: 'Lupi', Lyn: 'Lyncis', Lyr: 'Lyrae', Men: 'Mensae', Mic: 'Microscopii', Mon: 'Monocerotis', Mus: 'Muscae', Nor: 'Normae', Oct: 'Octantis', Oph: 'Ophiuchi', Ori: 'Orionis', Pav: 'Pavonis', Peg: 'Pegasi', Per: 'Persei', Phe: 'Phoenicis', Pic: 'Pictoris', Psc: 'Piscium', PsA: 'Piscis Austrini', Pup: 'Puppis', Pyx: 'Pyxidis', Ret: 'Reticuli', Sge: 'Sagittae', Sgr: 'Sagittarii', Sco: 'Scorpii', Scl: 'Sculptoris', Sct: 'Scuti', Ser: 'Serpentis', Sex: 'Sextantis', Tau: 'Tauri', Tel: 'Telescopii', Tri: 'Trianguli', TrA: 'Trianguli Australis', Tuc: 'Tucanae', UMa: 'Ursae Majoris', UMi: 'Ursae Minoris', Vel: 'Velorum', Vir: 'Virginis', Vol: 'Volantis', Vul: 'Vulpeculae' };
+
+/** Turn catalogue identifiers into likely Wikipedia titles, most specific first. */
+export function wikiTitles(ids) {
+  const out = [];
+  const push = t => { t = t.trim(); if (t && !out.includes(t)) out.push(t); };
+  for (const id of ids) if (/^NAME /.test(id)) push(id.slice(5).replace(/\b([a-z])/g, (m, c, i) => i === 0 ? c.toUpperCase() : m));
+  for (const id of ids) {
+    let m = id.match(/^\*\s+(\w+?)(\d*)\s+(\w{3})(?:\s+([A-Z]))?$/);          // Bayer: "* eps Ind B"
+    if (m && GENITIVE[m[3]]) {
+      const base = GREEK[m[1]] ? `${GREEK[m[1]]}${m[2] ? ' ' + m[2] : ''} ${GENITIVE[m[3]]}` : `${m[1]} ${GENITIVE[m[3]]}`;
+      if (m[4]) push(`${base} ${m[4]}`);
+      push(base);
+    }
+    m = id.match(/^V\*\s+(\S+)\s+(\w{3})$/);                                   // variable star: "V* RW Aur"
+    if (m && GENITIVE[m[2]]) push(`${m[1]} ${GENITIVE[m[2]]}`);
+    m = id.match(/^M\s+(\d+)$/); if (m) push(`Messier ${m[1]}`);
+    m = id.match(/^(NGC|IC)\s+(\d+)$/); if (m) push(`${m[1]} ${m[2]}`);
+    m = id.match(/^(HD|HR|HIP|GJ|Gl|TOI|Kepler|TRAPPIST|WASP|LHS|Wolf|Ross|Luyten)[- ]?\s*(\S+)$/); if (m) push(`${m[1]} ${m[2]}`);
+  }
+  return out;
+}
+
+const ASTRO = /\b(star|stars|galaxy|galaxies|nebula|dwarf|cluster|quasar|supernova|constellation|planet|pulsar|binary|variable|astronom|light-years|parsec|magnitude)\b/i;
+
+async function wikiSummary(title) {
+  const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, '_'))}?redirect=true`);
+  if (!r.ok) return null;
+  const js = await r.json();
+  if (js.type !== 'standard' || !ASTRO.test(`${js.description || ''} ${js.extract || ''}`)) return null;
+  return { title: js.title, extract: js.extract, thumb: js.thumbnail?.source || null, url: js.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(js.title)}`, description: js.description || '' };
+}
+
+/** Wikipedia card for an object, or null. Only pages that are clearly about astronomy are accepted. */
+export async function wikipedia(titles) {
+  for (const t of titles.slice(0, 6)) {
+    try { const s = await wikiSummary(t); if (s) return s; } catch { /* next */ }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- external tools
+/** Links that open the same position in independent tools, so anyone can cross-check. */
+export function externalLinks(ra, dec, info) {
+  const c = `${ra.toFixed(5)}%20${dec >= 0 ? '%2B' : ''}${dec.toFixed(5)}`, host = simbadHost();
+  const links = [];
+  if (info?.mainId) links.push({ label: 'SIMBAD', title: 'Catalogue entry: names, type, measurements, references', url: `${host}/simbad/sim-id?Ident=${encodeURIComponent(info.mainId)}` });
+  else links.push({ label: 'SIMBAD', title: 'Everything catalogued within 1 arcminute', url: `${host}/simbad/sim-coo?Coord=${c}&CooFrame=ICRS&Radius=1&Radius.unit=arcmin` });
+  links.push(
+    { label: 'WiseView', title: 'Backyard Worlds blink tool: the same spot in 15 years of WISE images', url: `http://byw.tools/wiseview#ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&size=300&band=3&speed=20&zoom=9` },
+    { label: 'ESASky', title: 'ESA sky viewer, 2MASS infrared', url: `https://sky.esa.int/esasky/?target=${c}&hips=2MASS+color+JHK&fov=0.15&cooframe=J2000&sci=true` },
+    { label: 'Aladin Lite', title: 'CDS sky atlas', url: `https://aladin.cds.unistra.fr/AladinLite/?target=${c}&fov=0.15&survey=CDS%2FP%2F2MASS%2Fcolor` },
+    { label: 'Legacy Survey', title: 'unWISE deep infrared image', url: `https://www.legacysurvey.org/viewer?ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&layer=unwise-neo7&zoom=13` },
+    { label: 'VizieR photometry', title: 'Published brightness measurements at every wavelength', url: `https://vizier.cds.unistra.fr/vizier/sed/?submitSimbad=Photometry&-c=${c}&-c.r=5&-c.u=arcsec` },
+  );
+  return links;
+}

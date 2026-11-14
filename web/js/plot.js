@@ -75,7 +75,11 @@ export class Plot {
     if (o.xlabel) c.fillText(o.xlabel, L + pw / 2, H - 14);
     if (o.ylabel) { c.save(); c.translate(11, T + ph / 2); c.rotate(-Math.PI / 2); c.textBaseline = 'middle'; c.fillText(o.ylabel, 0, 0); c.restore(); }
     if (o.hline !== undefined) { c.setLineDash([4, 4]); c.beginPath(); c.moveTo(L, Y(o.hline)); c.lineTo(W - R, Y(o.hline)); c.stroke(); c.setLineDash([]); }
-    for (const s of o.shade || []) { c.fillStyle = s.color; c.fillRect(X(Math.max(s.x0, x0)), T, X(Math.min(s.x1, x1)) - X(Math.max(s.x0, x0)), ph); }
+    for (const s of o.shade || []) {
+      const xa = X(Math.max(s.x0, x0)), xb = X(Math.min(s.x1, x1));
+      c.fillStyle = s.color; c.fillRect(xa, T, xb - xa, ph);
+      if (s.label) { c.fillStyle = ink; c.font = '10px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'top'; c.fillText(s.label, (xa + xb) / 2, T + 3 + (s.row || 0) * 11); c.font = '12px system-ui, sans-serif'; }
+    }
 
     c.save(); c.beginPath(); c.rect(L, T, pw, ph); c.clip();
     for (const p of pts) {

@@ -1,5 +1,8 @@
 import * as C from './core.js';
 import { Plot, dateTicks } from './plot.js';
+import * as Sky from './sky.js';
+import * as Info from './info.js';
+import { buildTour } from './tour.js';
 
 const API = (window.BLINK_API || '').replace(/\/$/, '');
 const $ = id => document.getElementById(id);
@@ -20,6 +23,7 @@ const S = {
   seq: [], idx: 0, playing: false, fps: 2, timer: null,
   sel: null, view: { z: 1, cx: 0, cy: 0 }, white: 0, invert: false, smooth: false, mask: false,
   showGaia: true, gaia: null, off: new Set(), abort: null, deep: null, hi: 1, gen: 0,
+  info: null, infoState: 'idle', wiki: null, openTok: 0, showBands: true, embed: false,
 };
 
 const cv = $('sky'), ctx = cv.getContext('2d');
@@ -33,14 +37,18 @@ function streamUrl(det) {
   return `${API}/api/stream?ra=${S.ra.toFixed(6)}&dec=${S.dec.toFixed(6)}&size=${S.size}&det=${det}`;
 }
 
-async function go({ ra, dec, size, target = null, track = null, det, mode }) {
+async function go({ ra, dec, size, target = null, track = null, det, mode, info = null, fly = true }) {
   S.abort?.abort(); S.abort = new AbortController();
   const gen = ++S.gen;
   stop();
   Object.assign(S, { ra, dec, size: size || 5, target, track: track || (target && target.resolved) || null,
     head: null, grid: null, dets: {}, seq: [], idx: 0, sel: null, gaia: null, catwise: null, deep: null, off: new Set(), stacks: null, epochs: null, pts: [], bandCache: {}, haloDets: [] });
+  S.info = info; S.infoState = info ? 'done' : 'loading'; S.wiki = null;
   if (det) S.det = det;
   if (mode && MODES[mode]) S.mode = mode;
+  openPanel();
+  if (Sky.isReady()) { Sky.mark(ra, dec, S.size); if (fly) Sky.flyTo(ra, dec, Math.max(1.5, S.size / 8)); }
+  loadInfo(gen);
   $('fov').value = String(S.size);
   $('notice').hidden = true;
   syncUrl(); renderChips(); renderAbout(); renderModes(); renderDets(); paint(); refreshPlots();
@@ -450,7 +458,8 @@ function drawPlots() {
   specPlot.set(sp, {
     xlabel: 'wavelength (µm)', ylabel: S.haloDets?.length === 6 ? 'halo flux (relative)' : 'flux (mJy)', ylim: [ymin - (ymax - ymin) * 0.04, ymax > ymin ? ymax : ymin + 1],
     xlim: [0.7, 5.1], empty: S.sel ? 'Measuring…' : 'Click a star in the image',
-    shade: S.grid ? [{ x0: C.DET_BANDS[S.det][0], x1: C.DET_BANDS[S.det][1], color: '#4cc9f012' }] : [],
+    shade: [...(S.grid ? [{ x0: C.DET_BANDS[S.det][0], x1: C.DET_BANDS[S.det][1], color: '#4cc9f012' }] : []),
+      ...(S.showBands ? C.MOLECULES.map((m, i) => ({ x0: m.band[0], x1: m.band[1], color: '#ffffff12', label: m.f, row: i % 2 })) : [])],
     tipText: p => `${p.x.toFixed(3)} µm · ${p.y.toFixed(2)} ± ${p.err.toFixed(2)} mJy · ${C.fmtDate(p.src.mjd)} · D${p.src.det}`,
     onPick: p => jumpTo(p.src),
   });
@@ -471,10 +480,27 @@ function drawPlots() {
     tipText: p => `${C.fmtDate(p.x)} · ×${p.y.toFixed(2)} · ${p.src.lam.toFixed(2)} µm`,
     onPick: p => jumpTo(p.src),
   });
+  renderMolecules(pts);
   $('lctitle').textContent = `Brightness over time · D${S.det} (${C.DET_BANDS[S.det].join('–')} µm)`;
   const legend = (S.head?.epochs || []).map((e, i) => `<span><i style="background:${C.EPOCH_COLORS[i % C.EPOCH_COLORS.length]}"></i>${C.fmtMonth((e[0] + e[1]) / 2)}</span>`).join('');
   const haloNote = S.haloDets?.length ? `<b>Too bright for the detector:</b> the star's core is saturated in ${S.haloDets.map(d => 'D' + d).join(', ')}, so those points are measured from its outer halo (a ring well outside the core). Their scale is relative; the changes over time are real. ` : '';
   $('specnote').innerHTML = `<span class="legend">${legend}</span>${haloNote}Every exposure sees the spot at a different wavelength, so stepping through time builds a spectrum (${pts.length} measurements so far). Click a point to jump to that exposure. Aperture radius 9″, no aperture correction.`;
+}
+function renderMolecules(pts) {
+  const el = $('molecules');
+  if (!S.showBands || pts.length < 30) { el.innerHTML = ''; return; }
+  const rows = C.bandDepths(pts).map(m => {
+    let cls = 'none', txt = 'not enough data';
+    if (m.depth !== null) {
+      const pc = Math.round(Math.abs(m.depth) * 100), sure = Math.abs(m.depth) > 3 * m.err;
+      if (m.depth > 0.10 && sure) { cls = 'dip'; txt = `dip, ${pc}% below its surroundings`; }
+      else if (m.depth < -0.10 && sure) { cls = 'peak'; txt = `${pc}% brighter than its surroundings`; }
+      else txt = 'no clear feature';
+    }
+    return `<tr><td>${m.name} <span class="none">${m.f}</span></td><td>${m.band[0].toFixed(2)}–${m.band[1].toFixed(2)} µm</td><td class="${cls}">${txt}</td></tr>`;
+  }).join('');
+  el.innerHTML = `<table class="t"><thead><tr><th>Absorbs light near</th><th>Wavelength</th><th>Measured here</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="hint">A dip where a molecule absorbs is a hint that the molecule is there, not proof: each band is compared with the spectrum on either side of it.</p>`;
 }
 function markCurrent() {
   const cur = S.seq[S.idx]?.frame;
@@ -491,30 +517,73 @@ function jumpTo(src) {
 
 // ------------------------------------------------------------ side panels
 function renderChips() {
-  $('chips').innerHTML = '';
-  for (const t of S.targets) {
-    const b = document.createElement('button');
-    b.className = 'chip'; b.type = 'button';
-    b.innerHTML = `${t.label}<small>${t.kind === 'motion' ? 'moves' : 'varies'}</small>`;
-    b.setAttribute('aria-pressed', S.target?.slug === t.slug);
-    b.onclick = () => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, ...(t.view || { mode: 'epochs' }) });
-    $('chips').appendChild(b);
-  }
+  const sel = $('examples');
+  sel.innerHTML = '<option value="">Examples</option>' + S.targets.map(t => `<option value="${t.slug}">${t.label} (${t.kind === 'motion' ? 'moves' : 'varies'})</option>`).join('');
+  sel.value = S.target ? S.target.slug : '';
 }
+const openTarget = t => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, ...(t.view || { mode: 'epochs' }) });
+
+function openPanel() {
+  if ($('app').dataset.panel === 'open') return;
+  $('app').dataset.panel = 'open'; $('welcome').hidden = true;
+  if (Sky.isReady()) Sky.resize();
+  requestAnimationFrame(() => { paint(); specPlot.draw(); lcPlot.draw(); });
+}
+function closePanel() {
+  S.abort?.abort(); S.gen++; stop();
+  $('app').dataset.panel = 'closed';
+  if (Sky.isReady()) { Sky.clearMark(); Sky.resize(); }
+  history.replaceState(null, '', location.pathname);
+}
+
+/** Find out what the selected spot is, then look for an encyclopedia card. */
+async function loadInfo(gen) {
+  try {
+    if (!S.info) {
+      S.info = await Info.identify(S.ra, S.dec, 10).catch(() => null);
+      if (gen !== S.gen) return;
+    }
+    S.infoState = 'done'; renderAbout();
+    const titles = [];
+    if (S.target?.wiki) titles.push(S.target.wiki);
+    if (S.info) titles.push(...Info.wikiTitles([S.info.mainId, ...(await Info.aliases(S.info.oid))]));
+    if (gen !== S.gen || !titles.length) return;
+    S.wiki = await Info.wikipedia(titles);
+    if (gen === S.gen && S.wiki) renderAbout();
+  } catch { S.infoState = 'done'; if (gen === S.gen) renderAbout(); }
+}
+
 function renderAbout() {
-  const t = S.target, k = S.track, el = $('about');
-  const name = t ? t.label : k ? k.name : 'Custom position';
-  const facts = [];
-  if (S.grid || S.ra) facts.push(`<span><b>${C.fmtSex(S.ra, S.dec)}</b></span>`, `<span>RA ${S.ra.toFixed(5)}° Dec ${S.dec.toFixed(5)}°</span>`);
-  if (k && k.pmra != null) {
-    const pm = Math.hypot(k.pmra, k.pmdec) / 1000;
-    facts.push(`<span>catalogue motion <b>${pm.toFixed(2)}″/yr</b> = ${(pm / 6.15).toFixed(2)} SPHEREx pixels/yr</span>`);
-    if (k.plx) facts.push(`<span>distance <b>${(3261.56 / k.plx).toFixed(1)} light-years</b></span>`);
+  const t = S.target, k = S.track, i = S.info, el = $('about');
+  const name = t ? t.label : i ? i.name : k?.name ? k.name : 'Unnamed spot';
+  const badges = [];
+  if (i) {
+    badges.push(`<span class="badge type">${i.type}</span>`);
+    if (i.sptype) badges.push(`<span class="badge">spectral type ${i.sptype}</span>`);
+    if (i.redshift > 0.002) badges.push(`<span class="badge">redshift ${i.redshift.toFixed(4)}</span>`);
+  } else if (S.infoState === 'loading') badges.push('<span class="badge">identifying…</span>');
+  else badges.push('<span class="badge">no catalogued object within 10″</span>');
+  const facts = [`<span><b>${C.fmtSex(S.ra, S.dec)}</b></span>`, `<span>RA ${S.ra.toFixed(5)}° Dec ${S.dec.toFixed(5)}°</span>`];
+  const pmSrc = k && k.pmra != null ? k : i && i.pmra != null ? i : null;
+  if (pmSrc) {
+    const pm = Math.hypot(pmSrc.pmra, pmSrc.pmdec) / 1000;
+    facts.push(`<span>moves <b>${pm.toFixed(pm < 0.1 ? 3 : 2)}″ per year</b>${pm > 0.3 ? ` (${(pm / 6.15).toFixed(2)} SPHEREx pixels)` : ''}</span>`);
   }
-  if (S.head) facts.push(`<span><b>${S.head.total}</b> exposures, <b>${S.head.epochs.length}</b> seasons (${C.fmtMonth(S.head.epochs[0]?.[0] ?? 0)} to ${C.fmtMonth(S.head.epochs.at(-1)?.[1] ?? 0)})</span>`);
-  const moved = k && k.pmra != null && Math.hypot(k.pmra, k.pmdec) > 200
-    ? `<p class="hint">Centred on where it is now, not its year-2000 catalogue position (it has moved ${(Math.hypot(k.pmra, k.pmdec) / 1000 * (C.mjdToYear(S.head?.epochs?.[0]?.[0] ?? 61000) - 2000)).toFixed(0)}″ since then). Dots mark the predicted position in each season.</p>` : '';
-  el.innerHTML = `<h2>${name}</h2>${t ? `<p>${t.blurb}</p>${t.look ? `<p class="look"><b>What to look for.</b> ${t.look}</p>` : ''}` : ''}${moved}<div class="facts">${facts.join('')}</div><div id="motion"></div>`;
+  const plx = (k && k.plx) || (i && i.plx);
+  if (plx > 0.2) facts.push(`<span>distance <b>${(3261.56 / plx).toFixed(plx > 30 ? 1 : 0)} light-years</b></span>`);
+  if (i) for (const b of ['V', 'J', 'K']) if (i.mags[b] != null) facts.push(`<span>${b} magnitude <b>${(+i.mags[b]).toFixed(1)}</b></span>`);
+  if (S.head) facts.push(`<span>SPHEREx: <b>${S.head.total}</b> exposures in <b>${S.head.epochs.length}</b> ${S.head.epochs.length === 1 ? 'slice' : 'time slices'} (${C.fmtMonth(S.head.epochs[0]?.[0] ?? 0)} to ${C.fmtMonth(S.head.epochs.at(-1)?.[1] ?? 0)})</span>`);
+  const fast = pmSrc && Math.hypot(pmSrc.pmra, pmSrc.pmdec) > 200;
+  const moved = fast ? `<p class="hint">Catalogues list where this object was in the year 2000. It has moved ${(Math.hypot(pmSrc.pmra, pmSrc.pmdec) / 1000 * (C.mjdToYear(S.head?.epochs?.[0]?.[0] ?? 61000) - 2000)).toFixed(0)}″ since, so the view is centred on where it is now. Dots mark its predicted position in each season.</p>` : '';
+  const w = S.wiki;
+  const wiki = w ? `<div class="wiki">${w.thumb ? `<img src="${w.thumb}" alt="${w.title}, image from Wikipedia" loading="lazy">` : ''}<div><p>${w.extract}</p><small><a href="${w.url}" target="_blank" rel="noopener">Read more on Wikipedia: ${w.title}</a></small></div></div>` : '';
+  const links = Info.externalLinks(S.ra, S.dec, i).map(l => `<a href="${l.url}" target="_blank" rel="noopener" title="${l.title}">${l.label}</a>`).join('');
+  const others = i?.others?.length ? `<p class="others">Also catalogued here: ${i.others.map(o => `${o.name} (${o.type})`).join(', ')}</p>` : '';
+  el.innerHTML = `<div class="titlerow"><h1>${name}</h1><button type="button" class="close" id="closepanel" title="Close and return to the map" aria-label="Close">×</button></div>
+    ${badges.join('')}${wiki}<div class="facts">${facts.join('')}</div>
+    ${t?.look ? `<p class="look"><b>What to look for.</b> ${t.look}</p>` : ''}${moved}
+    <div class="links"><span>Check it in other tools:</span>${links}</div>${others}`;
+  $('closepanel').onclick = closePanel;
   renderMotion();
 }
 /** Measured position per season versus the catalogue prediction. */
@@ -545,7 +614,7 @@ function renderMotion() {
     const me = -(m.x - m0.x), mn = m.y - m0.y, d = Math.hypot(me - pe, mn - pn);
     return `<tr><td><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${epochColor(st.mjd)};margin-right:5px"></i>${C.fmtMonth(st.mjd)}</td><td>${as(Math.hypot(me, mn))}″</td><td>${as(Math.hypot(pe, pn))}″</td><td>${as(d)}″</td></tr>`;
   }).join('');
-  el.innerHTML = `<table class="motion"><thead><tr><th>Season</th><th>Measured shift</th><th>Catalogue predicts</th><th>Disagreement</th></tr></thead><tbody>${body}</tbody></table>
+  el.innerHTML = `<table class="t"><thead><tr><th>Season</th><th>Measured shift</th><th>Catalogue predicts</th><th>Disagreement</th></tr></thead><tbody>${body}</tbody></table>
   <p class="hint">Shift since the first season, measured from the stacked D${S.det} images (1 SPHEREx pixel = 6.15″). The prediction uses catalogue proper motion only.</p>`;
 }
 function renderModes() {
@@ -638,7 +707,7 @@ async function search(text) {
   const co = C.parseCoords(text);
   if (co) {
     await go({ ...co, size });
-    // Did the user type old coordinates of a fast mover we know about?
+    // Old coordinates of a fast mover we know? Offer to jump to where it is now.
     for (const t of S.targets) {
       const k = t.resolved;
       if (!k || k.pmra == null || Math.hypot(k.pmra, k.pmdec) < 500) continue;
@@ -652,18 +721,45 @@ async function search(text) {
         const el = $('notice');
         el.innerHTML = `These look like older coordinates of <b>${t.label}</b>. It has since moved ${(here / 60).toFixed(1)}′ from here.<br><button type="button">Jump to where it is now</button>`;
         el.hidden = false;
-        el.querySelector('button').onclick = () => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, ...(t.view || {}) });
+        el.querySelector('button').onclick = () => openTarget(t);
       }
     }
     return;
   }
   const q = text.toLowerCase().replace(/[^a-z0-9]/g, '');
   const preset = S.targets.find(t => [t.label, t.slug, t.query].some(s => { const v = s.toLowerCase().replace(/[^a-z0-9]/g, ''); return v.includes(q) || q.includes(v); }));
-  if (preset && size === preset.size) return go({ ra: preset.ra, dec: preset.dec, size, target: preset, ...(preset.view || {}) });
-  setStatus(`Looking up “${text}”…`);
+  if (preset && size === preset.size) return openTarget(preset);
+  note(`Looking up “${text}”…`);
   const r = await resolveName(text).catch(() => null);
-  if (!r) { setStatus(`Could not find “${text}”. Try coordinates, e.g. 269.446 4.771`); return; }
+  if (!r) { note(`Could not find “${text}”. Try coordinates, for example 269.446 4.771`, 6000); return; }
+  note('');
   go({ ra: r.ra, dec: r.dec, size, track: r, target: preset || null });
+}
+
+/** A click on the map: work out what is there today and open it. */
+async function openAt(ra, dec, mapFov) {
+  if (mapFov > 12) {                       // too far out to mean one object: dive in first
+    note('Zooming in. Click again to pick an object.', 3500);
+    Sky.flyTo(ra, dec, Math.max(mapFov / 6, 1.5));
+    return;
+  }
+  const tok = ++S.openTok, r = clamp(mapFov * 3600 * 0.006, 8, 60), size = +$('fov').value;
+  const preset = S.targets.find(t => sepArcsec(ra, dec, t.ra, t.dec) < Math.max(20, r));
+  if (preset && size === preset.size) return openTarget(preset);
+  note('Looking up what is here…');
+  const info = await Info.identify(ra, dec, r).catch(() => null);
+  if (tok !== S.openTok) return;
+  note('');
+  if (info) go({ ra: info.ra, dec: info.dec, size, track: info, info });
+  else go({ ra, dec, size });
+}
+
+let noteTimer = 0;
+function note(text, ms) {
+  const el = $('mapnote');
+  clearTimeout(noteTimer);
+  el.textContent = text; el.hidden = !text;
+  if (text && ms) noteTimer = setTimeout(() => { el.hidden = true; }, ms);
 }
 
 function syncUrl() {
@@ -688,11 +784,16 @@ $('white').oninput = e => { S.white = +e.target.value; paint(); };
 $('invert').onchange = e => { S.invert = e.target.checked; paint(); };
 $('smooth').onchange = e => { S.smooth = e.target.checked; paint(); };
 $('gaia').onchange = e => { S.showGaia = e.target.checked; paint(); };
+$('bandsOn').onchange = e => { S.showBands = e.target.checked; drawPlots(); };
+$('examples').onchange = e => { const t = S.targets.find(x => x.slug === e.target.value); if (t) openTarget(t); };
 $('wise').onchange = e => { S.showWise = e.target.checked; if (S.showWise) loadCatwise(); paint(); };
 $('mask').onchange = e => { S.mask = e.target.checked; paint(); };
 $('resetview').onclick = () => { if (S.grid) { const c = (S.grid.n - 1) / 2; S.view = { z: 1, cx: c, cy: c }; paint(); } };
 document.addEventListener('keydown', e => {
   if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && e.target.type !== 'range' && e.target.type !== 'checkbox') return;
+  if (tourIdx >= 0 && (e.key === 'PageDown' || e.key === 'n')) { e.preventDefault(); return tourGo(tourIdx + 1); }
+  if (tourIdx >= 0 && (e.key === 'PageUp' || e.key === 'b')) { e.preventDefault(); return tourGo(tourIdx - 1); }
+  if (tourIdx >= 0 && e.key === 'Escape') return tourEnd();
   if (e.key === ' ') { e.preventDefault(); S.playing ? stop() : play(); }
   else if (e.key === 'ArrowRight') { stop(); step(1); }
   else if (e.key === 'ArrowLeft') { stop(); step(-1); }
@@ -757,16 +858,79 @@ function pick(X, Y) {
   paint(); renderMeta(); refreshPlots();
 }
 
+// ------------------------------------------------------------ map controls
+let sweepTimer = 0;
+function setWave(z) {
+  z = Sky.setSlice(z);
+  $('wave').value = z;
+  $('wavelabel').textContent = `${Sky.waves()[z].toFixed(2)} µm`;
+}
+function sweep(on) {
+  clearInterval(sweepTimer); sweepTimer = 0;
+  $('waveplay').textContent = on ? '❚❚' : '▶';
+  if (on) sweepTimer = setInterval(() => setWave((Sky.currentSlice() + 1) % Sky.waves().length), 450);
+}
+function setLayer(id) {
+  Sky.setLayer(id); $('layer').value = id;
+  $('wavebox').style.display = id === 'spherex' ? '' : 'none';
+  if (id !== 'spherex') sweep(false);
+}
+
+// ------------------------------------------------------------ guided tour
+let tourSteps = [], tourIdx = -1;
+const tourApi = {
+  closePanel: () => { if ($('app').dataset.panel === 'open') closePanel(); },
+  layer: id => { if (Sky.isReady() && Sky.currentLayer() !== id) setLayer(id); },
+  slice: z => { if (Sky.isReady()) setWave(z); },
+  sweep: on => { if (Sky.isReady()) sweep(on); },
+  fly: (ra, dec, fov) => { if (Sky.isReady()) Sky.flyTo(ra, dec, fov); },
+  open: t => openTarget(t),
+};
+function tourGo(i) {
+  if (!tourSteps.length) tourSteps = buildTour(S.targets);
+  if (i < 0) return;
+  if (i >= tourSteps.length) return tourEnd();
+  tourIdx = i;
+  const st = tourSteps[i];
+  $('welcome').hidden = true; $('tour').hidden = false;
+  $('tourcount').textContent = `Guided tour · ${i + 1} of ${tourSteps.length}`;
+  $('tourtitle').textContent = st.title; $('tourtext').textContent = st.text;
+  $('tourback').disabled = i === 0;
+  $('tournext').textContent = i === tourSteps.length - 1 ? 'Finish' : 'Next';
+  st.run(tourApi);
+}
+function tourEnd() { tourIdx = -1; $('tour').hidden = true; sweep(false); }
+$('tourbtn').onclick = $('tourbtn2').onclick = () => tourGo(0);
+$('tournext').onclick = () => tourGo(tourIdx + 1);
+$('tourback').onclick = () => tourGo(tourIdx - 1);
+$('tourclose').onclick = tourEnd;
+$('hidewelcome').onclick = () => { $('welcome').hidden = true; };
+$('wave').oninput = e => { sweep(false); setWave(+e.target.value); };
+$('waveplay').onclick = () => sweep(!sweepTimer);
+$('layer').onchange = e => setLayer(e.target.value);
+
 // ------------------------------------------------------------ start
 (async function init() {
-  if (new URLSearchParams(location.search).has('embed')) document.body.classList.add('embed');
+  const q = new URLSearchParams(location.search);
+  S.embed = q.has('embed');
+  if (S.embed) document.body.classList.add('embed');
   renderModes(); renderDets();
   try { S.targets = await (await fetch('data/targets.json')).json(); } catch { S.targets = []; }
   renderChips();
-  const q = new URLSearchParams(location.search), det = +q.get('det') || undefined, mode = q.get('mode') || undefined;
+  $('layer').innerHTML = Sky.LAYERS.map(l => `<option value="${l.id}">${l.label}</option>`).join('');
+  if (!S.embed) {
+    try {
+      await Sky.init('#map', { onClick: openAt });
+      setWave(25);
+    } catch (e) {
+      console.error(e);
+      $('welcome').innerHTML = '<h2>The sky map could not start on this device.</h2><p>It needs WebGL 2. Search and the examples above still work.</p>';
+      $('wavebox').style.display = 'none'; $('layer').style.display = 'none';
+    }
+  }
+  const det = +q.get('det') || undefined, mode = q.get('mode') || undefined;
   const t = S.targets.find(x => x.slug === q.get('target'));
   if (t) return go({ ra: t.ra, dec: t.dec, size: t.size, target: t, ...(t.view || {}), ...(det ? { det } : {}), ...(mode ? { mode } : {}) });
   if (q.has('ra') && q.has('dec')) return go({ ra: +q.get('ra'), dec: +q.get('dec'), size: +(q.get('fov') || q.get('size') || 5), det, mode });
-  if (S.targets.length) { const d = S.targets[0]; return go({ ra: d.ra, dec: d.dec, size: d.size, target: d, ...(d.view || {}) }); }
-  setStatus('Type an object name or coordinates above.');
+  if (q.has('tour')) tourGo(0);
 })();
