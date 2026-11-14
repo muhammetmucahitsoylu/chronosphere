@@ -195,3 +195,24 @@ export function referenceSpectrum(pts, step = 0.012) {
     return ys[i - 1] * (1 - t) + ys[i] * t;
   };
 }
+
+/** Masked pixels that sit inside a very bright star are saturation, not missing sky.
+ *  Returns a mask (1 = saturated core) grown outward from bright neighbours. */
+export function saturatedMask(img, n, thresh) {
+  const m = new Uint8Array(n * n);
+  let changed = true, pass = 0;
+  while (changed && pass++ < 12) {
+    changed = false;
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const p = j * n + i;
+      if (m[p] || img[p] === img[p]) continue;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x = i + di, y = j + dj;
+        if (x < 0 || y < 0 || x >= n || y >= n) continue;
+        const q = y * n + x;
+        if (m[q] || img[q] > thresh) { m[p] = 1; changed = true; break; }
+      }
+    }
+  }
+  return m;
+}

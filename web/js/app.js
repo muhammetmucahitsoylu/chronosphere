@@ -11,6 +11,7 @@ const MODES = {
   color: 'Time shown as colour: first season in red, last in blue. Stars that stayed put look white; anything that moved or changed splits into colours.',
   diff: 'A later season minus an earlier one. Steady stars cancel; a moving object leaves a dark-and-bright pair.',
   deep: 'All exposures of this detector added together: the deepest, cleanest image.',
+  bands: 'The same patch of sky in each of the six detectors, from 0.75 to 5 microns, then all six as one colour picture (short wavelengths blue, long red). Cold objects only appear at the long end.',
 };
 
 const S = {
@@ -105,6 +106,7 @@ function onData(det) {
   if (det === S.det) {
     setStatus(D.done ? '' : `Loading detector ${det}: ${D.frames.length} of ${D.total} exposures`, D.done ? 0 : D.frames.length / Math.max(1, D.total));
     rebuild();
+  } else if (S.mode === 'bands' && D.done) { rebuild();
   } else if (!S.dets[S.det]?.loading) {
     setStatus(D.done ? '' : `Loading detector ${det} for the spectrum: ${D.frames.length} of ${D.total}`, D.done ? 0 : D.frames.length / Math.max(1, D.total));
   }
@@ -147,7 +149,12 @@ function rebuild() {
   if (!S.grid) return;
   const n = S.grid.n, npx = n * n, frames = usable(S.det);
   const keepMjd = S.seq[S.idx]?.mjd;
-  S.epochs = C.splitEpochs(frames);
+  // Group by the archive-wide observing seasons so every detector agrees on what "season 2" is.
+  const byEp = new Map();
+  for (const f of frames) { const k = gEpoch(f.mjd); if (!byEp.has(k)) byEp.set(k, []); byEp.get(k).push(f); }
+  S.epochs = [...byEp.keys()].sort((a, b) => a - b).map(k => {
+    const fr = byEp.get(k); return { i: k, frames: fr, t0: fr[0].mjd, t1: fr[fr.length - 1].mjd, mid: (fr[0].mjd + fr[fr.length - 1].mjd) / 2 };
+  });
   const stacks = S.epochs.map(e => {
     const img = C.medianStack(e.frames, npx);
     return { kind: 'stack', img, sig: C.robustStats(img).sig, mjd: e.mid, n: e.frames.length, ep: e,
@@ -168,6 +175,23 @@ function rebuild() {
   else if (S.mode === 'deep') {
     if (S.deep) seq = [{ kind: 'stack', img: S.deep, sig: S.deepSig, mjd: frames[frames.length >> 1].mjd, n: frames.length,
       title: 'Deep sum', sub: `${frames.length} exposures, all seasons` }];
+  } else if (S.mode === 'bands') {
+    S.bandCache = S.bandCache || {};
+    const per = {};
+    for (let d = 1; d <= 6; d++) {
+      const fr = usable(d); if (!fr.length) continue;
+      const key = `${S.gen}:${fr.length}:${S.off.size}`;
+      if (S.bandCache[d]?.key !== key) {
+        const sub = fr.length > 80 ? fr.filter((_, i) => i % Math.ceil(fr.length / 80) === 0) : fr;
+        const img = C.medianStack(sub, npx), st = C.robustStats(img);
+        S.bandCache[d] = { key, kind: 'stack', det: d, img, sig: st.sig, hi: Math.max(st.p(0.997), 25 * st.sig), mjd: fr[fr.length >> 1].mjd,
+          n: fr.length, title: `${C.DET_BANDS[d][0]} to ${C.DET_BANDS[d][1]} µm`, sub: `${fr.length} exposures, all seasons` };
+      }
+      per[d] = S.bandCache[d]; seq.push(per[d]);
+    }
+    const R = per[6] || per[5], G = per[4] || per[3], B = per[2] || per[1];
+    if (R && G && B && R !== G && G !== B) seq.push({ kind: 'rgb', rgb: [R, G, B], mjd: G.mjd, det: 0, title: 'Infrared colour',
+      sub: `blue D${B.det} · green D${G.det} · red D${R.det}` });
   } else if (S.mode === 'color') {
     if (stacks.length >= 2) {
       const a = stacks[0], b = stacks[stacks.length - 1], m = stacks.length > 2 ? stacks[stacks.length >> 1] : null;
@@ -235,12 +259,14 @@ function paint() {
   if (off.width !== n) { off.width = off.height = n; }
   const im = octx.createImageData(n, n), px = im.data;
   const hi = S.hi * Math.pow(10, -S.white);
-  const chan = (img, sig) => {
-    const lo = -2 * sig, soft = 3 * sig, norm = Math.asinh((Math.max(hi, 10 * sig) - lo) / soft);
+  const gain = Math.pow(10, -S.white);
+  const chan = (img, sig, own) => {
+    const top = own ? own * gain : hi;
+    const lo = -2 * sig, soft = 3 * sig, norm = Math.asinh((Math.max(top, 10 * sig) - lo) / soft);
     return v => stretch(v, lo, soft, norm);
   };
   if (it.kind === 'rgb') {
-    const [a, m, b] = it.rgb, fa = chan(a.img, a.sig), fb = chan(b.img, b.sig), fm = m ? chan(m.img, m.sig) : null;
+    const [a, m, b] = it.rgb, fa = chan(a.img, a.sig, a.hi), fb = chan(b.img, b.sig, b.hi), fm = m ? chan(m.img, m.sig, m.hi) : null;
     for (let p = 0; p < npx; p++) {
       const o = ((n - 1 - ((p / n) | 0)) * n + (p % n)) * 4;
       const r = a.img[p], bl = b.img[p], g = m ? m.img[p] : bl;
@@ -248,10 +274,15 @@ function paint() {
       px[o] = 255 * fa(r); px[o + 1] = 255 * (fm ? fm(g) : fb(g)); px[o + 2] = 255 * fb(bl); px[o + 3] = 255;
     }
   } else {
-    const diff = it.kind === 'diff', f = chan(it.img, it.sig), k = 8 * it.sig * Math.pow(10, -S.white);
+    const diff = it.kind === 'diff', f = chan(it.img, it.sig, it.hi), k = 8 * it.sig * Math.pow(10, -S.white);
+    if (!diff && it.sat === undefined) it.sat = C.saturatedMask(it.img, n, Math.max((it.hi || S.hi) * 0.5, 40 * it.sig));
+    const sat = diff ? null : it.sat;
     for (let p = 0; p < npx; p++) {
       const o = ((n - 1 - ((p / n) | 0)) * n + (p % n)) * 4, v = it.img[p];
-      if (v !== v) { px[o] = S.mask ? 150 : 0; px[o + 1] = 0; px[o + 2] = S.mask ? 40 : 0; px[o + 3] = 255; continue; }
+      if (v !== v) {
+        const satur = sat && sat[p] && !S.mask, c0 = satur ? (S.invert ? 0 : 255) : 0;
+        px[o] = S.mask ? 150 : c0; px[o + 1] = c0; px[o + 2] = S.mask ? 40 : c0; px[o + 3] = 255; continue;
+      }
       let t = diff ? clamp(0.5 + 0.5 * v / k, 0, 1) : f(v);
       if (S.invert) t = 1 - t;
       px[o] = px[o + 1] = px[o + 2] = 255 * t; px[o + 3] = 255;
@@ -348,7 +379,7 @@ function show() {
   const it = S.seq[S.idx];
   $('seek').value = S.idx;
   $('count').textContent = S.seq.length ? `${S.idx + 1} / ${S.seq.length}` : '';
-  $('caption').innerHTML = it ? `<b><i style="background:${epochColor(it.mjd)}"></i>${it.title}</b><span>D${S.det} · ${it.sub}</span>` : '';
+  $('caption').innerHTML = it ? `<b><i style="background:${epochColor(it.mjd)}"></i>${it.title}</b><span>${it.det === 0 ? '' : `D${it.det || S.det} · `}${it.sub}</span>` : '';
   const single = S.seq.length < 2;
   $('play').disabled = $('prev').disabled = $('next').disabled = single;
   if (single) stop();
@@ -461,7 +492,9 @@ function renderMotion() {
   const g = S.grid, rows = [];
   let m0 = null, p0 = null;
   for (const st of S.stacks) {
-    const p = trackPos(st.mjd), m = C.centroid(st.img, g.n, p[0], p[1], 3);
+    const p = trackPos(st.mjd);
+    let m = C.centroid(st.img, g.n, p[0], p[1], 3);
+    if (m && !(m.peak > 4 * st.sig)) m = null;          // not significantly above the noise
     if (!m0 && m) { m0 = m; p0 = p; }
     rows.push({ st, p, m });
   }
@@ -611,7 +644,7 @@ $('prev').onclick = () => { stop(); step(-1); };
 $('next').onclick = () => { stop(); step(1); };
 $('seek').oninput = e => { stop(); S.idx = +e.target.value; show(); };
 $('fps').onchange = e => { S.fps = +e.target.value; if (S.playing) play(); };
-for (const b of $('modes').children) b.onclick = () => { S.mode = b.dataset.mode; renderModes(); rebuild(); syncUrl(); };
+for (const b of $('modes').children) b.onclick = () => { stop(); S.mode = b.dataset.mode; S.seq = []; S.idx = 0; renderModes(); rebuild(); syncUrl(); };
 $('white').oninput = e => { S.white = +e.target.value; paint(); };
 $('invert').onchange = e => { S.invert = e.target.checked; paint(); };
 $('smooth').onchange = e => { S.smooth = e.target.checked; paint(); };

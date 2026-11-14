@@ -50,5 +50,164 @@
     ]
    ]
   }
+ },
+ {
+  "slug": "epsindib",
+  "query": "eps Ind B",
+  "label": "Epsilon Indi B",
+  "kind": "motion",
+  "blurb": "A pair of brown dwarfs orbiting a nearby star, moving 4.7 arcsec per year.",
+  "ra": 331.098399,
+  "dec": -56.801256,
+  "size": 5.0,
+  "resolved": {
+   "name": "* eps Ind B",
+   "otype": "BD*",
+   "ra2000": 331.04414658852124,
+   "dec2000": -56.78284419511611,
+   "pmra": 3981.977,
+   "pmdec": -2466.832,
+   "plx": 270.658,
+   "epoch": 2026.87,
+   "ra": 331.0983988200857,
+   "dec": -56.801255787850906
+  },
+  "built": "2026-11-14T11:09:49Z",
+  "summary": {
+   "total": 463,
+   "avail": {
+    "1": 48,
+    "2": 93,
+    "3": 99,
+    "4": 46,
+    "5": 84,
+    "6": 93
+   },
+   "releases": {
+    "spherex_dr1": 343,
+    "spherex_qr3": 120
+   },
+   "epochs": [
+    [
+     60789.855522,
+     60836.189812
+    ],
+    [
+     60946.964111,
+     60991.85757
+    ],
+    [
+     61148.84479,
+     61164.11695
+    ],
+    [
+     61305.226906,
+     61315.478076
+    ]
+   ]
+  }
+ },
+ {
+  "slug": "wise0855",
+  "query": "WISE J085510.83-071442.5",
+  "label": "WISE 0855",
+  "kind": "motion",
+  "blurb": "The coldest known brown dwarf: 8.1 arcsec per year, visible only at the longest wavelengths.",
+  "ra": 133.757787,
+  "dec": -7.242023,
+  "size": 5.0,
+  "resolved": {
+   "name": "WISEA J085510.74-071442.5",
+   "otype": "BD*",
+   "ra2000": 133.81890825,
+   "dec2000": -7.247048,
+   "pmra": -8123.7,
+   "pmdec": 673.2,
+   "plx": 439.0,
+   "epoch": 2026.87,
+   "ra": 133.7577874444936,
+   "dec": -7.242023463741767
+  },
+  "built": "2026-11-14T11:12:46Z",
+  "summary": {
+   "total": 258,
+   "avail": {
+    "1": 36,
+    "2": 48,
+    "3": 45,
+    "4": 36,
+    "5": 48,
+    "6": 45
+   },
+   "releases": {
+    "spherex_dr1": 258
+   },
+   "epochs": [
+    [
+     60800.700028,
+     60801.518654
+    ],
+    [
+     60979.722677,
+     61022.368105
+    ],
+    [
+     61151.197933,
+     61174.287218
+    ]
+   ]
+  }
+ },
+ {
+  "slug": "rwaur",
+  "query": "RW Aur",
+  "label": "RW Aurigae",
+  "kind": "variable",
+  "blurb": "A young variable star that dims unpredictably when dust crosses in front of it.",
+  "ra": 76.956589,
+  "dec": 30.401286,
+  "size": 5.0,
+  "resolved": {
+   "name": "V* RW Aur",
+   "otype": "TT*",
+   "ra2000": 76.95652603458,
+   "dec2000": 30.40143817389,
+   "pmra": 7.23,
+   "pmdec": -20.33,
+   "plx": 15.42,
+   "epoch": 2026.87,
+   "ra": 76.95658859946393,
+   "dec": 30.401286437651006
+  },
+  "built": "2026-11-14T11:14:42Z",
+  "summary": {
+   "total": 336,
+   "avail": {
+    "1": 56,
+    "2": 56,
+    "3": 56,
+    "4": 56,
+    "5": 56,
+    "6": 56
+   },
+   "releases": {
+    "spherex_dr1": 226,
+    "spherex_qr3": 110
+   },
+   "epochs": [
+    [
+     60919.419647,
+     60938.232058
+    ],
+    [
+     61091.719616,
+     61111.002087
+    ],
+    [
+     61285.097169,
+     61299.895897
+    ]
+   ]
+  }
  }
 ]
