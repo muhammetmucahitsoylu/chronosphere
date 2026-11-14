@@ -195,7 +195,12 @@ export function aperture(img, n, scale, x, y, sigma, rApArcsec = 9.2, rIn = 18, 
   sky.sort((a, b) => a - b);
   const bg = sky[sky.length >> 1];
   const omega = (scale / ARCSEC) ** 2 * 1e9;      // MJy/sr per pixel -> mJy
-  return { flux: (sum - bg * nap) * omega, err: sigma * Math.sqrt(nap + nap * nap / sky.length) * omega };
+  // Uncertainty, calibrated on how much real stars scatter from one exposure to the next:
+  // the pixels of a resampled stamp are not independent, which makes the plain sum of variances
+  // too small by a factor of about 2.4 (faint stars); and no star repeats better than about 3.5%,
+  // because SPHEREx images are undersampled (bright stars).
+  const flux = (sum - bg * nap) * omega, noise = 2.4 * sigma * Math.sqrt(nap + nap * nap / sky.length) * omega;
+  return { flux, err: Math.hypot(noise, 0.035 * flux) };
 }
 
 /** Median spectrum on a log-wavelength grid; used as the reference for variability. */
@@ -272,7 +277,9 @@ export function halo(img, n, scale, x, y, sigma, r1 = 21, width = 15) {
   ring.sort((p, q) => p - q); sky.sort((p, q) => p - q);
   const bg = sky[Math.floor(sky.length * 0.3)];      // lower quantile: the halo still reaches the sky ring
   const omega = (scale / ARCSEC) ** 2 * 1e9;
-  return { valid, flux: (ring[ring.length >> 1] - bg) * nr * omega, err: sigma * 1.25 * Math.sqrt(nr) * omega, halo: true };
+  // Halo measurements of one star scatter by 5 to 35% between exposures, whatever the photon noise says.
+  const flux = (ring[ring.length >> 1] - bg) * nr * omega;
+  return { valid, flux, err: Math.hypot(2.4 * sigma * 1.25 * Math.sqrt(nr) * omega, 0.15 * flux), halo: true };
 }
 
 /**
@@ -345,8 +352,10 @@ export const MOLECULES = [
   { name: 'Water vapour', f: 'H₂O', band: [1.34, 1.48], side: [[1.22, 1.31], [1.55, 1.62]] },
   { name: 'Water vapour', f: 'H₂O', band: [1.80, 1.98], side: [[1.68, 1.75], [2.05, 2.15]] },
   { name: 'Carbon monoxide, methane', f: 'CO, CH₄', band: [2.28, 2.38], side: [[2.05, 2.18], null] },
-  { name: 'Water vapour', f: 'H₂O', band: [2.55, 2.85], side: [[2.05, 2.18], [3.62, 3.78]] },
-  { name: 'Methane', f: 'CH₄', band: [3.15, 3.50], side: [[2.05, 2.18], [3.62, 3.78]] },
+  // Beyond 3.5 microns a cold object's spectrum climbs steeply towards its 4-micron peak, so the
+  // long-wavelength comparison window sits on that peak, where the spectrum is level again.
+  { name: 'Water vapour', f: 'H₂O', band: [2.55, 2.85], side: [[2.05, 2.18], [3.90, 4.10]] },
+  { name: 'Methane', f: 'CH₄', band: [3.15, 3.50], side: [[2.05, 2.18], [3.90, 4.10]] },
   { name: 'Carbon dioxide', f: 'CO₂', band: [4.20, 4.33], side: [[4.05, 4.15], [4.46, 4.54]] },
   { name: 'Carbon monoxide', f: 'CO', band: [4.56, 4.80], side: [[4.46, 4.54], [4.90, 4.98]] },
 ];

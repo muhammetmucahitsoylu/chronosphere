@@ -133,13 +133,20 @@
             </select></label>
             <label><input id="invert" type="checkbox"> Negative</label>
             <label><input id="smooth" type="checkbox"> Smooth</label>
-            <label title="Catalogued stars at their position on the date shown. Fast movers get an arrow."><input id="gaia" type="checkbox" checked> Catalogue stars</label>
-            <label title="CatWISE2020 infrared sources (squares)"><input id="wise" type="checkbox"> WISE sources</label>
+            <label title="Gaia DR3 stars at their position on the date shown (circles). Fast movers get an arrow."><input id="gaia" type="checkbox" checked> Gaia stars</label>
+            <label title="Infrared sources catalogued by the WISE telescope (squares)"><input id="wise" type="checkbox"> WISE sources</label>
             <label title="Pixels the pipeline masked: saturated, bad or missing"><input id="mask" type="checkbox"> Masked pixels</label>
             <button id="resetview" type="button">Reset zoom</button>
           </div>
           <p id="readout" class="mono hint">Scroll or pinch to zoom, drag to pan, click a star to measure it.</p>
         </details>
+        <div class="export" role="group" aria-label="Share and export">
+          <button type="button" id="copylink" title="Copy a link that reopens exactly this view">Copy link</button>
+          <button type="button" id="savepng" title="Save the image as shown, with its markings">Save image</button>
+          <button type="button" id="savevideo" title="Save one loop of the sequence as a video file">Save video</button>
+          <button type="button" id="savecsv" title="Every measurement of the circled spot: date, wavelength, brightness, exposure">Measurements (CSV)</button>
+          <span id="exportnote" class="hint" role="status"></span>
+        </div>
         <div id="motion"></div>
       </section>
 

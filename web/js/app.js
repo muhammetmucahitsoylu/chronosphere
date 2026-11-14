@@ -190,7 +190,11 @@ async function loadCatalog(gen) {
     let js;
     if (isPreset()) js = await (await fetch(`data/${S.target.slug}/gaia.json`, { signal: S.abort.signal })).json();
     else if (API) js = await (await fetch(`${API}/api/catalog?ra=${S.ra.toFixed(5)}&dec=${S.dec.toFixed(5)}&size=${S.size}&cat=gaia`, { signal: S.abort.signal })).json();
-    else js = await Info.fieldStars(S.ra, S.dec, S.size * 0.75 + 0.5);      // catalogued stars with known motion, from SIMBAD
+    else {                                                                  // Gaia DR3 from VizieR; if that fails, stars with known motion from SIMBAD
+      const r = S.size * 0.75 + 0.5;
+      js = await Info.gaiaStars(S.ra, S.dec, r).catch(() => null);
+      if (!js || !js.sources.length) js = await Info.fieldStars(S.ra, S.dec, r);
+    }
     if (gen === S.gen && js) { S.gaia = js; paint(); }
   } catch { /* overlay is optional */ }
 }
@@ -198,13 +202,13 @@ async function loadCatwise() {
   if (S.catwise || !S.grid) return;
   const gen = S.gen;
   try {
-    if (!isPreset() && !API) { setStatus('The WISE overlay is available for the tour objects.'); return; }
-    const url = isPreset() ? `data/${S.target.slug}/catwise.json`
-      : `${API}/api/catalog?ra=${S.ra.toFixed(5)}&dec=${S.dec.toFixed(5)}&size=${S.size}&cat=catwise`;
-    setStatus('Loading CatWISE sources…');
-    const js = await (await fetch(url, { signal: S.abort.signal })).json();
+    setStatus('Loading WISE sources…');
+    let js;
+    if (isPreset()) js = await (await fetch(`data/${S.target.slug}/catwise.json`, { signal: S.abort.signal })).json();
+    else if (API) js = await (await fetch(`${API}/api/catalog?ra=${S.ra.toFixed(5)}&dec=${S.dec.toFixed(5)}&size=${S.size}&cat=catwise`, { signal: S.abort.signal })).json();
+    else js = await Info.wiseSources(S.ra, S.dec, S.size * 0.75 + 0.5);
     if (gen === S.gen) { S.catwise = js; setStatus(''); paint(); }
-  } catch { setStatus('CatWISE overlay is not available right now.'); }
+  } catch { setStatus('The WISE catalogue could not be reached just now.'); }
 }
 
 // ------------------------------------------------------------ sequence
@@ -635,13 +639,14 @@ function findComparisons(targetFlux = 0) {
       if (u !== u || u > v) { top = false; break; }          // masked pixels nearby: a saturated star, no use as a yardstick
     }
     if (!top) continue;
-    // Bright enough to be measured to better than about 8% in a single exposure.
+    // Bright enough to be measured to about 15% or better in a single exposure.
     const a = C.aperture(img, n, g.scale, i, j, noise);
-    if (a && a.flux > 12 * a.err) peaks.push({ x: i, y: j, v: a.flux });
+    if (a && a.flux > 6.5 * a.err) peaks.push({ x: i, y: j, v: a.flux });
   }
   peaks.sort((a, b) => b.v - a.v);
   const eps = S.head?.epochs || [];
-  const mine = S.sel?.follow && S.track ? eps.map(e => trackPos((e[0] + e[1]) / 2)) : S.sel ? [[S.sel.x, S.sel.y]] : [];
+  // Never the catalogued target itself, nor whatever is circled at the moment.
+  const mine = [...(S.track ? eps.map(e => trackPos((e[0] + e[1]) / 2)) : []), ...(S.sel && !S.sel.follow ? [[S.sel.x, S.sel.y]] : [])];
   const crowd = 26 / g.scale;
   const clear = p => mine.every(m => {
     const d = Math.hypot(m[0] - p.x, m[1] - p.y) * g.scale;                       // arcseconds from the target
@@ -825,36 +830,74 @@ function renderWiki() {
   el.hidden = !w && !others;
   el.innerHTML = `${w ? `<h2>From Wikipedia</h2><div class="wiki">${w.thumb ? `<img src="${esc(w.thumb)}" alt="" loading="lazy">` : ''}<div><p>${esc(w.extract)}</p><small><a href="${esc(w.url)}" target="_blank" rel="noopener">Read the article: ${esc(w.title)}</a></small></div></div>` : ''}${others}`;
 }
-/** Measured position per season versus the catalogue prediction. */
+const COMPASS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+const compass = (dE, dN) => COMPASS[Math.round((((Math.atan2(dE, dN) * 180 / Math.PI) + 360) % 360) / 45) % 8];
+
+/**
+ * Did the circled spot move? Its position is measured in the stacked image of every visit and
+ * compared with how well ordinary stars in the same images repeat. For a catalogued fast mover
+ * the measurement is also set against the catalogue prediction.
+ */
 function renderMotion() {
   const el = $('motion');
   if (!el) return;
-  if (!S.grid || !S.track || S.track.pmra == null || !S.stacks || S.stacks.length < 2) { el.innerHTML = ''; return; }
-  const g = S.grid, rows = [];
-  let m0 = null, p0 = null;
+  if (!S.grid || !S.sel || !S.stacks || S.stacks.length < 2) { el.innerHTML = ''; return; }
+  const g = S.grid, n = g.n, as = v => (v * g.scale).toFixed(1);
+  const tracked = !!(S.sel.follow && S.track && S.track.pmra != null);
+  const catPm = tracked ? Math.hypot(S.track.pmra, S.track.pmdec) / 1000 : 0;          // arcseconds per year, from the catalogue
+  // Where the spot is in each visit: start from the prediction (catalogued target) or from where it was last seen.
+  const rows = []; let last = tracked ? null : [S.sel.x, S.sel.y];
   for (const st of S.stacks) {
-    const p = trackPos(st.mjd);
-    let m = C.centroid(st.img, g.n, p[0], p[1], 3);
-    if (m && !(m.peak > 4 * st.sig)) m = null;          // not significantly above the noise
-    if (!m0 && m) { m0 = m; p0 = p; }
+    const p = tracked ? trackPos(st.mjd) : last;
+    let m = C.centroid(st.img, n, p[0], p[1], 3);
+    if (m && !(m.peak > 4 * st.sig)) m = null;                                       // not clearly above the noise
+    if (m && C.coreMasked(st.img, n, g.scale, m.x, m.y, 6) > 0) m = null;              // a hole in the middle: saturated, no position
+    if (m && !tracked) last = [m.x, m.y];
     rows.push({ st, p, m });
   }
-  const as = v => (v * g.scale).toFixed(1);
-  if (Math.hypot(S.track.pmra, S.track.pmdec) < 100 && (!m0 || rows.filter(r => r.m).length < 2)) { el.innerHTML = ''; return; }
-  if (!m0) { el.innerHTML = '<p class="hint">The target is not detected in this detector, so its motion cannot be measured here. Try another detector.</p>'; return; }
-  if (Math.hypot(S.track.pmra, S.track.pmdec) < 100) {
-    const worst = Math.max(...rows.filter(r => r.m).map(r => Math.hypot(r.m.x - m0.x, r.m.y - m0.y)));
-    el.innerHTML = `<p class="hint">This star does not move measurably on the sky. Its measured position changes by at most ${as(worst)}″ between visits in D${S.det}: that is how well the images are aligned (1 SPHEREx pixel = 6.15″).</p>`;
+  const seen = rows.filter(r => r.m);
+  if (seen.length < 2) {
+    const holes = rows.filter(r => C.coreMasked(r.st.img, n, g.scale, r.p[0], r.p[1], 6) > 0).length > rows.length / 2;
+    el.innerHTML = holes ? `<p class="hint">The star's core is saturated in D${S.det}, so its position cannot be measured here.</p>`
+      : tracked && catPm >= 0.1 ? '<p class="hint">The target is too faint in this detector to be located, so its motion cannot be measured here. Try another detector.</p>' : '';
     return;
   }
-  const body = rows.map(({ st, p, m }) => {
-    const pe = -(p[0] - p0[0]), pn = p[1] - p0[1];
-    if (!m) return `<tr><td>${C.fmtMonth(st.mjd)}</td><td colspan="3">not detected</td></tr>`;
-    const me = -(m.x - m0.x), mn = m.y - m0.y, d = Math.hypot(me - pe, mn - pn);
-    return `<tr><td><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${epochColor(st.mjd)};margin-right:5px"></i>${C.fmtMonth(st.mjd)}</td><td>${as(Math.hypot(me, mn))}″</td><td>${as(Math.hypot(pe, pn))}″</td><td>${as(d)}″</td></tr>`;
-  }).join('');
-  el.innerHTML = `<table class="t"><thead><tr><th>Visit</th><th>Measured</th><th>Predicted</th><th>Off by</th></tr></thead><tbody>${body}</tbody></table>
-  <p class="hint">How far it has moved since the first visit: measured in these D${S.det} images, and predicted from its catalogued motion. One SPHEREx pixel is 6.15″.</p>`;
+  // How well do positions repeat from visit to visit? Ordinary stars in the same images are the yardstick.
+  const comp = [];
+  for (const c of findComparisons()) {
+    const v = S.stacks.map(st => C.centroid(st.img, n, c.x, c.y, 3));
+    if (v.some(x => !x)) continue;
+    for (let i = 1; i < v.length; i++) comp.push(Math.hypot(v[i].x - v[0].x, v[i].y - v[0].y) * g.scale);
+  }
+  comp.sort((x, y) => x - y);
+  const align = comp.length >= 3 ? Math.max(0.3, 1.5 * comp[comp.length >> 1]) : 0.8;      // typical repeatability; one odd star does not skew it
+  const first = seen[0], end = seen[seen.length - 1];
+  const dE = -(end.m.x - first.m.x) * g.scale, dN = (end.m.y - first.m.y) * g.scale, d = Math.hypot(dE, dN);
+  const years = Math.max((end.st.mjd - first.st.mjd) / 365.25, 0.05);
+  const fuzz = r => 8 / Math.max(4, r.m.peak / r.st.sig);                              // faint spots are located less precisely
+  const sigma = Math.hypot(align, fuzz(first), fuzz(end));
+  const span = `${C.fmtMonth(first.st.mjd)} and ${C.fmtMonth(end.st.mjd)}`;
+  const yard = comp.length >= 3 ? `Ordinary stars in the same images stay put to within ${align.toFixed(1)}″.` : '';
+
+  if (tracked && catPm >= 0.1) {
+    const m0 = first.m, p0 = first.p;
+    const body = rows.map(({ st, p, m }) => {
+      const pe = -(p[0] - p0[0]), pn = p[1] - p0[1];
+      const dot = `<i style="background:${epochColor(st.mjd)}"></i>${C.fmtMonth(st.mjd)}`;
+      if (!m) return `<tr><td>${dot}</td><td colspan="3">not detected</td></tr>`;
+      const me = -(m.x - m0.x), mn = m.y - m0.y;
+      return `<tr><td>${dot}</td><td>${as(Math.hypot(me, mn))}″</td><td>${as(Math.hypot(pe, pn))}″</td><td>${as(Math.hypot(me - pe, mn - pn))}″</td></tr>`;
+    }).join('');
+    el.innerHTML = `<table class="t"><thead><tr><th>${S.head?.split ? 'Month' : 'Visit'}</th><th>Measured</th><th>Predicted</th><th>Off by</th></tr></thead><tbody>${body}</tbody></table>
+      <p class="hint verdict"><b>Measured in these D${S.det} images: ${(d / years).toFixed(1)}″ per year towards the ${compass(dE, dN)}.</b> The catalogue says ${catPm.toFixed(1)}″ per year towards the ${compass(S.track.pmra, S.track.pmdec)}. ${yard} One SPHEREx pixel is 6.15″.</p>`;
+    return;
+  }
+  if (d > Math.max(3 * sigma, 1.5)) {
+    const cat = S.info?.pmra != null && !tracked ? ` SIMBAD lists ${(Math.hypot(S.info.pmra, S.info.pmdec) / 1000).toFixed(2)}″ per year for the object catalogued here.` : ' Check the tools above: if no catalogue lists a fast mover here, it deserves a closer look.';
+    el.innerHTML = `<p class="hint verdict"><b>This spot moved.</b> ${d.toFixed(1)}″ towards the ${compass(dE, dN)} between ${span} in D${S.det}: about ${(d / years).toFixed(1)}″ per year. ${yard}${cat}</p>`;
+    return;
+  }
+  el.innerHTML = `<p class="hint verdict"><b>No motion detected.</b> Between ${span} its position in D${S.det} is the same to within ${Math.max(d, 0.1).toFixed(1)}″. ${yard} Anything slower than about ${(Math.max(3 * sigma, 1.5) / years).toFixed(1)}″ per year would not show here (one SPHEREx pixel is 6.15″).</p>`;
 }
 function renderModes() {
   for (const b of $('modes').children) b.setAttribute('aria-pressed', b.dataset.mode === S.mode);
@@ -1109,24 +1152,98 @@ cv.addEventListener('dblclick', e => { if (S.grid) zoomAt(e.offsetX, e.offsetY, 
 function pick(X, Y) {
   const [gx, gy] = c2g(X, Y), it = S.seq[S.idx];
   // Clicking on the tracked target's predicted spot re-attaches the moving aperture.
-  if (S.track && it) { const t = trackPos(it.mjd); if (Math.hypot(t[0] - gx, t[1] - gy) < 3) { S.sel = { follow: true }; paint(); refreshPlots(); return; } }
+  if (S.track && it) { const t = trackPos(it.mjd); if (Math.hypot(t[0] - gx, t[1] - gy) < 3) { S.sel = { follow: true }; paint(); renderMotion(); refreshPlots(); return; } }
   const img = it && it.img ? it.img : S.deep;
   const hit = img && C.centroid(img, S.grid.n, gx, gy, 2.5);
   S.sel = hit ? { x: hit.x, y: hit.y } : { x: gx, y: gy };
-  paint(); renderMeta(); refreshPlots();
+  paint(); renderMeta(); renderMotion(); refreshPlots();
 }
 
+// ------------------------------------------------------------ share and export
+const slugOf = () => (S.target?.label || S.info?.name || `${S.ra.toFixed(4)}_${S.dec.toFixed(4)}`).replace(/[^A-Za-z0-9+.-]+/g, '_').replace(/^_|_$/g, '');
+let exportTimer = 0;
+function exportNote(text) {
+  const el = $('exportnote'); el.textContent = text;
+  clearTimeout(exportTimer); if (text) exportTimer = setTimeout(() => { el.textContent = ''; }, 5000);
+}
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+$('copylink').onclick = async () => {
+  try { await navigator.clipboard.writeText(location.href); exportNote('Link copied. It reopens exactly this view.'); }
+  catch { exportNote(location.href); }
+};
+$('savepng').onclick = () => {
+  if (!S.seq.length) return exportNote('Nothing to save yet.');
+  cv.toBlob(b => { if (b) { download(b, `chronosphere_${slugOf()}_D${S.det}_${S.mode}.png`); exportNote('Image saved.'); } }, 'image/png');
+};
+$('savecsv').onclick = () => {
+  const pts = S.pts || [];
+  if (!pts.length) return exportNote('No measurements yet: click a star in the image.');
+  const relative = S.haloDets?.length > 0 && !S.haloAnchored, q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const head = ['date_utc', 'mjd', 'detector', 'wavelength_um', relative ? 'relative_brightness' : 'flux_mJy', relative ? 'relative_error' : 'flux_error_mJy', 'method', 'release', 'exposure', 'source_file'];
+  const rows = [...pts].sort((a, b) => a.mjd - b.mjd).map(p => [C.fmtDate(p.mjd, true).replace(' UTC', ''), p.mjd.toFixed(5), p.det, p.lam.toFixed(4),
+    p.flux.toPrecision(5), p.err.toPrecision(3), p.halo ? (relative ? 'halo (relative)' : 'halo joined to neighbouring detector (approximate)') : 'aperture 9.2 arcsec',
+    q(p.frame.coll), q(p.frame.id), q(p.frame.url)].join(','));
+  // Say which spot was measured: the object itself, or another star the user circled in its field.
+  const own = !!S.sel?.follow || !S.grid || (S.sel && Math.hypot(S.sel.x - (S.grid.n - 1) / 2, S.sel.y - (S.grid.n - 1) / 2) < 3);
+  const [sra, sdec] = own ? [S.ra, S.dec] : C.gridToSky(S.grid, S.sel.x, S.sel.y);
+  const what = own ? `${slugOf()}${S.sel?.follow ? ', following its catalogued motion' : ''}` : `a spot in the field of ${slugOf()}`;
+  const pos = `# Chronosphere: ${what}. RA ${sra.toFixed(6)} Dec ${sdec.toFixed(6)} (ICRS). SPHEREx level-2 exposures from NASA/IPAC IRSA.\n# ${location.href}\n`;
+  const name = own ? slugOf() : `${sra.toFixed(5)}_${sdec >= 0 ? '+' : ''}${sdec.toFixed(5)}`;
+  download(new Blob([pos + head.join(',') + '\n' + rows.join('\n') + '\n'], { type: 'text/csv' }), `chronosphere_${name}_measurements.csv`);
+  exportNote(`${pts.length} measurements saved.`);
+};
+const canRecord = !!(window.MediaRecorder && cv.captureStream);
+if (!canRecord) $('savevideo').hidden = true;
+$('savevideo').onclick = async () => {
+  if (S.seq.length < 2) return exportNote('There is only one image here: nothing to animate.');
+  const type = ['video/webm;codecs=vp9', 'video/webm', 'video/mp4'].find(t => MediaRecorder.isTypeSupported(t));
+  if (!type) return exportNote('This browser cannot record video.');
+  S.wantPlay = false; stop();
+  const stream = cv.captureStream(30), rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 6e6 }), chunks = [];
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  const finished = new Promise(r => { rec.onstop = r; });
+  const hold = Math.max(250, 1000 / S.fps), loops = S.seq.length <= 4 ? 3 : 1;
+  exportNote('Recording…');
+  S.idx = 0; show(); rec.start();
+  for (let k = 0; k < loops * S.seq.length; k++) { S.idx = k % S.seq.length; show(); await nap(hold); }
+  rec.stop(); await finished; stream.getTracks().forEach(t => t.stop());
+  download(new Blob(chunks, { type }), `chronosphere_${slugOf()}_D${S.det}_${S.mode}.${type.includes('mp4') ? 'mp4' : 'webm'}`);
+  exportNote('Video saved.');
+};
+
 // ------------------------------------------------------------ map controls
-let sweepTimer = 0;
+let sweeping = false, sweepTok = 0;
+// The colours the guided tour steps through: three per detector, enough to tell the story and few enough to keep offline.
+const TOUR_FRAMES = [2, 8, 14, 20, 25, 31, 37, 43, 48, 54, 60, 66, 71, 77, 83, 89, 95, 100];
+const nap = ms => new Promise(r => setTimeout(r, ms));
+/** Fetch map tiles ahead of time. They land in this device's storage, where the map then finds them. */
+const warm = urls => Promise.all(urls.map(u => fetch(u, { mode: 'cors' }).then(r => r.arrayBuffer()).catch(() => null)));
 function setWave(z) {
   z = Sky.setSlice(z);
   $('wave').value = z;
   $('wavelabel').textContent = `${Sky.waves()[z].toFixed(2)} µm`;
 }
-function sweep(on) {
-  clearInterval(sweepTimer); sweepTimer = 0;
+/** Step the map through its colours. Each step waits for its tiles, so the sky changes as a whole. */
+async function sweep(on, frames = null) {
+  sweeping = on; const my = ++sweepTok;
   $('waveplay').textContent = on ? '❚❚' : '▶';
-  if (on) sweepTimer = setInterval(() => setWave((Sky.currentSlice() + 1) % Sky.waves().length), 450);
+  if (!on) return;
+  const list = frames || Sky.waves().map((_, i) => i);
+  let i = list.findIndex(z => z >= Sky.currentSlice());
+  if (i < 0) i = list.length - 1;
+  while (sweeping && my === sweepTok) {
+    i = (i + 1) % list.length;
+    const t0 = performance.now();
+    await Promise.race([warm(Sky.tiles({ z: list[i] })), nap(2500)]);
+    await nap(Math.max(0, (frames ? 850 : 420) - (performance.now() - t0)));
+    if (!sweeping || my !== sweepTok) break;
+    setWave(list[i]);
+  }
 }
 function setLayer(id) {
   Sky.setLayer(id); $('layer').value = id;
@@ -1140,7 +1257,7 @@ const tourApi = {
   closePanel: () => { if ($('app').dataset.panel === 'open') closePanel(); },
   layer: id => { if (Sky.isReady() && Sky.currentLayer() !== id) setLayer(id); },
   slice: z => { if (Sky.isReady()) setWave(z); },
-  sweep: on => { if (Sky.isReady()) sweep(on); },
+  sweep: on => { if (Sky.isReady()) sweep(on, TOUR_FRAMES); },
   fly: (ra, dec, fov) => { if (Sky.isReady()) Sky.flyTo(ra, dec, Sky.fitFov(fov)); },
   open: t => openTarget(t),
 };
@@ -1198,30 +1315,69 @@ new ResizeObserver(setTopH).observe($('top')); setTopH();
 // A library request that fails while offline must not surface as an error.
 window.addEventListener('unhandledrejection', e => { if (/Failed to fetch|NetworkError|Load failed/i.test(String(e.reason?.message || e.reason))) e.preventDefault(); });
 $('wave').oninput = e => { sweep(false); setWave(+e.target.value); };
-$('waveplay').onclick = () => sweep(!sweepTimer);
+$('waveplay').onclick = () => sweep(!sweeping);
 $('layer').onchange = e => setLayer(e.target.value);
 
 // ------------------------------------------------------------ offline
-/** Save everything the guided tour needs on this device, quietly, one file at a time. */
-async function saveTourOffline() {
-  if (!('caches' in window) || navigator.connection?.saveData) return;
+/** Sky-map tiles the guided tour shows: the wide views, the colour sweep and each of the five stops. */
+function tourTiles() {
+  if (!Sky.isReady()) return [];
+  const W = window.innerWidth, H = window.innerHeight - $('top').offsetHeight, narrow = isNarrow();
+  const wide = narrow ? [W, Math.max(200, H - 300)] : [W, H];                                    // no object open
+  const open = narrow ? [W, Math.max(170, Math.round(window.innerHeight * 0.26))] : [W - Math.min(0.62 * W, 1000), Math.max(240, H - 290)];
+  const urls = new Set();
+  const add = (ra, dec, fov, [w, h], z = 25) => Sky.tiles({ ra, dec, fov: Sky.fitFov(fov, w, h), z, w, h }).forEach(u => urls.add(u));
+  for (const size of [wide, [W, H]]) {
+    for (const z of TOUR_FRAMES) add(266.4, -29.0, 110, size, z);
+    add(83.82, -5.39, 60, size);
+  }
+  for (const t of S.targets) { add(t.ra, t.dec, Math.max(3, t.size / 5), open); add(t.ra, t.dec, Math.max(3, t.size / 5), wide); }
+  return [...urls];
+}
+/**
+ * Keep the guided tour on this device so that it runs without a connection.
+ * lite: what each stop shows first. full: every detector of every stop, and the tour's sky maps.
+ */
+async function saveTourOffline(full) {
+  if (!('caches' in window)) return;
+  const el = $('offline'), say = html => { if (el) el.innerHTML = html; };
   const files = [];
   for (const t of S.targets) {
     const d = t.view?.det || 2;
     files.push(`data/${t.slug}/d${d}.ndjson`, `data/${t.slug}/gaia.json`);       // what each tour step shows first
     if (t.wikiCard?.thumb) files.push(t.wikiCard.thumb);
   }
-  for (const t of S.targets) for (let d = 1; d <= 6; d++) if (d !== (t.view?.det || 2)) files.push(`data/${t.slug}/d${d}.ndjson`);
-  let done = 0;
-  const el = $('offline');
-  for (const f of files) {
-    try { const r = await fetch(f, { priority: 'low' }); if (r.ok) await r.arrayBuffer(); } catch { /* try again next visit */ }
-    done++;
-    if (el) el.textContent = done < files.length ? `Saving the tour for offline use: ${Math.round(done / files.length * 100)}%` : 'The guided tour is saved on this device and works offline.';
+  if (full) {
+    for (const t of S.targets) for (let d = 1; d <= 6; d++) if (d !== (t.view?.det || 2)) files.push(`data/${t.slug}/d${d}.ndjson`);
+    for (const t of S.targets) files.push(`data/${t.slug}/catwise.json`);
+    files.push(...tourTiles());
   }
+  let done = 0, failed = 0, next = 0;
+  const worker = async () => {
+    while (next < files.length) {
+      const f = files[next++];
+      try { const r = await fetch(f, { mode: 'cors', priority: 'low' }); if (r.ok) await r.arrayBuffer(); else failed++; } catch { failed++; }
+      done++;
+      if (done % 3 === 0 || done === files.length) say(`Saving the tour for offline use: ${Math.round(done / files.length * 100)}%`);
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  const ok = failed <= files.length * 0.02;
+  try { localStorage.setItem('chrono-offline', ok ? (full ? 'full' : 'lite') : ''); } catch { /* private mode */ }
+  if (full && ok) say('The guided tour is saved on this device and works offline.');
+  else if (full) say(`Some of the tour could not be saved (${failed} of ${files.length} files). <button type="button" id="savetour">Try again</button>`);
+  else say('The tour objects are saved on this device. <button type="button" id="savetour">Save the whole tour for offline use (about 90 MB)</button>');
+  const btn = $('savetour'); if (btn) btn.onclick = () => saveTourOffline(true);
+}
+function startOfflineSave() {
+  const c = navigator.connection;
+  if (c?.saveData) return;
+  // Laptops and desktops on a normal connection take everything; phones take the light part and offer the rest.
+  const roomy = !isNarrow() && (!c || !c.effectiveType || c.effectiveType === '4g');
+  saveTourOffline(roomy);
 }
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(() => setTimeout(saveTourOffline, 2500)).catch(() => {});
+  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(() => setTimeout(startOfflineSave, 3000)).catch(() => {});
 }
 
 // ------------------------------------------------------------ start

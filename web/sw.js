@@ -1,14 +1,24 @@
 // Offline support. After one visit the page, the tour objects and every sky-map tile already seen
 // are served from this device, so a poor connection does not stop a demonstration.
 
-const SHELL = 'chrono-shell-v4', DATA = 'chrono-data-v1', TILES = 'chrono-tiles-v1', LOOKUP = 'chrono-lookup-v1';
+const SHELL = 'chrono-shell-v6', DATA = 'chrono-data-v1', TILES = 'chrono-tiles-v1', LOOKUP = 'chrono-lookup-v1';
 const KEEP = new Set([SHELL, DATA, TILES, LOOKUP, 'chrono-live-v1']);
 const SHELL_FILES = ['./', 'index.html', 'css/style.css', 'css/fonts.css', 'config.js', 'vendor/aladin.js', 'data/targets.json',
-  'js/app.js', 'js/core.js', 'js/plot.js', 'js/sky.js', 'js/info.js', 'js/tour.js', 'js/pages.js', 'js/archive.js',
+  'js/app.js', 'js/core.js', 'js/plot.js', 'js/sky.js', 'js/info.js', 'js/tour.js', 'js/pages.js', 'js/archive.js', 'js/healpix.js',
   'fonts/IBMPlexMono-400-latin-ext.woff2', 'fonts/IBMPlexMono-400-latin.woff2', 'fonts/IBMPlexMono-500-latin-ext.woff2', 'fonts/IBMPlexMono-500-latin.woff2', 'fonts/IBMPlexSans-400-latin-ext.woff2', 'fonts/IBMPlexSans-400-latin.woff2', 'fonts/IBMPlexSans-500-latin-ext.woff2', 'fonts/IBMPlexSans-500-latin.woff2', 'fonts/IBMPlexSans-600-latin-ext.woff2', 'fonts/IBMPlexSans-600-latin.woff2', 'fonts/InstrumentSerif-400-latin-ext.woff2', 'fonts/InstrumentSerif-400-latin.woff2', 'fonts/InstrumentSerif-400i-latin-ext.woff2', 'fonts/InstrumentSerif-400i-latin.woff2'];
 
+// The sky maps describe themselves in a small "properties" file that the map asks for before anything
+// else, on the very first visit, before this worker is in charge. Fetch them here so the map can start
+// without a connection, and quickly with one.
+const HIPS = 'https://irsa.ipac.caltech.edu/data/hips';
+const MAPS = [`${HIPS}/SPHEREx/spherex_allsky_cube`, `${HIPS}/CDS/2MASS/Color`, `${HIPS}/CDS/AllWISE/RGB-W4-W2-W1`, `${HIPS}/CDS/DSS2/color`];
+const MAP_FILES = [...MAPS.map(m => `${m}/properties`), `${MAPS[0]}/Moc.fits`];
+
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(SHELL).then(c => Promise.all(SHELL_FILES.map(f => c.add(f).catch(() => null)))).then(() => self.skipWaiting()));
+  e.waitUntil(Promise.all([
+    caches.open(SHELL).then(c => Promise.all(SHELL_FILES.map(f => c.add(f).catch(() => null)))),
+    caches.open(LOOKUP).then(c => Promise.all(MAP_FILES.map(f => c.add(f).catch(() => null)))),
+  ]).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('chrono-') && !KEEP.has(k)).map(k => caches.delete(k))))
@@ -17,11 +27,27 @@ self.addEventListener('activate', e => {
 
 const storable = r => r && r.ok && r.status === 200 && (r.type === 'basic' || r.type === 'cors');
 
+/** A slow or failing archive should not leave holes in the map: give up after a while and try once more. */
+async function patientFetch(req, tries, timeoutMs) {
+  let last;
+  for (let i = 0; i < tries; i++) {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), timeoutMs);
+    try {
+      const r = await fetch(req, { signal: ctl.signal });
+      clearTimeout(timer);
+      if (r.status < 500) return r;
+      last = r;
+    } catch (err) { clearTimeout(timer); last = err; if (!self.navigator.onLine) break; }
+  }
+  if (last instanceof Response) return last;
+  throw last;
+}
+
 async function cacheFirst(req, name, limit) {
   const hit = await caches.match(req, { ignoreVary: true });          // any of our caches
   if (hit) return hit;
   const c = await caches.open(name);
-  const r = await fetch(req);
+  const r = limit ? await patientFetch(req, 2, 15000) : await fetch(req);
   if (storable(r)) {
     c.put(req, r.clone());
     if (limit && Math.random() < 0.02) c.keys().then(ks => ks.slice(0, Math.max(0, ks.length - limit)).forEach(k => c.delete(k)));
@@ -43,6 +69,24 @@ async function networkFirst(req, name, timeoutMs) {
   }
 }
 
+/** Answer from storage straight away and refresh the stored copy in the background.
+ *  When a sky map announces a new release, its stored tiles are dropped so the new ones are fetched. */
+async function freshLater(req) {
+  const c = await caches.open(LOOKUP), hit = await c.match(req.url);
+  const refresh = fetch(req.url).then(async r => {
+    if (!storable(r)) return r;
+    if (hit && req.url.endsWith('/properties')) {
+      const date = t => (t.match(/hips_release_date\s*=\s*(\S+)/) || [])[1];
+      const [was, now] = await Promise.all([hit.clone().text(), r.clone().text()]);
+      if (date(was) && date(now) && date(was) !== date(now)) await caches.delete(TILES);
+    }
+    await c.put(req.url, r.clone());
+    return r;
+  });
+  if (hit) { refresh.catch(() => null); return hit.clone(); }
+  return refresh;
+}
+
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || req.headers.has('range')) return;        // partial reads of FITS files go straight to the network
@@ -54,7 +98,8 @@ self.addEventListener('fetch', e => {
     return;
   }
   if (url.hostname === 'irsa.ipac.caltech.edu' && url.pathname.startsWith('/data/hips/')) {
-    e.respondWith(cacheFirst(req, TILES, 4000));                        // sky-map tiles never change
+    if (/\/(properties|Moc\.fits)$/.test(url.pathname)) e.respondWith(freshLater(req));     // answer at once, refresh behind the scenes
+    else e.respondWith(cacheFirst(req, TILES, 4000));                   // tiles of one release never change
     return;
   }
   if (/simbad|wikipedia\.org|wikimedia\.org|cds\.unistra\.fr|cfa\.harvard\.edu/.test(url.hostname)) {

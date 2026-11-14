@@ -1,6 +1,7 @@
 // The explorable sky: Aladin Lite showing the SPHEREx all-sky cube served by NASA/IPAC (IRSA).
 
 import A from '../vendor/aladin.js';
+import { tileUrl, tilesInView } from './healpix.js';
 
 const IRSA_HIPS = 'https://irsa.ipac.caltech.edu/data/hips';
 export const LAYERS = [
@@ -27,11 +28,19 @@ export const currentSlice = () => slice;
 export const currentLayer = () => layerId;
 
 /** On a tall, narrow screen a very wide view would show the edge of the celestial sphere: narrow it. */
-export function fitFov(fov) {
-  if (!host || fov < 30) return fov;
+export function fitFov(fov, w = host?.clientWidth, h = host?.clientHeight) {
+  if (!w || !h || fov < 30) return fov;
   // The sky is drawn as a globe seen from far away; keep the corners of the view inside its disc.
-  const r = host.clientHeight / Math.max(1, host.clientWidth);
-  return Math.min(fov, 2 * Math.asin(0.8 / Math.hypot(1, r)) * 180 / Math.PI);
+  return Math.min(fov, 2 * Math.asin(0.8 / Math.hypot(1, h / w)) * 180 / Math.PI);
+}
+/**
+ * Addresses of the SPHEREx map tiles that a view needs: centre and width in degrees, frame of the
+ * cube, size of the map in pixels. With no arguments: what is on screen now.
+ */
+export function tiles({ ra, dec, fov, z = slice, w, h } = {}) {
+  if (!host || BLANK.has(z)) return [];
+  if (ra === undefined) { if (!al) return []; [ra, dec] = al.getRaDec(); fov = al.getFov()[0]; }
+  return tilesInView(ra, dec, fov, w || host.clientWidth, h || host.clientHeight, 5).map(([o, p]) => tileUrl(LAYERS[0].url, o, p, z));
 }
 const tellFov = () => { if (al && fovCb) { try { fovCb(al.getFov()[0]); } catch { /* cosmetic */ } } };
 

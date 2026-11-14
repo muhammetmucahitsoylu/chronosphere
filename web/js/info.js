@@ -187,7 +187,57 @@ export function gloss(otype) {
   return '';
 }
 
-// ---------------------------------------------------------------- overlay without a server
+// ---------------------------------------------------------------- catalogues for the overlays (VizieR)
+const VIZIER = ['https://vizier.cds.unistra.fr/viz-bin/asu-tsv', 'https://vizier.cfa.harvard.edu/viz-bin/asu-tsv'];
+let vizBase = null;
+
+/** Rows of a VizieR catalogue around a position, brightest first. Tries CDS, then its mirror at Harvard. */
+async function vizier(source, ra, dec, radiusArcmin, cols, sortBy, max = 600) {
+  const query = `?-source=${encodeURIComponent(source)}&-c=${ra.toFixed(6)}${dec >= 0 ? '%2B' : ''}${dec.toFixed(6)}&-c.rm=${radiusArcmin.toFixed(2)}`
+    + `&-out=${cols.join(',')}&-out.max=${max}&-sort=${sortBy}`;
+  const order = vizBase ? [vizBase, ...VIZIER.filter(u => u !== vizBase)] : VIZIER;
+  let last = new Error('VizieR unreachable');
+  for (const base of order) {
+    try {
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 12000);
+      const r = await fetch(base + query, { signal: ctl.signal });
+      clearTimeout(timer);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const lines = (await r.text()).split('\n'), bar = lines.findIndex(l => /^-+(\t-+)*\s*$/.test(l));
+      vizBase = base;
+      if (bar < 2) return [];                                  // answered, but nothing there
+      const names = lines[bar - 2].split('\t').map(s => s.trim()), rows = [];
+      for (let i = bar + 1; i < lines.length && lines[i].trim(); i++) {
+        const v = lines[i].split('\t');
+        rows.push(Object.fromEntries(names.map((k, j) => [k, v[j] === undefined || v[j].trim() === '' ? null : +v[j]])));
+      }
+      return rows;
+    } catch (e) { last = e; }
+  }
+  throw last;
+}
+
+/** Gaia DR3 stars with their proper motions (positions at 2016.0). */
+export async function gaiaStars(ra, dec, radiusArcmin) {
+  const rows = await vizier('I/355/gaiadr3', ra, dec, radiusArcmin, ['RA_ICRS', 'DE_ICRS', 'pmRA', 'pmDE', 'Gmag', 'Plx'], 'Gmag');
+  return { cat: 'gaia', epoch: 2016.0, sources: rows.filter(r => r.RA_ICRS != null).map(r => ({ ra: r.RA_ICRS, dec: r.DE_ICRS, pmra: r.pmRA, pmdec: r.pmDE, plx: r.Plx, g: r.Gmag ?? 21 })) };
+}
+
+/** Infrared sources from WISE: CatWISE2020 where it can be reached, AllWISE otherwise. */
+export async function wiseSources(ra, dec, radiusArcmin) {
+  try {
+    const rows = await vizier('II/365/catwise', ra, dec, radiusArcmin, ['RA_ICRS', 'DE_ICRS', 'W1mproPM', 'W2mproPM', 'pmRA', 'pmDE'], 'W2mproPM');
+    if (rows.length) {
+      return { cat: 'CatWISE2020', epoch: 2015.4, sources: rows.filter(r => r.RA_ICRS != null).map(r => ({ ra: r.RA_ICRS, dec: r.DE_ICRS,
+        pmra: r.pmRA == null ? 0 : r.pmRA * 1000, pmdec: r.pmDE == null ? 0 : r.pmDE * 1000, w1: r.W1mproPM, w2: r.W2mproPM ?? 99 })) };
+    }
+  } catch { /* fall through to AllWISE */ }
+  const rows = await vizier('II/328/allwise', ra, dec, radiusArcmin, ['RAJ2000', 'DEJ2000', 'W1mag', 'W2mag'], 'W2mag');
+  // AllWISE motions mix real motion with parallax, so the sources are drawn where they were seen (2010.6).
+  return { cat: 'AllWISE', epoch: 2010.6, sources: rows.filter(r => r.RAJ2000 != null).map(r => ({ ra: r.RAJ2000, dec: r.DEJ2000, pmra: 0, pmdec: 0, w1: r.W1mag, w2: r.W2mag ?? 99 })) };
+}
+
+// ---------------------------------------------------------------- overlay when VizieR cannot be reached
 /** Catalogued stars with measured motion in a field (SIMBAD), shaped like the Gaia overlay. */
 export async function fieldStars(ra, dec, radiusArcmin) {
   const rows = await adql(`SELECT TOP 300 b.main_id, b.ra, b.dec, b.pmra, b.pmdec, b.plx_value, f.V, f.G FROM basic AS b LEFT JOIN allfluxes AS f ON f.oidref = b.oid `
