@@ -87,6 +87,7 @@ select option { background: var(--surface-2); color: var(--ink); }
 .blink figcaption { margin-top: 9px; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
 .blink figcaption b { display: block; font: 400 20px/1.15 var(--serif); color: var(--ink); margin-bottom: 2px; }
 @container stage (max-height: 340px) { .blink figcaption span { display: none; } .blink { width: min(250px, 64cqw, calc(100cqh - 84px)); } }      /* a short map: the dates on the pictures say enough */
+@container stage (max-height: 215px) { .zoom { display: none; } }      /* a very short map (small phone, object open): no room above the colour bar; pinch still zooms */
 
 /* wavelength ruler under the map */
 .ruler { left: 14px; right: 14px; bottom: 14px; display: flex; gap: 12px; align-items: center; background: #0a0908d9; border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px 6px 8px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
@@ -112,7 +113,10 @@ select option { background: var(--surface-2); color: var(--ink); }
 .aladin-location { background: #0a0908cc !important; border: 1px solid var(--line) !important; border-radius: 8px !important; left: 12px !important; top: 12px !important; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .aladin-location .aladin-location-copy, .aladin-location .aladin-tooltip-container { display: none !important; }
 .aladin-location input, .aladin-location .aladin-input { font: 12.5px var(--mono) !important; color: var(--ink-2) !important; background: none !important; border: 0 !important; }
-.aladin-logo-container { opacity: .55; transform: scale(.8); transform-origin: bottom right; right: 8px !important; bottom: 62px !important; }
+/* The map library's logo: a small credit badge in the style of the other map controls, clear of the colour bar. */
+.aladin-logo-container { right: 14px !important; bottom: 76px !important; padding: 5px 7px 4px; background: #0a0908cc; border: 1px solid var(--line); border-radius: 8px; opacity: .85; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.aladin-logo-container .aladin-logo-large { width: 58px !important; }
+.aladin-logo-container .aladin-logo-small { width: 20px; }
 
 /* ---------- guided tour ---------- */
 /* Docked under the map while an object is open, so it never covers what it talks about. */
@@ -161,14 +165,17 @@ select option { background: var(--surface-2); color: var(--ink); }
 .links a::after { content: " ↗"; color: var(--ink-3); }
 .links a:hover { color: var(--ember); border-color: var(--ember); }
 
-.cols { display: grid; gap: 18px 26px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "look" "viewer" "stack"; align-items: start; }
-.cols.nolook { grid-template-areas: "viewer" "stack"; }
+.cols { display: grid; gap: 18px 26px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "look" "viewer" "stack" "more"; align-items: start; }
+.cols.nolook { grid-template-areas: "viewer" "stack" "more"; }
 .lead { grid-area: look; min-width: 0; display: grid; gap: 14px; }          /* what to look for, and what the measurements say */
 .cols.nolook .lead { display: none; }
 .lookbox { min-width: 0; }
 .lookbox:empty { display: none; }
 .viewer { grid-area: viewer; }
 .stack { grid-area: stack; display: grid; gap: 22px; min-width: 0; }
+/* The encyclopedia card and the small print: last in a single column, under the images when there are two. */
+.left { display: contents; }
+.more { grid-area: more; display: grid; gap: 18px; min-width: 0; }
 .look { border-left: 2px solid var(--ember); padding: 1px 0 1px 14px; margin: 0; font-size: 14.5px; line-height: 1.45; color: #e2dbcf; max-width: 70ch; }
 .look b { font: 500 11px var(--mono); letter-spacing: 1.2px; text-transform: uppercase; color: var(--ember); display: block; margin-bottom: 2px; }
 .block { min-width: 0; }
@@ -200,6 +207,7 @@ details[open] > summary { margin-bottom: 10px; }
 .wikibox h2 { margin: 0 0 8px; font: 500 10.5px var(--mono); letter-spacing: 1px; text-transform: uppercase; color: var(--ink-3); }
 .wiki { display: flex; gap: 14px; align-items: flex-start; }
 .wiki img { width: 96px; height: 96px; object-fit: cover; border-radius: 6px; flex: none; background: #000; }
+.wiki img.chart { object-fit: contain; background: #fff; }
 .wiki p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
 .wiki small { display: block; margin-top: 6px; font-size: 12.5px; }
 .others { font-size: 12.5px; color: var(--ink-3); margin: 10px 0 0; }
@@ -314,6 +322,8 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
 @container (min-width: 640px) {
   .cols { grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr); grid-template-areas: "viewer look" "viewer stack"; grid-template-rows: auto 1fr; }
   .cols.nolook { grid-template-areas: "viewer stack"; grid-template-rows: auto; }
+  .left { grid-area: viewer; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .left > * { min-width: 0; }
 }
 
 /* ---------- short desktop screens (projectors, small laptops): keep the images and their controls in view ---------- */
@@ -357,7 +367,7 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
   .layerpick { top: 10px; right: 10px; }
   .zoom { top: 52px; right: 10px; }
   .aladin-location { display: none !important; }
-  .aladin-logo-container { bottom: 66px !important; }
+  .aladin-logo-container { right: auto !important; left: 10px !important; bottom: 70px !important; }          /* the zoom buttons own the right edge of a short map */
   .hero { padding: 70px 18px 84px; max-width: none; right: 0; background: linear-gradient(0deg, #0a0908f5 0%, #0a0908d8 55%, transparent 100%); }
   .hero h1 { font-size: clamp(38px, 11vw, 56px); }
   .eyebrow { font-size: 11px; letter-spacing: 1.1px; }
@@ -419,6 +429,6 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
 /* ?embed=1 : SPHEREx viewer only, for iframes on other sites */
-body.embed #copylink, body.embed .top, body.embed .mapwrap, body.embed .ohead, body.embed .credits, body.embed details.fold, body.embed .wikibox, body.embed .lookbox { display: none; }
+body.embed #copylink, body.embed .top, body.embed .mapwrap, body.embed .ohead, body.embed .credits, body.embed details.fold, body.embed .wikibox, body.embed .lookbox, body.embed .more { display: none; }
 body.embed .app { display: block; }
 body.embed .panel { display: block !important; border: 0; }

@@ -107,6 +107,7 @@
         <section id="findings" class="findings" aria-live="polite" hidden></section>
       </div>
 
+      <div class="left">
       <section class="block viewer" aria-label="SPHEREx images over time">
         <h2 class="blocktitle">Over time <small>every SPHEREx exposure of this spot</small></h2>
         <div class="stage">
@@ -168,6 +169,20 @@
         <div id="motion"></div>
         <div id="scan"></div>
       </section>
+      <div class="more">
+        <section id="wikibox" class="block wikibox" hidden></section>
+
+        <details class="block fold">
+          <summary>This image: date, wavelength, quality</summary>
+          <dl id="meta"></dl>
+        </details>
+        <details class="block fold">
+          <summary>Data releases in use</summary>
+          <div id="releases"></div>
+          <p class="hint">Releases come from the sky index, which is rebuilt from the NASA/IPAC archive on a schedule. A new release appears here without any change to this site.</p>
+        </details>
+      </div>
+      </div>
 
       <div class="stack">
         <section class="block">
@@ -185,18 +200,6 @@
           <p class="hint" id="lcnote">Each measurement in the selected detector, divided by the spot's own average spectrum at that wavelength, so colour does not pass for variability. A steady star stays near 1.</p>
           <div id="lccheck"></div>
         </section>
-
-        <section id="wikibox" class="block wikibox" hidden></section>
-
-        <details class="block fold">
-          <summary>This image: date, wavelength, quality</summary>
-          <dl id="meta"></dl>
-        </details>
-        <details class="block fold">
-          <summary>Data releases in use</summary>
-          <div id="releases"></div>
-          <p class="hint">Releases come from the sky index, which is rebuilt from the NASA/IPAC archive on a schedule. A new release appears here without any change to this site.</p>
-        </details>
       </div>
     </div>
 

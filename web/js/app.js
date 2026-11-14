@@ -1073,7 +1073,8 @@ function renderAbout() {
       `${eps.length} ${split ? 'time slice' : 'visit'}${eps.length === 1 ? '' : 's'}, ${C.fmtMonth(eps[0]?.[0] ?? 0)} to ${C.fmtMonth(eps.at(-1)?.[1] ?? 0)}`);
   }
   const w = S.wiki;
-  const thumb = w?.thumb ? `<a class="thumb" href="${esc(w.url)}" target="_blank" rel="noopener" title="Wikipedia: ${esc(w.title)}"><img src="${esc(w.thumb)}" alt="${esc(w.title)}, image from Wikipedia" loading="lazy"></a>` : '';
+  // The encyclopedia's picture sits in the header only when it is a photograph (see isPhoto).
+  const thumb = w?.thumb ? `<a class="thumb" href="${esc(w.url)}" target="_blank" rel="noopener" title="Wikipedia: ${esc(w.title)}"${photos.get(w.thumb) === true ? '' : ' hidden'}><img src="${esc(w.thumb)}" alt="${esc(w.title)}, image from Wikipedia"></a>` : '';
   const links = [...(w ? [{ label: 'Wikipedia', title: `Encyclopedia article: ${w.title}`, url: w.url }] : []), ...Info.externalLinks(S.ra, S.dec, i)]
     .map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.title)}">${l.label}</a>`).join('');
   el.innerHTML = `<div class="toprow">
@@ -1088,7 +1089,31 @@ function renderAbout() {
     if (preset && +$('fov').value === preset.size) openTarget(preset);
     else go({ ra: mv.ra, dec: mv.dec, size: +$('fov').value, track: mv, info: mv });
   };
+  if (w?.thumb && !photos.has(w.thumb)) isPhoto(w.thumb).then(() => { if (S.wiki?.thumb === w.thumb) { renderAbout(); } });
   renderLook(); renderWiki(); renderMotion();
+}
+/**
+ * Is this picture a photograph, or a chart on a white page? Many star articles lead with a
+ * constellation map or a plot; shrunk into the header those read as a blank white square, so the
+ * header shows photographs only. The article's card further down shows either kind, uncropped.
+ */
+const photos = new Map();          // picture address -> true (photograph) | false (chart, or it did not load)
+function isPhoto(url) {
+  return new Promise(done => {
+    const im = new Image(), say = v => { photos.set(url, v); done(v); };
+    im.crossOrigin = 'anonymous';
+    im.onload = () => {
+      try {
+        const c = document.createElement('canvas'); c.width = c.height = 16;
+        const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0, 16, 16);
+        const d = g.getImageData(0, 0, 16, 16).data; let paper = 0;
+        for (let k = 0; k < d.length; k += 4) if (d[k + 3] < 60 || 0.3 * d[k] + 0.59 * d[k + 1] + 0.11 * d[k + 2] > 205) paper++;
+        say(paper < 0.4 * 256);
+      } catch { say(false); }
+    };
+    im.onerror = () => say(false);
+    im.src = url;
+  });
 }
 /** Guidance for the showcase objects. The guided tour says the same thing in its own card. */
 function renderLook() {
@@ -1102,7 +1127,7 @@ function renderWiki() {
   const others = (mags.length > 1 ? `<p class="others" title="V is visible light; J (1.2 µm) and K (2.2 µm) are near-infrared">Catalogued brightness (SIMBAD): magnitude ${mags.join(', ')}. Lower numbers are brighter.</p>` : '')
     + (i?.others?.length ? `<p class="others">Also catalogued at this position: ${i.others.map(o => `${esc(o.name)} (${esc(o.type)})`).join(', ')}</p>` : '');
   el.hidden = !w && !others;
-  el.innerHTML = `${w ? `<h2>From Wikipedia</h2><div class="wiki">${w.thumb ? `<img src="${esc(w.thumb)}" alt="" loading="lazy">` : ''}<div><p>${esc(w.extract)}</p><small><a href="${esc(w.url)}" target="_blank" rel="noopener">Read the article: ${esc(w.title)}</a></small></div></div>` : ''}${others}`;
+  el.innerHTML = `${w ? `<h2>From Wikipedia</h2><div class="wiki">${w.thumb ? `<img src="${esc(w.thumb)}"${photos.get(w.thumb) === false ? ' class="chart"' : ''} alt="" loading="lazy">` : ''}<div><p>${esc(w.extract)}</p><small><a href="${esc(w.url)}" target="_blank" rel="noopener">Read the article: ${esc(w.title)}</a></small></div></div>` : ''}${others}`;
 }
 /**
  * Real motion moves the light: in the first visit it sits at the old spot, in the last visit at
