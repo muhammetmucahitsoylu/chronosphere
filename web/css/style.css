@@ -292,6 +292,7 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
 
   .app, .app[data-panel=open] { display: block; }
   .app[data-panel=closed] .mapwrap { height: calc(100vh - var(--toph, 104px)); height: calc(100dvh - var(--toph, 104px)); min-height: 400px; }
+  body.touring .app[data-panel=closed] .mapwrap { height: calc(100vh - var(--toph, 104px) - 62px); height: calc(100dvh - var(--toph, 104px) - 62px - env(safe-area-inset-bottom)); }
   .app[data-panel=open] .mapstage { flex: none; height: 34vh; height: 34dvh; min-height: 210px; }
   body.touring .app[data-panel=open] .mapstage { height: 26vh; height: 26dvh; min-height: 170px; }
   .layerpick { top: 10px; right: 10px; }
