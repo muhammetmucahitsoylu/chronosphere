@@ -112,6 +112,8 @@ export function resize() { window.dispatchEvent(new Event('resize')); }
 export function flyTo(ra, dec, targetFov = 0.6) {
   return new Promise(resolve => {
     if (!al) return resolve();
+    // People who ask their device for less motion get there in one step, without the flight.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { al.gotoRaDec(ra, dec); al.setFoV(targetFov); tellFov(); return resolve(); }
     const [cra, cdec] = al.getRaDec(), d = sepDeg(cra, cdec, ra, dec), f0 = al.getFov()[0];
     let done = false; const finish = () => { if (!done) { done = true; tellFov(); resolve(); } };
     setTimeout(finish, 6000);                                   // never hang the UI on an animation

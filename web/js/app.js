@@ -83,8 +83,8 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   if (Sky.isReady()) { Sky.mark(ra, dec, S.size, target ? target.label : info ? info.name : track?.name || ''); if (fly) { const f = Math.max(3, S.size / 5); Sky.flyTo(ra, dec, f); if (Sky.isSpherex()) warm(Sky.tiles({ ra, dec, fov: f })); } }      // fetch the destination's tiles while flying there
   loadInfo(gen);
   $('fov').value = String(S.size);
-  $('notice').hidden = true;
-  syncUrl(); renderChips(); renderAbout(); renderModes(); renderDets(); paint(); refreshPlots();
+  $('notice').hidden = true; S.failed = null;
+  syncUrl(); renderChips(); renderAbout(); renderModes(); renderDets(); show(); refreshPlots();
   setStatus('Finding the exposures that cover this spot…');
   loadCatalog(gen);
   try {
@@ -100,10 +100,18 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   } catch (e) {
     if (e.name === 'AbortError' || gen !== S.gen) return;
     console.error(e);
-    setStatus(S.target ? `Could not load data: ${e.message}` :
-      'NASA\'s archive could not be reached just now. Check the connection and try again; objects you have already opened still work offline.');
+    // Say what happened and offer to try again; a returning connection retries by itself.
+    const retry = () => go({ ra, dec, size: S.size, target, track, det: S.det, mode: S.mode, info, fly: false });
+    S.failed = retry;
+    setStatus('');
+    const el = $('notice');
+    el.innerHTML = `${S.head ? 'The connection dropped while the images were loading.' : 'NASA’s open archive could not be reached just now.'} Objects you have already opened still work offline.<br><button type="button">Try again</button>`;
+    el.hidden = false;
+    el.querySelector('button').onclick = retry;
+    refreshPlots();
   }
 }
+window.addEventListener('online', () => { if (S.failed) S.failed(); });
 
 async function loadDet(det, gen) {
   const D = S.dets[det] = { frames: [], total: 0, done: false, loading: true };
@@ -603,7 +611,7 @@ function drawPlots() {
   const ymax = fl.length ? pct(fl, 0.98) * 1.25 * u : 1, ymin = fl.length ? Math.min(0, pct(fl, 0.02)) * u : 0;
   specPlot.set(sp, {
     xlabel: 'wavelength (µm)', ylabel: relative ? 'relative brightness' : `flux (${unit})`, ylim: [ymin - (ymax - ymin) * 0.04, ymax > ymin ? ymax : ymin + 1],
-    xlim: [0.7, 5.1], empty: S.sel ? 'Measuring…' : 'Click or tap a star in the image',
+    xlim: [0.7, 5.1], empty: S.failed ? 'No images to measure' : !S.grid ? 'Waiting for the images…' : S.sel ? 'Measuring…' : 'Click or tap a star in the image',
     shade: [...(S.grid ? [{ x0: C.DET_BANDS[S.det][0], x1: C.DET_BANDS[S.det][1], color: '#ff7b3916' }] : []),
       ...(S.showBands ? C.MOLECULES.map((m, i) => ({ x0: m.band[0], x1: m.band[1], color: '#ffffff12', label: m.f, row: i % 2 })) : [])],
     tipText: p => `${p.x.toFixed(3)} µm · ${relative ? `×${p.y.toFixed(2)}` : `${p.src.halo ? '≈ ' : ''}${p.y.toFixed(p.y >= 100 ? 0 : 2)}${p.src.halo ? '' : ` ± ${p.err.toFixed(2)}`} ${unit}`} · ${C.fmtDate(p.src.mjd)} · D${p.src.det}`,
@@ -624,7 +632,7 @@ function drawPlots() {
   lcPlot.set(lc, {
     xlabel: 'date', ylabel: 'relative brightness', ylim: [lo - 0.1, hi + 0.1], hline: 1, errors: lc.length < 400,
     band: check?.steady != null ? { y0: 1 - check.steady, y1: 1 + check.steady } : null,
-    xTicks: dateTicks, empty: pts.length ? `Too faint (or saturated) in D${S.det} to measure changes` : 'Click or tap a star in the image',
+    xTicks: dateTicks, empty: pts.length ? `Too faint (or saturated) in D${S.det} to measure changes` : S.failed ? 'No images to measure' : !S.grid ? 'Waiting for the images…' : 'Click or tap a star in the image',
     tipText: p => `${C.fmtDate(p.x)} · ×${p.y.toFixed(2)} · ${p.src.lam.toFixed(2)} µm`,
     onPick: p => jumpTo(p.src),
   });
@@ -635,7 +643,7 @@ function drawPlots() {
   const haloNote = !S.haloDets?.length ? ''
     : relative ? `<b>Too bright for the camera in ${loadingMore ? 'the detectors loaded so far' : 'every detector'}.</b> The star's core is saturated, so it is measured from its faint outer glow instead (hollow points). The scale is relative${loadingMore ? ' until the other detectors arrive' : ''}; the changes over time are real. `
       : `<b>Too bright for the camera in ${S.haloDets.map(d => 'D' + d).join(', ')}.</b> There the star's core is saturated, so it is measured from its faint outer glow and each detector is scaled to join its neighbour (hollow points). The overall shape is right; the level and the fine detail are approximate. `;
-  $('specnote').innerHTML = `${haloNote}Every exposure sees the spot at a different wavelength, so stepping through time builds a spectrum (${pts.length} measurements so far). Click a point to jump to that exposure. Measured in a circle of 9″ radius, which reads roughly 10 to 15% low because some starlight falls outside it.`;
+  $('specnote').innerHTML = !pts.length ? '' : `${haloNote}Every exposure sees the spot at a different wavelength, so stepping through time builds a spectrum (${pts.length} measurements so far). Click a point to jump to that exposure. Measured in a circle of 9″ radius, which reads roughly 10 to 15% low because some starlight falls outside it.`;
 }
 /** Take out visit-to-visit brightness changes, detector by detector, so that a variable star's
  *  spectrum from different visits lines up before absorption bands are measured in it. */
@@ -923,8 +931,9 @@ function closePanel() {
 async function loadInfo(gen) {
   try {
     if (!S.info) {
-      const found = await Info.identifyFull(S.ra, S.dec, 10).catch(() => ({ best: null, moved: null }));
+      const found = await Info.identifyFull(S.ra, S.dec, 10).catch(() => null);
       if (gen !== S.gen) return;
+      if (!found) { S.infoState = 'failed'; renderAbout(); return; }          // the catalogue did not answer
       S.info = found.best; S.moved = found.moved;
       if (S.info && !S.target && Sky.isReady()) Sky.mark(S.ra, S.dec, S.size, S.info.name);      // now the marker can carry its name
     }
@@ -954,16 +963,17 @@ function fmtDistance(plx, err) {
 
 function renderAbout() {
   const t = S.target, k = S.track, i = S.info, el = $('about');
-  const name = t ? t.label : i ? i.name : k?.name ? k.name : 'Uncatalogued spot';
+  const name = t ? t.label : i ? i.name : k?.name ? k.name : S.infoState === 'failed' || S.infoState === 'loading' ? 'This spot' : 'Uncatalogued spot';
   const sp = t?.sp || i?.sptype;
   const spHtml = sp ? ` · spectral type <span class="asis">${esc(sp)}</span>` : '';
   const kind = t?.type ? `${esc(t.type)}${spHtml}` : i ? `${esc(i.type)}${spHtml}`
-    : S.infoState === 'loading' ? 'Identifying…' : S.moved ? 'The star that was here has moved on' : 'Nothing catalogued at this spot';
+    : S.infoState === 'loading' ? 'Identifying…' : S.infoState === 'failed' ? 'Not identified' : S.moved ? 'The star that was here has moved on' : 'Nothing catalogued at this spot';
   // A star that catalogues list here, at its year-2000 place, but that has moved on since.
   const mv = !t && !i ? S.moved : null, mvPm = mv ? Math.hypot(mv.pmra, mv.pmdec) / 1000 : 0;
   const gloss = t ? t.blurb : i ? Info.gloss(i.otype, i.sptype)
     : mv ? `${mv.name} was at this spot in the year 2000, which is where catalogues still list it. It moves ${mvPm.toFixed(1)}″ a year and is now ${(mv.dist / 60).toFixed(1)}′ away.`
-      : S.infoState === 'done' ? 'No catalogue lists an object exactly here. SPHEREx still has images of this patch: what do you see?' : '';
+      : S.infoState === 'failed' ? 'The catalogue that names objects could not be reached just now, so this spot is not identified.'
+        : S.infoState === 'done' ? 'No catalogue lists an object exactly here. SPHEREx still has images of this patch: what do you see?' : '';
   const facts = [];
   const fact = (label, value, small, title) => facts.push(`<div${title ? ` title="${esc(title)}"` : ''}><dt>${label}</dt><dd>${value}${small ? `<small>${small}</small>` : ''}</dd></div>`);
 
@@ -1257,18 +1267,21 @@ async function resolveName(name) {
     return r;
   };
   // The CDS name resolver and its mirror at Harvard; then SIMBAD itself, which knows exact identifiers.
+  let answered = false;                       // did any service answer at all?
   for (const base of ['https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?', 'https://vizier.cfa.harvard.edu/viz-bin/nph-sesame/-oxp/SNV?']) {
     try {
       const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 8000);
       const r = await fetch(base + encodeURIComponent(name), { signal: ctl.signal });
       clearTimeout(timer);
-      if (r.ok) { const v = parse(await r.text()); if (v) return v; }
+      if (r.ok) { answered = true; const v = parse(await r.text()); if (v) return v; }
     } catch { /* try the next one */ }
   }
   if (API) {
     try { const r = await fetch(`${API}/api/resolve?q=${encodeURIComponent(name)}`); if (r.ok) return await r.json(); } catch { /* fall through */ }
   }
-  return Info.byName(name).catch(() => null);
+  try { const v = await Info.byName(name); if (v) return v; answered = true; } catch { /* no answer */ }
+  if (!answered) throw new Error('unreachable');
+  return null;
 }
 const sepArcsec = (ra1, dec1, ra2, dec2) => Math.hypot((ra1 - ra2) * Math.cos(dec1 * Math.PI / 180), dec1 - dec2) * 3600;
 
@@ -1302,8 +1315,13 @@ async function search(text) {
   const preset = S.targets.find(t => [t.label, t.slug, t.query].some(s => { const v = s.toLowerCase().replace(/[^a-z0-9]/g, ''); return v.includes(q) || q.includes(v); }));
   if (preset && size === preset.size) return openTarget(preset);
   note(`Looking up “${text}”…`);
-  const r = await resolveName(text).catch(() => null);
-  if (!r) { note(`Could not find “${text}”. Try coordinates, for example 269.446 4.771`, 6000); return; }
+  let r = null, reached = true;
+  try { r = await resolveName(text); } catch { reached = false; }
+  if (!r) {
+    note(reached ? `No object called “${text}” was found. Check the spelling, or use coordinates, for example 269.446 4.771`
+      : 'The name services could not be reached. Coordinates still work, for example 269.446 4.771', 8000);
+    return;
+  }
   note('');
   go({ ra: r.ra, dec: r.dec, size, track: r, target: preset || null });
 }
@@ -1540,7 +1558,7 @@ const tourApi = {
   closePanel: () => { if ($('app').dataset.panel === 'open') closePanel(); },
   layer: id => { if (Sky.isReady() && Sky.currentLayer() !== id) setLayer(id); },
   slice: z => { if (Sky.isReady()) setWave(z); },
-  sweep: on => { if (Sky.isReady()) sweep(on, TOUR_FRAMES); },
+  sweep: on => { if (Sky.isReady()) sweep(on && !calmMotion(), TOUR_FRAMES); },      // no automatic sweep for people who asked for less motion
   fly: (ra, dec, fov) => { if (Sky.isReady()) { S.busyUntil = performance.now() + 9000; Sky.flyTo(ra, dec, Sky.fitFov(fov)); } },
   open: t => openTarget(t),
   // Getting the next step ready while the current one is being read: its map tiles and its first images.
@@ -1608,6 +1626,15 @@ function closeSheet() {
   sheetOpener = null;
 }
 $('sheetwrap').addEventListener('click', e => { if (e.target === $('sheetwrap')) closeSheet(); });
+// While an article is open, Tab stays inside it.
+$('sheet').addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  const items = [...$('sheet').querySelectorAll('button, a[href]')];
+  if (!items.length) return;
+  const first = items[0], last = items[items.length - 1];
+  if (e.shiftKey && (document.activeElement === first || document.activeElement === $('sheet'))) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
 document.querySelectorAll('[data-sheet]').forEach(b => { b.onclick = () => { closeMenu(); openSheet(b.dataset.sheet); }; });
 function closeMenu() { $('nav').classList.remove('open'); $('menubtn').setAttribute('aria-expanded', 'false'); }
 $('menubtn').onclick = () => { const open = $('nav').classList.toggle('open'); $('menubtn').setAttribute('aria-expanded', String(open)); };
