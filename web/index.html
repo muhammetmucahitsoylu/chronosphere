@@ -3,138 +3,163 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Chronosphere — explore the changing infrared sky with NASA SPHEREx</title>
-<meta name="description" content="Fly over the whole sky as seen by NASA SPHEREx, click anything, and watch that spot change over time. Spot moving and variable objects and build a 102-band spectrum with one click.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23090c12'/%3E%3Ccircle cx='12' cy='18' r='5' fill='%23ff5d8f'/%3E%3Ccircle cx='20' cy='13' r='5' fill='%234cc9f0' fill-opacity='.85'/%3E%3C/svg%3E">
+<title>Chronosphere — the sky is not still</title>
+<meta name="description" content="Fly over the whole sky as NASA's SPHEREx sees it, click anything, and watch that spot change over time. See what moves, what flickers, and what it is made of.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0908'/%3E%3Ccircle cx='13' cy='17' r='7' fill='none' stroke='%23f3eee6' stroke-width='2'/%3E%3Ccircle cx='19' cy='14' r='7' fill='%23ff7b39'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="./" title="Chronosphere home">
-    <b>Chrono<span>sphere</span></b>
-    <small>The changing infrared sky · NASA SPHEREx</small>
+  <a class="brand" href="./" aria-label="Chronosphere, home">
+    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><circle cx="13" cy="17" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="19" cy="14" r="8" fill="var(--ember)"/></svg>
+    <span>Chronosphere</span>
   </a>
   <form id="search" autocomplete="off" role="search">
     <label class="sr" for="q">Object name or coordinates</label>
-    <input id="q" type="text" placeholder="Search a name or coordinates: Barnard's Star, M31, 08h55m10.8s -07d14m42s">
-    <button type="submit">Go</button>
+    <input id="q" type="text" list="suggest" placeholder="Search the sky: a name, or RA and Dec">
+    <datalist id="suggest"></datalist>
+    <button type="submit" aria-label="Search">Go</button>
   </form>
-  <div class="actions">
-    <label class="sr" for="examples">Test targets</label>
-    <select id="examples" title="The five test targets of the challenge"><option value="">Examples</option></select>
-    <button id="tourbtn" type="button" class="primary" title="A two-minute walk through what this is and what it can show">Guided tour</button>
-  </div>
+  <nav class="nav" aria-label="About this site">
+    <button type="button" data-sheet="spherex">What is SPHEREx?</button>
+    <button type="button" data-sheet="how">How it works</button>
+    <button type="button" data-sheet="about">About</button>
+    <button id="tourbtn" type="button" class="cta">Guided tour</button>
+  </nav>
 </header>
 
 <div class="app" id="app" data-panel="closed">
   <section class="mapwrap" aria-label="Sky map">
     <div id="map"></div>
-    <div class="mapui top-right">
+
+    <div class="mapui layerpick">
       <label class="sr" for="layer">Sky map</label>
       <select id="layer" title="Which survey to fly over"></select>
     </div>
-    <div class="mapui bottom" id="wavebox">
-      <label for="wave"><b id="wavelabel">1.35 µm</b> <span>wavelength of the map</span></label>
-      <input id="wave" type="range" min="0" max="101" value="25" step="1" aria-label="Wavelength of the SPHEREx map">
-      <button id="waveplay" type="button" title="Sweep through all 102 wavelengths">▶</button>
+
+    <div class="hero" id="welcome">
+      <p class="eyebrow">NASA SPHEREx · 102 infrared colours · the whole sky, twice a year</p>
+      <h1>The sky is not still.</h1>
+      <p class="lede">Stars drift. Some flicker. Cold worlds hide in colours our eyes cannot see. Click anywhere on this map to watch that spot change over time, and find out what it is.</p>
+      <div class="herobtns">
+        <button type="button" class="cta" id="tourbtn2">Take the two-minute tour</button>
+        <button type="button" class="ghost" id="hidewelcome">Explore freely</button>
+      </div>
+      <p class="startwith">Or start with <span id="examples"></span></p>
     </div>
-    <div class="welcome" id="welcome">
-      <h2>The whole sky in 102 infrared colours, mapped again every six months.</h2>
-      <p>Drag to fly, scroll to zoom. <b>Click any star</b> to see what it is, how that spot has changed over time, and its spectrum.</p>
-      <div class="row"><button type="button" class="primary" id="tourbtn2">Take the guided tour</button><button type="button" id="hidewelcome">Start exploring</button></div>
+
+    <div class="mapui ruler" id="wavebox">
+      <button id="waveplay" type="button" title="Sweep through all 102 colours" aria-label="Sweep through wavelengths">▶</button>
+      <div class="rulertrack">
+        <input id="wave" type="range" min="0" max="101" value="25" step="1" aria-label="Wavelength of the map">
+        <div class="rulerticks" aria-hidden="true"><span>0.75</span><span>1.5</span><span>2</span><span>3</span><span>4</span><span>5 µm</span></div>
+      </div>
+      <output id="wavelabel" for="wave">1.35 µm</output>
     </div>
     <div id="mapnote" class="mapnote" hidden></div>
   </section>
 
-  <aside class="panel" id="panel" aria-label="Selected spot">
-    <section id="about" class="card head"></section>
+  <aside class="panel" id="panel" aria-label="Selected object">
+    <section id="about" class="dossier"></section>
 
-    <section class="card viewer" aria-label="SPHEREx over time">
-      <div class="cardhead">
-        <h2>This spot over time, in SPHEREx</h2>
-        <label class="sr" for="fov">Field of view</label>
-        <select id="fov" title="Field of view. Larger fields take longer to load.">
-          <option value="3">3′ field</option><option value="5" selected>5′ field</option><option value="10">10′ field</option>
-          <option value="20">20′ field</option><option value="40">40′ field</option>
-        </select>
-      </div>
-      <div class="stage">
-        <canvas id="sky" tabindex="0" aria-label="SPHEREx image sequence"></canvas>
-        <div id="caption" aria-live="polite"></div>
-        <div id="status" role="status"></div>
-        <div id="notice" hidden></div>
-      </div>
-      <div class="row transport">
-        <button id="prev" title="Previous (←)" aria-label="Previous image">◀</button>
-        <button id="play" class="primary" title="Play / pause (space)">▶ Play</button>
-        <button id="next" title="Next (→)" aria-label="Next image">▶</button>
-        <input id="seek" type="range" min="0" max="0" value="0" aria-label="Position in sequence">
-        <span id="count" class="mono"></span>
-        <label class="sr" for="fps">Speed</label>
-        <select id="fps" title="Playback speed">
-          <option value="1">1 / s</option><option value="2" selected>2 / s</option>
-          <option value="4">4 / s</option><option value="8">8 / s</option><option value="15">15 / s</option>
-        </select>
-      </div>
-      <div class="row" role="group" aria-label="View mode" id="modes">
-        <button data-mode="epochs" title="One stacked image per observing season. Best for spotting motion.">Seasons</button>
-        <button data-mode="frames" title="Every single exposure, in time order.">Exposures</button>
-        <button data-mode="color" title="Time shown as colour: anything that moved or changed shows up coloured.">Time as colour</button>
-        <button data-mode="diff" title="Later season minus earlier season.">Difference</button>
-        <button data-mode="bands" title="Blink through the six detectors: the same sky from 0.75 to 5 microns.">Wavelengths</button>
-        <button data-mode="deep" title="All exposures added together: the deepest image.">Deep sum</button>
-      </div>
-      <p id="explain" class="hint"></p>
-      <div class="row" role="group" aria-label="Detector (wavelength band)" id="dets"></div>
-      <div class="row tools">
-        <label>Brightness <input id="white" type="range" min="-1.5" max="1.5" step="0.05" value="0"></label>
-        <label><input id="invert" type="checkbox"> Negative</label>
-        <label><input id="smooth" type="checkbox"> Smooth</label>
-        <label title="Gaia DR3 stars at their position on the date shown. Fast movers get an arrow."><input id="gaia" type="checkbox" checked> Gaia</label>
-        <label title="CatWISE2020 infrared sources (squares)"><input id="wise" type="checkbox"> WISE</label>
-        <label title="Pixels the pipeline masked: saturated, bad or missing"><input id="mask" type="checkbox"> Masked pixels</label>
-        <button id="resetview" title="Reset zoom">Reset zoom</button>
-      </div>
-      <p id="readout" class="mono hint">Scroll or pinch to zoom, drag to pan, click a star to measure it.</p>
-      <div id="motion"></div>
-    </section>
+    <div class="cols">
+      <section class="block viewer" aria-label="SPHEREx images over time">
+        <h2 class="blocktitle">Over time <small>every SPHEREx exposure of this spot</small></h2>
+        <div class="stage">
+          <canvas id="sky" tabindex="0" aria-label="SPHEREx image sequence"></canvas>
+          <div id="caption" aria-live="polite"></div>
+          <div id="status" role="status"></div>
+          <div id="notice" hidden></div>
+        </div>
+        <div class="transport">
+          <button id="prev" title="Previous (←)" aria-label="Previous image">‹</button>
+          <button id="play" class="playbtn" title="Play / pause (space)">▶ Play</button>
+          <button id="next" title="Next (→)" aria-label="Next image">›</button>
+          <input id="seek" type="range" min="0" max="0" value="0" aria-label="Position in sequence">
+          <span id="count" class="mono"></span>
+          <label class="sr" for="fps">Speed</label>
+          <select id="fps" title="Playback speed">
+            <option value="1">1/s</option><option value="2" selected>2/s</option>
+            <option value="4">4/s</option><option value="8">8/s</option><option value="15">15/s</option>
+          </select>
+        </div>
+        <div class="seg" role="group" aria-label="How to compare" id="modes">
+          <button data-mode="epochs" title="One stacked image per observing season. Best for spotting motion.">Seasons</button>
+          <button data-mode="frames" title="Every single exposure, in time order.">Exposures</button>
+          <button data-mode="color" title="Time shown as colour: anything that moved or changed shows up coloured.">Time as colour</button>
+          <button data-mode="diff" title="Later season minus earlier season.">Difference</button>
+          <button data-mode="bands" title="The same sky in each of the six detectors, from 0.75 to 5 microns.">Wavelengths</button>
+          <button data-mode="deep" title="All exposures added together: the deepest image.">Deep</button>
+        </div>
+        <p id="explain" class="hint"></p>
+        <div class="detwrap">
+          <div class="detstrip" role="group" aria-label="Detector (wavelength band)" id="dets"></div>
+          <div class="detticks" aria-hidden="true"><span>0.75</span><span>1.64</span><span>2.42</span><span>3.82</span><span>4.42</span><span>5.0 µm</span></div>
+          <p id="detnote" class="hint"></p>
+        </div>
+        <details class="display">
+          <summary>Display options</summary>
+          <div class="tools">
+            <label>Brightness <input id="white" type="range" min="-1.5" max="1.5" step="0.05" value="0"></label>
+            <label>Field <select id="fov" title="Field of view. Larger fields take longer to load.">
+              <option value="3">3′</option><option value="5" selected>5′</option><option value="10">10′</option><option value="20">20′</option><option value="40">40′</option>
+            </select></label>
+            <label><input id="invert" type="checkbox"> Negative</label>
+            <label><input id="smooth" type="checkbox"> Smooth</label>
+            <label title="Gaia DR3 stars at their position on the date shown. Fast movers get an arrow."><input id="gaia" type="checkbox" checked> Gaia stars</label>
+            <label title="CatWISE2020 infrared sources (squares)"><input id="wise" type="checkbox"> WISE sources</label>
+            <label title="Pixels the pipeline masked: saturated, bad or missing"><input id="mask" type="checkbox"> Masked pixels</label>
+            <button id="resetview" type="button">Reset zoom</button>
+          </div>
+          <p id="readout" class="mono hint">Scroll or pinch to zoom, drag to pan, click a star to measure it.</p>
+        </details>
+        <div id="motion"></div>
+      </section>
 
-    <section class="card">
-      <div class="cardhead">
-        <h2>Spectrum of the circled spot</h2>
-        <label title="Mark the wavelengths where common molecules absorb light"><input id="bandsOn" type="checkbox" checked> Molecule bands</label>
+      <div class="stack">
+        <section class="block">
+          <h2 class="blocktitle">Spectrum <small>of the circled spot</small>
+            <label class="inline" title="Mark the wavelengths where common molecules absorb light"><input id="bandsOn" type="checkbox" checked> molecule bands</label></h2>
+          <div class="plotwrap"><canvas id="spec"></canvas><div class="tip" hidden></div></div>
+          <p class="hint" id="specnote"></p>
+          <div id="molecules"></div>
+        </section>
+
+        <section class="block">
+          <h2 class="blocktitle" id="lctitle">Brightness over time</h2>
+          <div class="plotwrap"><canvas id="lc"></canvas><div class="tip" hidden></div></div>
+          <p class="hint">Each measurement in the selected detector, divided by the spot's own average spectrum at that wavelength, so colour does not pass for variability. A steady star stays near 1.</p>
+        </section>
+
+        <details class="block fold">
+          <summary>This image: date, wavelength, quality</summary>
+          <dl id="meta"></dl>
+        </details>
+        <details class="block fold">
+          <summary>Data releases in use</summary>
+          <div id="releases"></div>
+          <p class="hint">Releases are discovered from the NASA/IPAC archive when a spot is opened. A new release appears here without any change to this site.</p>
+        </details>
       </div>
-      <div class="plotwrap"><canvas id="spec"></canvas><div class="tip" hidden></div></div>
-      <p class="hint" id="specnote"></p>
-      <div id="molecules"></div>
-    </section>
+    </div>
 
-    <section class="card">
-      <h2 id="lctitle">Brightness over time</h2>
-      <div class="plotwrap"><canvas id="lc"></canvas><div class="tip" hidden></div></div>
-      <p class="hint">Each measurement in the selected detector, divided by the spot's own average spectrum at that wavelength, so colour does not masquerade as variability. A steady star stays near 1.</p>
-    </section>
-
-    <details class="card">
-      <summary>This image: date, wavelength, quality</summary>
-      <dl id="meta"></dl>
-    </details>
-
-    <details class="card">
-      <summary>Data releases in use</summary>
-      <div id="releases"></div>
-      <p class="hint">Releases are discovered from the NASA/IPAC archive when a spot is opened. New releases appear here without any change to this site.</p>
-    </details>
-
-    <p class="credits">Images: NASA SPHEREx, served by the NASA/IPAC Infrared Science Archive (IRSA). Catalogues: ESA Gaia DR3, CatWISE2020, SIMBAD (CDS). Sky atlas: Aladin Lite (CDS). Encyclopedia cards: Wikipedia. Built for the 2026 NASA Space Apps Challenge by The Bright Nobles.</p>
+    <p class="credits">Images: NASA SPHEREx, served by NASA/IPAC (IRSA). Catalogues: Gaia DR3, CatWISE2020, SIMBAD. Sky atlas: Aladin Lite. Encyclopedia cards: Wikipedia.</p>
   </aside>
 </div>
 
 <div class="tour" id="tour" hidden role="dialog" aria-label="Guided tour">
+  <div class="tourbar"><i id="tourprog"></i></div>
   <div class="tourstep"><span id="tourcount"></span><button type="button" id="tourclose" aria-label="End tour">×</button></div>
   <h2 id="tourtitle"></h2>
   <p id="tourtext"></p>
-  <div class="row"><button type="button" id="tourback">Back</button><button type="button" id="tournext" class="primary">Next</button></div>
+  <div class="tourbtns"><button type="button" class="ghost" id="tourback">Back</button><button type="button" id="tournext" class="cta">Next</button></div>
+</div>
+
+<div class="sheetwrap" id="sheetwrap" hidden>
+  <article class="sheet" id="sheet" role="dialog" aria-modal="true" tabindex="-1"></article>
 </div>
 
 <script src="config.js"></script>

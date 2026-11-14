@@ -3,6 +3,7 @@ import { Plot, dateTicks } from './plot.js';
 import * as Sky from './sky.js';
 import * as Info from './info.js';
 import { buildTour } from './tour.js';
+import { SHEETS } from './pages.js';
 
 const API = (window.CHRONO_API || '').replace(/\/$/, '');
 const $ = id => document.getElementById(id);
@@ -68,7 +69,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
     if (e.name === 'AbortError' || gen !== S.gen) return;
     console.error(e);
     setStatus(S.target ? `Could not load data: ${e.message}` :
-      'The live archive service is not reachable right now. The five test targets above still work.');
+      'Images for this position need the live archive service, which is not reachable right now. The objects in the guided tour still work.');
   }
 }
 
@@ -169,7 +170,7 @@ function rebuild() {
   const stacks = S.epochs.map(e => {
     const img = C.medianStack(e.frames, npx);
     return { kind: 'stack', img, sig: C.robustStats(img).sig, mjd: e.mid, n: e.frames.length, ep: e,
-      title: `Season ${gEpoch(e.mid) + 1} · ${C.fmtMonth(e.mid)}`, sub: `${e.frames.length} exposures stacked (${C.fmtDate(e.t0)} to ${C.fmtDate(e.t1)})` };
+      title: `Season ${gEpoch(e.mid) + 1} · ${C.fmtMonth(e.mid)}`, sub: `${e.frames.length} exposures · ${C.fmtDate(e.t0)} to ${C.fmtDate(e.t1)}` };
   });
   S.stacks = stacks;
   const deepFrames = frames.length > 80 ? frames.filter((_, i) => i % Math.ceil(frames.length / 80) === 0) : frames;
@@ -181,7 +182,7 @@ function rebuild() {
   let seq = [];
   if (S.mode === 'frames') {
     seq = frames.map(f => ({ kind: 'frame', img: f.data, sig: f.sig, mjd: f.mjd, frame: f,
-      title: C.fmtDate(f.mjd, true), sub: `${lamAt(f).toFixed(3)} µm · exposure ${f.id}` }));
+      title: C.fmtDate(f.mjd, true), sub: `${lamAt(f).toFixed(3)} µm · ${f.id}` }));
   } else if (S.mode === 'epochs') seq = stacks;
   else if (S.mode === 'deep') {
     if (S.deep) seq = [{ kind: 'stack', img: S.deep, sig: S.deepSig, mjd: frames[frames.length >> 1].mjd, n: frames.length,
@@ -458,7 +459,7 @@ function drawPlots() {
   specPlot.set(sp, {
     xlabel: 'wavelength (µm)', ylabel: S.haloDets?.length === 6 ? 'halo flux (relative)' : 'flux (mJy)', ylim: [ymin - (ymax - ymin) * 0.04, ymax > ymin ? ymax : ymin + 1],
     xlim: [0.7, 5.1], empty: S.sel ? 'Measuring…' : 'Click a star in the image',
-    shade: [...(S.grid ? [{ x0: C.DET_BANDS[S.det][0], x1: C.DET_BANDS[S.det][1], color: '#4cc9f012' }] : []),
+    shade: [...(S.grid ? [{ x0: C.DET_BANDS[S.det][0], x1: C.DET_BANDS[S.det][1], color: '#ff7b3916' }] : []),
       ...(S.showBands ? C.MOLECULES.map((m, i) => ({ x0: m.band[0], x1: m.band[1], color: '#ffffff12', label: m.f, row: i % 2 })) : [])],
     tipText: p => `${p.x.toFixed(3)} µm · ${p.y.toFixed(2)} ± ${p.err.toFixed(2)} mJy · ${C.fmtDate(p.src.mjd)} · D${p.src.det}`,
     onPick: p => jumpTo(p.src),
@@ -489,18 +490,23 @@ function drawPlots() {
 function renderMolecules(pts) {
   const el = $('molecules');
   if (!S.showBands || pts.length < 30) { el.innerHTML = ''; return; }
-  const rows = C.bandDepths(pts).map(m => {
-    let cls = 'none', txt = 'not enough data';
+  const rowsData = C.bandDepths(pts);
+  const rows = rowsData.map(m => {
+    let cls = 'none', txt = m.why || 'not enough data';
     if (m.depth !== null) {
-      const pc = Math.round(Math.abs(m.depth) * 100), sure = Math.abs(m.depth) > 3 * m.err;
-      if (m.depth > 0.10 && sure) { cls = 'dip'; txt = `dip, ${pc}% below its surroundings`; }
-      else if (m.depth < -0.10 && sure) { cls = 'peak'; txt = `${pc}% brighter than its surroundings`; }
-      else txt = 'no clear feature';
+      const pc = Math.round(Math.abs(m.depth) * 100), sure = Math.abs(m.depth) > 4 * m.err;
+      if (m.depth > 0.12 && sure) { cls = 'dip'; txt = `${pc}% dip`; }
+      else if (m.depth < -0.12 && sure) { cls = 'peak'; txt = `${pc}% bump`; }
+      else txt = 'flat';
     }
-    return `<tr><td>${m.name} <span class="none">${m.f}</span></td><td>${m.band[0].toFixed(2)}–${m.band[1].toFixed(2)} µm</td><td class="${cls}">${txt}</td></tr>`;
+    return `<tr><td>${m.name} <span class="none">${m.f}</span></td><td>${m.band[0].toFixed(2)}–${m.band[1].toFixed(2)}</td><td class="${cls}">${txt}</td></tr>`;
   }).join('');
-  el.innerHTML = `<table class="t"><thead><tr><th>Absorbs light near</th><th>Wavelength</th><th>Measured here</th></tr></thead><tbody>${rows}</tbody></table>
-    <p class="hint">A dip where a molecule absorbs is a hint that the molecule is there, not proof: each band is compared with the spectrum on either side of it.</p>`;
+  if (rowsData.every(m => m.depth === null)) {
+    el.innerHTML = `<p class="hint">Molecule bands cannot be measured here: ${rowsData.some(m => m.why === 'star too bright to tell') ? 'the star is too bright for the detector' : 'the spot is too faint'}.</p>`;
+    return;
+  }
+  el.innerHTML = `<table class="t mol"><thead><tr><th>Molecule</th><th>Band, µm</th><th>Measured</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="hint">How much fainter the spot is inside each band than just outside it. A dip is a hint that the molecule is there, not proof.</p>`;
 }
 function markCurrent() {
   const cur = S.seq[S.idx]?.frame;
@@ -517,9 +523,14 @@ function jumpTo(src) {
 
 // ------------------------------------------------------------ side panels
 function renderChips() {
-  const sel = $('examples');
-  sel.innerHTML = '<option value="">Examples</option>' + S.targets.map(t => `<option value="${t.slug}">${t.label} (${t.kind === 'motion' ? 'moves' : 'varies'})</option>`).join('');
-  sel.value = S.target ? S.target.slug : '';
+  const el = $('examples'); el.innerHTML = '';
+  for (const t of S.targets) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = t.label; b.onclick = () => openTarget(t);
+    el.appendChild(b);
+  }
+  $('suggest').innerHTML = [...S.targets.map(t => t.label), 'Proxima Centauri', 'Betelgeuse', 'Vega', 'Sirius', 'Andromeda Galaxy', 'Orion Nebula', 'Pleiades']
+    .map(n => `<option value="${n.replace(/"/g, '&quot;')}">`).join('');
 }
 const openTarget = t => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, ...(t.view || { mode: 'epochs' }) });
 
@@ -555,34 +566,35 @@ async function loadInfo(gen) {
 
 function renderAbout() {
   const t = S.target, k = S.track, i = S.info, el = $('about');
-  const name = t ? t.label : i ? i.name : k?.name ? k.name : 'Unnamed spot';
-  const badges = [];
-  if (i) {
-    badges.push(`<span class="badge type">${i.type}</span>`);
-    if (i.sptype) badges.push(`<span class="badge">spectral type ${i.sptype}</span>`);
-    if (i.redshift > 0.002) badges.push(`<span class="badge">redshift ${i.redshift.toFixed(4)}</span>`);
-  } else if (S.infoState === 'loading') badges.push('<span class="badge">identifying…</span>');
-  else badges.push('<span class="badge">no catalogued object within 10″</span>');
-  const facts = [`<span><b>${C.fmtSex(S.ra, S.dec)}</b></span>`, `<span>RA ${S.ra.toFixed(5)}° Dec ${S.dec.toFixed(5)}°</span>`];
+  const name = t ? t.label : i ? i.name : k?.name ? k.name : 'Uncatalogued spot';
+  const kind = i ? `${i.type}${i.sptype ? ` · type ${i.sptype}` : ''}` : S.infoState === 'loading' ? 'Identifying…' : 'Nothing catalogued within 10″';
+  const gloss = t ? t.blurb : i ? Info.gloss(i.otype) : S.infoState === 'done' ? 'No catalogue lists an object exactly here. SPHEREx still has images of this patch: what do you see?' : '';
+  const facts = [];
+  const fact = (label, value) => facts.push(`<div><dt>${label}</dt><dd>${value}</dd></div>`);
   const pmSrc = k && k.pmra != null ? k : i && i.pmra != null ? i : null;
+  const fast = pmSrc && Math.hypot(pmSrc.pmra, pmSrc.pmdec) > 200;
+  const drift = fast ? Math.hypot(pmSrc.pmra, pmSrc.pmdec) / 1000 * (C.mjdToYear(S.head?.epochs?.[0]?.[0] ?? 61000) - 2000) : 0;
+  fact(fast ? 'Position today' : 'Position', `${C.fmtSex(S.ra, S.dec)}<br><small>${fast ? `${drift.toFixed(0)}″ from where catalogues list it (year 2000)` : `${S.ra.toFixed(5)}°, ${S.dec >= 0 ? '+' : ''}${S.dec.toFixed(5)}°`}</small>`);
   if (pmSrc) {
     const pm = Math.hypot(pmSrc.pmra, pmSrc.pmdec) / 1000;
-    facts.push(`<span>moves <b>${pm.toFixed(pm < 0.1 ? 3 : 2)}″ per year</b>${pm > 0.3 ? ` (${(pm / 6.15).toFixed(2)} SPHEREx pixels)` : ''}</span>`);
+    fact('Moves across the sky', `${pm.toFixed(pm < 0.1 ? 3 : 2)}″ per year${pm > 0.3 ? `<br><small>${(pm / 6.15).toFixed(2)} SPHEREx pixels</small>` : ''}`);
   }
   const plx = (k && k.plx) || (i && i.plx);
-  if (plx > 0.2) facts.push(`<span>distance <b>${(3261.56 / plx).toFixed(plx > 30 ? 1 : 0)} light-years</b></span>`);
-  if (i) for (const b of ['V', 'J', 'K']) if (i.mags[b] != null) facts.push(`<span>${b} magnitude <b>${(+i.mags[b]).toFixed(1)}</b></span>`);
-  if (S.head) facts.push(`<span>SPHEREx: <b>${S.head.total}</b> exposures in <b>${S.head.epochs.length}</b> ${S.head.epochs.length === 1 ? 'slice' : 'time slices'} (${C.fmtMonth(S.head.epochs[0]?.[0] ?? 0)} to ${C.fmtMonth(S.head.epochs.at(-1)?.[1] ?? 0)})</span>`);
-  const fast = pmSrc && Math.hypot(pmSrc.pmra, pmSrc.pmdec) > 200;
-  const moved = fast ? `<p class="hint">Catalogues list where this object was in the year 2000. It has moved ${(Math.hypot(pmSrc.pmra, pmSrc.pmdec) / 1000 * (C.mjdToYear(S.head?.epochs?.[0]?.[0] ?? 61000) - 2000)).toFixed(0)}″ since, so the view is centred on where it is now. Dots mark its predicted position in each season.</p>` : '';
+  if (plx > 0.2) fact('Distance', `${(3261.56 / plx).toFixed(plx > 30 ? 1 : 0)} light-years`);
+  if (i?.redshift > 0.002) fact('Redshift', i.redshift.toFixed(4));
+  const mags = i ? ['V', 'J', 'K'].filter(b => i.mags[b] != null).map(b => `${b} ${(+i.mags[b]).toFixed(1)}`) : [];
+  if (mags.length) fact('Brightness (magnitude)', mags.join(' · '));
+  if (S.head) fact('SPHEREx has', `${S.head.total} exposures<br><small>${S.head.epochs.length} time slice${S.head.epochs.length === 1 ? '' : 's'}, ${C.fmtMonth(S.head.epochs[0]?.[0] ?? 0)} to ${C.fmtMonth(S.head.epochs.at(-1)?.[1] ?? 0)}</small>`);
   const w = S.wiki;
-  const wiki = w ? `<div class="wiki">${w.thumb ? `<img src="${w.thumb}" alt="${w.title}, image from Wikipedia" loading="lazy">` : ''}<div><p>${w.extract}</p><small><a href="${w.url}" target="_blank" rel="noopener">Read more on Wikipedia: ${w.title}</a></small></div></div>` : '';
+  const wiki = w ? `<div class="wiki">${w.thumb ? `<img src="${w.thumb}" alt="${w.title}, image from Wikipedia" loading="lazy">` : ''}<div><p>${w.extract}</p><small><a href="${w.url}" target="_blank" rel="noopener">Wikipedia: ${w.title}</a></small></div></div>` : '';
   const links = Info.externalLinks(S.ra, S.dec, i).map(l => `<a href="${l.url}" target="_blank" rel="noopener" title="${l.title}">${l.label}</a>`).join('');
-  const others = i?.others?.length ? `<p class="others">Also catalogued here: ${i.others.map(o => `${o.name} (${o.type})`).join(', ')}</p>` : '';
-  el.innerHTML = `<div class="titlerow"><h1>${name}</h1><button type="button" class="close" id="closepanel" title="Close and return to the map" aria-label="Close">×</button></div>
-    ${badges.join('')}${wiki}<div class="facts">${facts.join('')}</div>
-    ${t?.look ? `<p class="look"><b>What to look for.</b> ${t.look}</p>` : ''}${moved}
-    <div class="links"><span>Check it in other tools:</span>${links}</div>${others}`;
+  const others = i?.others?.length ? `<p class="others">Also catalogued at this position: ${i.others.map(o => `${o.name} (${o.type})`).join(', ')}</p>` : '';
+  el.innerHTML = `<p class="kind">${kind}</p>
+    <div class="titlerow"><h1>${name}</h1><button type="button" class="close" id="closepanel" title="Close and return to the map" aria-label="Close">×</button></div>
+    ${gloss ? `<p class="gloss">${gloss}</p>` : ''}
+    <div class="dossgrid">${wiki}<dl class="facts">${facts.join('')}</dl></div>
+    ${t?.look ? `<p class="look"><b>What to look for</b>${t.look}</p>` : ''}
+    <div class="links"><span>Check it in</span>${links}</div>${others}`;
   $('closepanel').onclick = closePanel;
   renderMotion();
 }
@@ -614,26 +626,30 @@ function renderMotion() {
     const me = -(m.x - m0.x), mn = m.y - m0.y, d = Math.hypot(me - pe, mn - pn);
     return `<tr><td><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${epochColor(st.mjd)};margin-right:5px"></i>${C.fmtMonth(st.mjd)}</td><td>${as(Math.hypot(me, mn))}″</td><td>${as(Math.hypot(pe, pn))}″</td><td>${as(d)}″</td></tr>`;
   }).join('');
-  el.innerHTML = `<table class="t"><thead><tr><th>Season</th><th>Measured shift</th><th>Catalogue predicts</th><th>Disagreement</th></tr></thead><tbody>${body}</tbody></table>
-  <p class="hint">Shift since the first season, measured from the stacked D${S.det} images (1 SPHEREx pixel = 6.15″). The prediction uses catalogue proper motion only.</p>`;
+  el.innerHTML = `<table class="t"><thead><tr><th>Season</th><th>Measured</th><th>Predicted</th><th>Off by</th></tr></thead><tbody>${body}</tbody></table>
+  <p class="hint">How far it has moved since the first season: measured in these D${S.det} images, and predicted from its catalogued motion. One SPHEREx pixel is 6.15″.</p>`;
 }
 function renderModes() {
   for (const b of $('modes').children) b.setAttribute('aria-pressed', b.dataset.mode === S.mode);
   $('explain').textContent = MODES[S.mode];
 }
+const DET_COLORS = ['#fff1d0', '#ffd58a', '#ffb057', '#ff7b39', '#e2472a', '#b3261e'];
 function renderDets() {
   const el = $('dets'); el.innerHTML = '';
   for (let d = 1; d <= 6; d++) {
-    const b = document.createElement('button'), D = S.dets[d], avail = S.head ? +S.head.avail[d] : null;
-    b.type = 'button';
-    b.innerHTML = `D${d}<small>${C.DET_BANDS[d][0]}–${C.DET_BANDS[d][1]} µm</small><small>${D ? (D.loading ? `${D.frames.length}/${D.total || '…'}` : `${D.frames.length} exp.`) : avail === null ? '' : avail ? `${avail} exp.` : 'none'}</small>`;
+    const b = document.createElement('button'), D = S.dets[d], avail = S.head ? +S.head.avail[d] : null, [a, z] = C.DET_BANDS[d];
+    b.type = 'button'; b.textContent = `D${d}`;
+    b.style.flex = String(z - a); b.style.setProperty('--c', DET_COLORS[d - 1]);
     b.setAttribute('aria-pressed', d === S.det);
     b.disabled = avail === 0;
     if (D?.loading) b.classList.add('loading');
-    b.title = `Detector ${d}: ${C.DET_BANDS[d][0]} to ${C.DET_BANDS[d][1]} microns`;
+    b.title = `Detector ${d}: ${a} to ${z} microns${avail ? `, ${avail} exposures` : avail === 0 ? ', no exposures here' : ''}`;
     b.onclick = () => { S.det = d; renderDets(); rebuild(); refreshPlots(); syncUrl(); if (!S.dets[d]) setStatus(`Detector ${d} is still loading…`); };
     el.appendChild(b);
   }
+  const D = S.dets[S.det], [a, z] = C.DET_BANDS[S.det];
+  const n = D ? (D.loading ? `loading ${D.frames.length} of ${D.total || '…'} exposures` : `${D.frames.length} exposures`) : S.head ? `${S.head.avail[S.det]} exposures` : '';
+  $('detnote').textContent = `Detector ${S.det}: ${a} to ${z} µm${n ? ` · ${n}` : ''}. Pick a wavelength band above.`;
 }
 function renderReleases() {
   const el = $('releases'); el.innerHTML = '';
@@ -785,7 +801,7 @@ $('invert').onchange = e => { S.invert = e.target.checked; paint(); };
 $('smooth').onchange = e => { S.smooth = e.target.checked; paint(); };
 $('gaia').onchange = e => { S.showGaia = e.target.checked; paint(); };
 $('bandsOn').onchange = e => { S.showBands = e.target.checked; drawPlots(); };
-$('examples').onchange = e => { const t = S.targets.find(x => x.slug === e.target.value); if (t) openTarget(t); };
+
 $('wise').onchange = e => { S.showWise = e.target.checked; if (S.showWise) loadCatwise(); paint(); };
 $('mask').onchange = e => { S.mask = e.target.checked; paint(); };
 $('resetview').onclick = () => { if (S.grid) { const c = (S.grid.n - 1) / 2; S.view = { z: 1, cx: c, cy: c }; paint(); } };
@@ -793,6 +809,7 @@ document.addEventListener('keydown', e => {
   if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && e.target.type !== 'range' && e.target.type !== 'checkbox') return;
   if (tourIdx >= 0 && (e.key === 'PageDown' || e.key === 'n')) { e.preventDefault(); return tourGo(tourIdx + 1); }
   if (tourIdx >= 0 && (e.key === 'PageUp' || e.key === 'b')) { e.preventDefault(); return tourGo(tourIdx - 1); }
+  if (!$('sheetwrap').hidden && e.key === 'Escape') return closeSheet();
   if (tourIdx >= 0 && e.key === 'Escape') return tourEnd();
   if (e.key === ' ') { e.preventDefault(); S.playing ? stop() : play(); }
   else if (e.key === 'ArrowRight') { stop(); step(1); }
@@ -894,6 +911,7 @@ function tourGo(i) {
   const st = tourSteps[i];
   $('welcome').hidden = true; $('tour').hidden = false;
   $('tourcount').textContent = `Guided tour · ${i + 1} of ${tourSteps.length}`;
+  $('tourprog').style.width = `${(i + 1) / tourSteps.length * 100}%`;
   $('tourtitle').textContent = st.title; $('tourtext').textContent = st.text;
   $('tourback').disabled = i === 0;
   $('tournext').textContent = i === tourSteps.length - 1 ? 'Finish' : 'Next';
@@ -905,6 +923,18 @@ $('tournext').onclick = () => tourGo(tourIdx + 1);
 $('tourback').onclick = () => tourGo(tourIdx - 1);
 $('tourclose').onclick = tourEnd;
 $('hidewelcome').onclick = () => { $('welcome').hidden = true; };
+
+// ------------------------------------------------------------ article sheets
+function openSheet(id) {
+  if (!SHEETS[id]) return;
+  const wrap = $('sheetwrap'), sh = $('sheet');
+  sh.innerHTML = `<button type="button" class="close" aria-label="Close">×</button>${SHEETS[id]()}`;
+  sh.querySelector('.close').onclick = closeSheet;
+  wrap.hidden = false; wrap.scrollTop = 0; sh.focus();
+}
+function closeSheet() { $('sheetwrap').hidden = true; }
+$('sheetwrap').addEventListener('click', e => { if (e.target === $('sheetwrap')) closeSheet(); });
+document.querySelectorAll('[data-sheet]').forEach(b => { b.onclick = () => openSheet(b.dataset.sheet); });
 $('wave').oninput = e => { sweep(false); setWave(+e.target.value); };
 $('waveplay').onclick = () => sweep(!sweepTimer);
 $('layer').onchange = e => setLayer(e.target.value);
@@ -924,7 +954,7 @@ $('layer').onchange = e => setLayer(e.target.value);
       setWave(25);
     } catch (e) {
       console.error(e);
-      $('welcome').innerHTML = '<h2>The sky map could not start on this device.</h2><p>It needs WebGL 2. Search and the examples above still work.</p>';
+      $('welcome').innerHTML = '<h1>The sky map could not start here.</h1><p class="lede">It needs WebGL 2. Search still works, and so does the guided tour.</p>';
       $('wavebox').style.display = 'none'; $('layer').style.display = 'none';
     }
   }
@@ -933,4 +963,5 @@ $('layer').onchange = e => setLayer(e.target.value);
   if (t) return go({ ra: t.ra, dec: t.dec, size: t.size, target: t, ...(t.view || {}), ...(det ? { det } : {}), ...(mode ? { mode } : {}) });
   if (q.has('ra') && q.has('dec')) return go({ ra: +q.get('ra'), dec: +q.get('dec'), size: +(q.get('fov') || q.get('size') || 5), det, mode });
   if (q.has('tour')) tourGo(0);
+  if (SHEETS[location.hash.slice(1)]) openSheet(location.hash.slice(1));
 })();

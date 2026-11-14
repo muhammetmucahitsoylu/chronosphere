@@ -140,3 +140,39 @@ export function externalLinks(ra, dec, info) {
   );
   return links;
 }
+
+// ---------------------------------------------------------------- plain-language types
+const GLOSS = [
+  [/^(BD\*|BD\?)$/, 'A brown dwarf: too big to be a planet, too small to shine like a star. It glows faintly in infrared from leftover heat.'],
+  [/^Mi\*/, 'A Mira variable: a swollen red giant near the end of its life, pulsing brighter and fainter over months.'],
+  [/^(TT\*|Or\*|Y\*O|Y\*\?|Ae\*)/, 'A newborn star, still gathering material from the cloud around it. Dust drifting past makes its light flicker.'],
+  [/^BY\*/, 'A cool dwarf star with dark spots. As it spins, the spots turn in and out of view and its brightness changes a little.'],
+  [/^PM\*/, 'A star close enough to us that its motion across the sky can be seen within a few years.'],
+  [/^(LM\*|dM\*)/, 'A low-mass star: small, cool and dim, the most common kind of star in our galaxy.'],
+  [/^(RG\*|AB\*|C\*|S\*|LP\*|sr\*|OH\*)/, 'A giant star late in its life: cool, swollen and very bright in infrared, often changing in brightness.'],
+  [/^(RR\*|Ce\*|cC\*|dS\*|Pu\*)/, 'A pulsating star: it swells and shrinks in a regular rhythm, and its brightness follows.'],
+  [/^(EB\*|El\*)/, 'Two stars orbiting each other so that one regularly passes in front of the other and dims the pair.'],
+  [/^(SB\*|\*\*)/, 'Two stars bound together, orbiting each other.'],
+  [/^WD\*/, 'A white dwarf: the hot, Earth-sized core left behind when a star like the Sun runs out of fuel.'],
+  [/^(Er\*|Fl\*|RS\*|Ro\*)/, 'A magnetically active star whose brightness changes through flares or spots.'],
+  [/^(No\*|CV\*)/, 'A pair of stars in which one feeds on the other, with occasional outbursts.'],
+  [/^(SN\*|SNR)/, 'The site of an exploded star.'],
+  [/^(Em\*|Be\*)/, 'A star surrounded by glowing gas.'],
+  [/^V\*/, 'A variable star: its brightness changes over time.'],
+  [/^(QSO|BLL|Bla|AGN|Sy1|Sy2|SyG|LIN)/, 'An active galaxy: the surroundings of a giant black hole at its centre shine across billions of light-years.'],
+  [/^(G|GiG|GiP|GiC|BiC|IG|PaG|LSB|EmG|SBG|H2G|rG|bCG)$/, 'A galaxy: a distant island of billions of stars.'],
+  [/^(ClG|GrG|CGG|SCG)/, 'A group or cluster of galaxies held together by gravity.'],
+  [/^GlC/, 'A globular cluster: hundreds of thousands of ancient stars packed into a ball.'],
+  [/^(OpC|Cl\*|As\*)/, 'A cluster of stars born together from the same cloud.'],
+  [/^PN/, 'A planetary nebula: the glowing shell thrown off by a dying Sun-like star.'],
+  [/^(HII|RNe|GNe|MoC|DNe|Cld|SFR|ISM)/, 'A cloud of gas and dust between the stars, often a place where new stars are forming.'],
+  [/^Psr/, 'A pulsar: the dense, spinning remnant of an exploded star.'],
+  [/^(Pl|Pl\?)$/, 'A planet orbiting another star.'],
+  [/^(IR|NIR|MIR|FIR)$/, 'A source first noticed in infrared light; what it is has not been settled.'],
+  [/^\*$/, 'A star.'],
+];
+/** One plain sentence for a SIMBAD object type code. */
+export function gloss(otype) {
+  for (const [re, text] of GLOSS) if (re.test(otype || '')) return text;
+  return '';
+}

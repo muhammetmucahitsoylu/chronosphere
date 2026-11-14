@@ -265,14 +265,15 @@ export function refineEpochs(eps, maxDays = 60, chunkDays = 40) {
 // ---------- molecular absorption bands ----------
 /** Wavelength ranges where common molecules absorb, with comparison windows on either side. */
 export const MOLECULES = [
+  // Comparison windows stay clear of detector edges, where sensitivity drops and
+  // measurements scatter; each band is compared with clean spectrum on both sides.
   { name: 'Water vapour', f: 'H₂O', band: [1.34, 1.48], side: [[1.22, 1.31], [1.55, 1.62]] },
-  { name: 'Methane', f: 'CH₄', band: [1.63, 1.75], side: [[1.55, 1.61], [2.05, 2.15]] },
-  { name: 'Water vapour', f: 'H₂O', band: [1.80, 1.98], side: [[1.55, 1.62], [2.05, 2.15]] },
-  { name: 'Carbon monoxide, methane', f: 'CO, CH₄', band: [2.28, 2.42], side: [[2.05, 2.18], null] },
-  { name: 'Water vapour', f: 'H₂O', band: [2.55, 2.85], side: [[2.05, 2.18], [3.90, 4.10]] },
-  { name: 'Methane', f: 'CH₄', band: [3.15, 3.50], side: [[2.05, 2.18], [3.90, 4.10]] },
-  { name: 'Carbon dioxide', f: 'CO₂', band: [4.20, 4.33], side: [[4.05, 4.15], [4.38, 4.46]] },
-  { name: 'Carbon monoxide', f: 'CO', band: [4.55, 4.80], side: [[4.38, 4.48], [4.90, 5.00]] },
+  { name: 'Water vapour', f: 'H₂O', band: [1.80, 1.98], side: [[1.68, 1.75], [2.05, 2.15]] },
+  { name: 'Carbon monoxide, methane', f: 'CO, CH₄', band: [2.28, 2.38], side: [[2.05, 2.18], null] },
+  { name: 'Water vapour', f: 'H₂O', band: [2.55, 2.85], side: [[2.05, 2.18], [3.62, 3.78]] },
+  { name: 'Methane', f: 'CH₄', band: [3.15, 3.50], side: [[2.05, 2.18], [3.62, 3.78]] },
+  { name: 'Carbon dioxide', f: 'CO₂', band: [4.20, 4.33], side: [[4.05, 4.15], [4.46, 4.54]] },
+  { name: 'Carbon monoxide', f: 'CO', band: [4.56, 4.80], side: [[4.46, 4.54], [4.90, 4.98]] },
 ];
 
 function medMad(v) {
@@ -283,18 +284,22 @@ function medMad(v) {
 }
 /** Depth of each band relative to the spectrum on either side (1 = fully absorbed, 0 = flat). */
 export function bandDepths(pts) {
-  const inRange = r => pts.filter(p => p.lam >= r[0] && p.lam <= r[1]).map(p => p.flux);
+  const inRange = r => pts.filter(p => !p.halo && p.lam >= r[0] && p.lam <= r[1]).map(p => p.flux);
   return MOLECULES.map(m => {
+    if (pts.some(p => p.halo && p.lam >= m.band[0] && p.lam <= m.band[1])) return { ...m, depth: null, why: 'star too bright to tell' };
     const core = medMad(inRange(m.band));
-    const sides = m.side.map(r => (r ? { c: (r[0] + r[1]) / 2, ...(medMad(inRange(r)) || { n: 0 }) } : { n: 0 })).filter(x => x.n >= 3);
-    if (!core || core.n < 4 || !sides.length) return { ...m, depth: null };
+    const sides = m.side.map(r => (r ? { c: (r[0] + r[1]) / 2, ...(medMad(inRange(r)) || { n: 0 }) } : { n: 0 })).filter(x => x.n >= 4);
+    if (!core || core.n < 5 || sides.length < m.side.filter(Boolean).length) return { ...m, depth: null };
     const mid = (m.band[0] + m.band[1]) / 2;
     let cont, cerr;
-    if (sides.length === 2) {
-      const t = (mid - sides[0].c) / (sides[1].c - sides[0].c);
-      cont = sides[0].med * (1 - t) + sides[1].med * t; cerr = Math.hypot(sides[0].err * (1 - t), sides[1].err * t);
-    } else { cont = sides[0].med; cerr = sides[0].err; }
-    if (!(cont > 0) || cont < 5 * cerr) return { ...m, depth: null };
+    if (sides.length === 2 && sides[0].med > 0 && sides[1].med > 0) {
+      // Interpolate the surroundings as a power law (straight line in log-log), so the
+      // smooth downward slope of an ordinary star's spectrum is not mistaken for a dip.
+      const t = Math.log(mid / sides[0].c) / Math.log(sides[1].c / sides[0].c);
+      cont = Math.exp(Math.log(sides[0].med) * (1 - t) + Math.log(sides[1].med) * t);
+      cerr = cont * Math.hypot(sides[0].err / sides[0].med * (1 - t), sides[1].err / sides[1].med * t);
+    } else { const sd = sides.find(x => x.med > 0); if (!sd) return { ...m, depth: null }; cont = sd.med; cerr = sd.err; }
+    if (!(cont > 0) || cont < 12 * cerr) return { ...m, depth: null, why: 'too faint to tell' };
     return { ...m, depth: 1 - core.med / cont, err: Math.hypot(core.err, cerr * core.med / cont) / cont };
   });
 }
