@@ -56,11 +56,11 @@ TARGETS = [
      "dist": {"plx": 6.4062, "err": 0.0441, "src": "Gaia DR3 parallax of RW Aur A"},
      "pm": {"pmra": 2.641, "pmdec": -27.398, "src": "Gaia DR3, RW Aur A"},
      "blurb": "A young star, still surrounded by dust, whose brightness changes unpredictably.",
-     "look": "The colours in the spectrum are the three visits, and they cross over. Between September 2025 and "
-             "September 2026 the star grew more than 40% brighter below 1.6 microns and lost almost half of its "
-             "brightness beyond 3.8 microns, while ordinary stars in the same images stayed constant to about 1%. "
-             "Astronomers saw the reverse during its deep fading of 2014 to 2016: hot dust close to the star hides "
-             "it while glowing in the infrared itself."},
+     "look": "The colours in the spectrum are the three visits, and they cross over. From September 2025 to "
+             "September 2026 the star grew more than 40% brighter below 1.6 microns and lost almost half its "
+             "brightness beyond 3.8 microns; ordinary stars in the same images stayed constant to about 1%. "
+             "In its deep fading of 2014 to 2016 astronomers saw the reverse: hot dust near the star hid it "
+             "while glowing in the infrared."},
     {"slug": "rdra", "wiki": "R Draconis", "query": "R Dra", "label": "R Draconis", "kind": "variable",
      "view": {"det": 4, "mode": "epochs"},
      "type": "Pulsating red giant (Mira variable)", "sp": "M",

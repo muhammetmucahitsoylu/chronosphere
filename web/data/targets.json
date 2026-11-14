@@ -366,7 +366,7 @@
    "det": 5,
    "mode": "epochs"
   },
-  "look": "The colours in the spectrum are the three visits, and they cross over. Between September 2025 and September 2026 the star grew more than 40% brighter below 1.6 microns and lost almost half of its brightness beyond 3.8 microns, while ordinary stars in the same images stayed constant to about 1%. Astronomers saw the reverse during its deep fading of 2014 to 2016: hot dust close to the star hides it while glowing in the infrared itself.",
+  "look": "The colours in the spectrum are the three visits, and they cross over. From September 2025 to September 2026 the star grew more than 40% brighter below 1.6 microns and lost almost half its brightness beyond 3.8 microns; ordinary stars in the same images stayed constant to about 1%. In its deep fading of 2014 to 2016 astronomers saw the reverse: hot dust near the star hid it while glowing in the infrared.",
   "wiki": "RW Aurigae",
   "info": {
    "oid": 756681,

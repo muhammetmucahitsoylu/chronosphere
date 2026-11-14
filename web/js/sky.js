@@ -54,6 +54,7 @@ export async function init(selector, { onClick, onFov } = {}) {
     showFrame: false, showCooGridControl: false, showSettingsControl: false, showShareControl: false,
     showZoomControl: false, showCooLocation: true, showFov: false, showStatusBar: false, showContextMenu: false,
     backgroundColor: 'rgb(5, 7, 12)',
+    log: false,          // the library would otherwise report this page's address to its makers on every visit
   });
   al.on('click', e => { if (e && !e.isDragging && onClick) onClick(e.ra, e.dec, al.getFov()[0]); });
   try { al.on('zoomChanged', tellFov); } catch { /* older builds */ }

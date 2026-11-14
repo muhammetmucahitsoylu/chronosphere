@@ -673,7 +673,7 @@ function renderMolecules(pts) {
     el.innerHTML = `<p class="hint">Molecule bands cannot be measured here: ${rowsData.some(m => m.why === 'star too bright to tell') ? 'the star is too bright for the camera' : rowsData.some(m => m.why === 'too faint to tell') ? 'the spot is too faint' : rowsData.some(m => m.why === 'too uneven to tell') ? 'the measurements scatter too much' : 'there are not enough measurements yet'}.</p>`;
     return;
   }
-  el.innerHTML = `<table class="t mol"><thead><tr><th>Molecule</th><th>Band, µm</th><th>Measured</th></tr></thead><tbody>${rows}</tbody></table>
+  el.innerHTML = `<table class="t mol"><thead><tr><th>Molecule</th><th>Band <span class="asis">(µm)</span></th><th>Measured</th></tr></thead><tbody>${rows}</tbody></table>
     <p class="hint">How much fainter the spot is inside each band than just outside it. A dip is a hint that the molecule is there, not proof.${glow ? ' Where a band is brighter instead, hot gas or dust is glowing at that wavelength.' : ''}</p>`;
 }
 function markCurrent() {
@@ -1147,7 +1147,7 @@ function renderMotion() {
   const sigma = Math.hypot(align, fuzz(first), fuzz(end));
   const span = `${C.fmtMonth(first.st.mjd)} and ${C.fmtMonth(end.st.mjd)}`;
   const yard = comp.length >= 3 ? `Ordinary stars in the same images stay put to within ${align.toFixed(1)}″.` : '';
-  const agree = every && every.dets.length > 1 ? `, measured independently in ${list(every.dets)}, which agree to ${Math.max(0.1, every.spread).toFixed(1)}″ per year` : every ? `, measured in ${list(every.dets)}` : ` in these D${S.det} images`;
+  const agree = every && every.dets.length > 1 ? `, in ${list(every.dets)} independently (they agree to ${Math.max(0.1, every.spread).toFixed(1)}″ per year)` : every ? `, in ${list(every.dets)}` : `, in these D${S.det} images`;
 
   if (tracked && catPm >= 0.1) {
     // Measured minus predicted for every visit. One common offset is taken out (the catalogue position
@@ -1174,7 +1174,7 @@ function renderMotion() {
   if (d > Math.max(3 * sigma, 1.5)) {
     const cat = S.info?.pmra != null && !tracked ? ` SIMBAD lists ${(Math.hypot(S.info.pmra, S.info.pmdec) / 1000).toFixed(2)}″ per year for the object catalogued here.` : ' Check the tools above: if no catalogue lists a fast mover here, it deserves a closer look.';
     const rate = every ? every.rate : d / years, dir = every ? compass(every.e, every.n) : compass(dE, dN);
-    el.innerHTML = `<p class="hint verdict"><b>This spot moved.</b> ${d.toFixed(1)}″ towards the ${compass(dE, dN)} between ${span} in D${S.det}: about ${rate.toFixed(1)}″ per year towards the ${dir}${agree}. ${yard}${cat}</p>`;
+    el.innerHTML = `<p class="hint verdict"><b>This spot moved.</b> ${d.toFixed(1)}″ towards the ${compass(dE, dN)} between ${span} in D${S.det}. That is about ${rate.toFixed(1)}″ per year towards the ${dir}${agree}. ${yard}${cat}</p>`;
     return;
   }
   el.innerHTML = `<p class="hint verdict"><b>No motion detected.</b> Between ${span} its position in D${S.det} is the same to within ${Math.max(d, 0.1).toFixed(1)}″. ${yard} Anything slower than about ${(Math.max(3 * sigma, 1.5) / years).toFixed(1)}″ per year would not show here (one SPHEREx pixel is 6.15″).</p>`;
