@@ -1,0 +1,7 @@
+# One-file deployment description for Render (render.com): API and page as one web service.
+services:
+  - type: web
+    name: chronosphere
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health

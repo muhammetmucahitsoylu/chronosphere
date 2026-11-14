@@ -23,8 +23,13 @@ import catalogs
 import pipeline
 
 ROOT = Path(__file__).resolve().parent.parent
-CACHE = ROOT / "cache"
-CACHE.mkdir(exist_ok=True)
+CACHE = Path(os.environ.get("CHRONO_CACHE") or ROOT / "cache")
+try:
+    CACHE.mkdir(parents=True, exist_ok=True)
+except OSError:                      # read-only install: fall back to a temp folder
+    import tempfile
+    CACHE = Path(tempfile.gettempdir()) / "chronosphere-cache"
+    CACHE.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Chronosphere API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
@@ -67,6 +72,11 @@ def api_stream(ra: float, dec: float, size: float = 5.0, det: int = Query(2, ge=
 
     return StreamingResponse(gen(), media_type="application/x-ndjson",
                              headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"})
+
+
+@app.get("/api/health")
+def api_health():
+    return {"ok": True}
 
 
 @app.get("/api/summary")

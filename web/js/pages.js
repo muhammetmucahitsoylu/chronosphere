@@ -2,7 +2,7 @@
 
 export const TEAM = {
   name: 'The Bright Nobles',
-  members: [],        // [{ name: 'Full Name', role: 'What they did' }]
+  members: [{ name: 'Muhammet Mücahit Soylu' }, { name: 'Serdar Aydın' }, { name: 'Furkan Küpeli' }],
   repo: 'https://github.com/muhammetmucahitsoylu/chronosphere',
 };
 
