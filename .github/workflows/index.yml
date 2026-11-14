@@ -1,16 +1,21 @@
 name: Refresh sky index
-# Rebuilds the index of every public SPHEREx exposure from the NASA/IPAC archive,
+# Brings the index of every public SPHEREx exposure up to date with the NASA/IPAC archive,
 # so new data releases appear on the site without any change to the code.
+# Only what is new is downloaded. If the archive cannot be reached, or the result does not
+# add up, the job fails and the published index is left as it is.
 on:
   schedule:
     - cron: "17 3 * * 1"      # every Monday
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: index
+  cancel-in-progress: false
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

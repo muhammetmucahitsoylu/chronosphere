@@ -62,8 +62,10 @@ Chronosphere has **no server**. The site is a set of static files; everything el
 talking directly to NASA's open data.
 
 1. **Sky index.** `web/index/` is a compact index of every public SPHEREx exposure (about 1.6 million): where
-   each one was pointed, when, with which detector, and where its file lives. A scheduled workflow rebuilds it
-   from the NASA/IPAC archive, so new data releases appear without touching the code.
+   each one was pointed, when, with which detector, and where its file lives. A weekly workflow asks the
+   NASA/IPAC archive how many exposures each release holds and downloads only releases that are new or have
+   grown, so new data appears without touching the code. If the archive is unreachable or the numbers do not
+   add up, nothing is written.
 2. **Read only what is needed.** For each exposure near the chosen position, the browser reads the FITS header
    and a small block of pixels around the target with HTTP range requests from the public `nasa-irsa-spherex`
    bucket: a few hundred kilobytes instead of a 63 MB file.
@@ -127,7 +129,7 @@ Open http://localhost:8000.
 ```
 python -m venv .venv
 .venv/Scripts/pip install -r requirements.txt        # Windows; use .venv/bin/pip elsewhere
-.venv/Scripts/python scripts/build_index.py          # rebuild the sky index from the archive
+.venv/Scripts/python scripts/build_index.py          # bring the sky index up to date (downloads only what is new)
 .venv/Scripts/python scripts/prebuild.py             # rebuild the five showcase objects
 .venv/Scripts/python scripts/prebuild.py --meta      # refresh only their descriptions and catalogue facts
 ```
