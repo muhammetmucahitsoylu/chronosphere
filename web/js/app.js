@@ -631,7 +631,7 @@ function drawPlots() {
   const sp = pts.map(p => ({ x: p.lam, y: p.flux * u, err: p.err * u, color: epochColor(p.mjd), src: p, big: p.frame === cur, hollow: p.halo }));
   const ymax = fl.length ? pct(fl, 0.98) * 1.25 * u : 1, ymin = fl.length ? Math.min(0, pct(fl, 0.02)) * u : 0;
   specPlot.set(sp, {
-    xlabel: 'wavelength (µm)', ylabel: relative ? 'relative brightness' : `flux (${unit})`, ylim: [ymin - (ymax - ymin) * 0.04, ymax > ymin ? ymax : ymin + 1],
+    xlabel: 'wavelength (µm)', ylabel: relative ? 'relative brightness' : `brightness (${unit})`, ylim: [ymin - (ymax - ymin) * 0.04, ymax > ymin ? ymax : ymin + 1],
     xlim: [0.7, 5.1], empty: S.failed ? 'No images to measure' : !S.grid ? 'Waiting for the images…' : S.sel ? 'Measuring…' : 'Click or tap a star in the image',
     shade: [...(S.grid ? [{ x0: C.DET_BANDS[S.det][0], x1: C.DET_BANDS[S.det][1], color: '#ff7b3916' }] : []),
       ...(S.showBands ? C.MOLECULES.map((m, i) => ({ x0: m.band[0], x1: m.band[1], color: '#ffffff12', label: m.f, row: i % 2 })) : [])],
