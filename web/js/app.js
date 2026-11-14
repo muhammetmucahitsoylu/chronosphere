@@ -4,7 +4,7 @@ import * as Sky from './sky.js';
 import * as Info from './info.js';
 import { buildTour } from './tour.js';
 
-const API = (window.BLINK_API || '').replace(/\/$/, '');
+const API = (window.CHRONO_API || '').replace(/\/$/, '');
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 

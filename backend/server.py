@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "cache"
 CACHE.mkdir(exist_ok=True)
 
-app = FastAPI(title="SPHEREx blink API")
+app = FastAPI(title="Chronosphere API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
 
 

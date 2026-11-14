@@ -20,7 +20,7 @@ export function buildTour(targets) {
     },
     {
       title: 'What this tool does',
-      text: 'Click any point of the sky. Blink102 fetches every SPHEREx exposure of that spot straight from NASA’s archive, lines them up and plays them like a short video. It also tells you what the object is and builds its spectrum. Let us try it on five test objects.',
+      text: 'Click any point of the sky. Chronosphere fetches every SPHEREx exposure of that spot straight from NASA’s archive, lines them up and plays them like a short video. It also tells you what the object is and builds its spectrum. Let us try it on five test objects.',
       run: api => { api.sweep(false); },
     },
   ];

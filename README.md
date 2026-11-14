@@ -1,7 +1,7 @@
-# Blink102
+# Chronosphere
 
 **Explore the changing infrared sky.** Fly over the whole sky as NASA's SPHEREx mission sees it, click
-anything, and watch that spot change over time. Blink102 tells you what the object is, plays every SPHEREx
+anything, and watch that spot change over time. Chronosphere tells you what the object is, plays every SPHEREx
 exposure of it like a little video so that motion and brightness changes stand out, and builds its 102-band
 spectrum on the spot.
 
@@ -27,7 +27,7 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 
 ## How the challenge is covered
 
-| Challenge request | In Blink102 |
+| Challenge request | In Chronosphere |
 |---|---|
 | Public web tool | Static page plus a small API; no login, works on a phone |
 | Enter RA and Dec | Decimal degrees, sexagesimal, or an object name; or just click the map |
@@ -58,7 +58,7 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
    differencing, colour compositing, photometry, spectra, band depths and brightness curves are computed on the
    user's device, so every interaction is instant.
 6. **Identify with today's positions.** Catalogues store where a star was in the year 2000. Nearby stars have
-   moved since (Barnard's Star by 270 arcseconds), so a plain coordinate search misses them. Blink102 also
+   moved since (Barnard's Star by 270 arcseconds), so a plain coordinate search misses them. Chronosphere also
    fetches fast movers in a wider area and moves every candidate to today's date before matching.
 
 The five test objects are pre-built into static files (`web/data/`) so they open instantly and keep working
@@ -79,7 +79,7 @@ Open http://localhost:8000. To rebuild the five showcase objects with the newest
 ```
 
 A `Dockerfile` is included for hosting the API and the page as one service. The page alone (`web/`) can be
-served from any static host; set `window.BLINK_API` in `web/config.js` to the address of the API.
+served from any static host; set `window.CHRONO_API` in `web/config.js` to the address of the API.
 
 ## Layout
 
