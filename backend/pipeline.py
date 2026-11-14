@@ -77,8 +77,8 @@ def stream(ra: float, dec: float, size_arcmin: float, det: int,
         "t": "head", "det": det,
         "grid": {k: grid[k] for k in ("ra", "dec", "n", "scale", "size")},
         "band": sx.DETECTOR_BANDS[det],
-        "total": len(use), "found": len(mine),
-        **summary(ra, dec),
+        **summary(ra, dec),          # "total" here counts every detector
+        "use": len(use), "found": len(mine),
     }
     yield json.dumps(head) + "\n"
     n_ok = skipped = failed = 0

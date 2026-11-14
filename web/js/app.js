@@ -80,7 +80,7 @@ async function loadDet(det, gen) {
   await C.loadStream(streamUrl(det), line => {
     if (gen !== S.gen) return;
     if (line.t === 'head') {
-      D.total = line.total; D.found = line.found;
+      D.found = line.found; D.total = line.use ?? Math.min(line.found ?? line.total, 160);   // exposures coming for this detector
       if (!S.head) {
         line.epochs = C.refineEpochs(line.epochs || []);
         S.head = line; S.grid = line.grid;
