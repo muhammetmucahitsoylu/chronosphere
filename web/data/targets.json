@@ -54,7 +54,8 @@
    "det": 5,
    "mode": "epochs"
   },
-  "look": "Press Play. The star hops north by roughly a pixel each season, following the dotted line. Its core is bright enough to saturate the shorter-wavelength detectors, so D5 gives the cleanest view. The table compares the shift measured from these images with the catalogue prediction."
+  "look": "Press Play. The star hops north by roughly a pixel each season, following the dotted line. Its core is bright enough to saturate the shorter-wavelength detectors, so D5 gives the cleanest view. The table compares the shift measured from these images with the catalogue prediction.",
+  "wiki": "Barnard's Star"
  },
  {
   "slug": "epsindib",
@@ -115,7 +116,8 @@
    "det": 2,
    "mode": "epochs"
   },
-  "look": "Press Play and watch it slide to the south-east. Then look at the spectrum: the deep dips near 1.4, 1.9 and 2.7 microns are water vapour and the one near 3.3 microns is methane, in the atmosphere of a brown dwarf."
+  "look": "Press Play and watch it slide to the south-east. Then look at the spectrum: the deep dips near 1.4, 1.9 and 2.7 microns are water vapour and the one near 3.3 microns is methane, in the atmosphere of a brown dwarf.",
+  "wiki": "Epsilon Indi"
  },
  {
   "slug": "wise0855",
@@ -171,7 +173,8 @@
    "det": 6,
    "mode": "bands"
   },
-  "look": "Step through the wavelengths. Below 4 microns the circle holds only the edge of an ordinary star just to its west. In the two longest-wavelength detectors a second source appears that is not in the Gaia catalogue: that is WISE 0855. In the colour picture it is the red dot. Switch to Seasons in D6 to see it move."
+  "look": "Step through the wavelengths. Below 4 microns the circle holds only the edge of an ordinary star just to its west. In the two longest-wavelength detectors a second source appears that is not in the Gaia catalogue: that is WISE 0855. In the colour picture it is the red dot. Switch to Seasons in D6 to see it move.",
+  "wiki": "WISE 0855\u22120714"
  },
  {
   "slug": "rwaur",
@@ -228,7 +231,8 @@
    "det": 5,
    "mode": "epochs"
   },
-  "look": "Look at the spectrum: the colours are the observing seasons, and beyond 3 microns they pull apart, because the star was clearly fainter in the latest season than a year earlier. Its position stays put, which shows how well the images line up."
+  "look": "Look at the spectrum: the colours are the observing seasons, and beyond 3 microns they pull apart, because the star was clearly fainter in the latest season than a year earlier. Its position stays put, which shows how well the images line up.",
+  "wiki": "RW Aurigae"
  },
  {
   "slug": "rdra",
@@ -283,6 +287,7 @@
    "det": 1,
    "mode": "epochs"
   },
-  "look": "Press Play: each image covers about a month. This star is so bright that its core saturates every detector, so the tool measures its outer halo instead. The brightness curve shows it fading and brightening again."
+  "look": "Press Play: each image covers about a month. This star is so bright that its core saturates every detector, so the tool measures its outer halo instead. The brightness curve shows it fading and brightening again.",
+  "wiki": "R Draconis"
  }
 ]
