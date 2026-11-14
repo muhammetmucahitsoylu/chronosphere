@@ -45,7 +45,7 @@ TARGETS = [
      "view": {"det": 6, "mode": "bands"},
      "type": "Brown dwarf", "sp": "Y",
      "dist": {"plx": 439.0, "err": 2.4, "src": "parallax from Kirkpatrick et al. 2021"},
-     "blurb": "The coldest known brown dwarf, 7.4 light-years away, moving 8.1 arcseconds per year.",
+     "blurb": "The coldest known brown dwarf, 7.4 light-years away, moving 8.2 arcseconds per year.",
      "look": "The images step through the wavelengths. Below 4 microns the circle holds only the edge of an ordinary "
              "star just to its west. In the two longest-wavelength detectors a second source appears that is "
              "not in the Gaia catalogue: that is WISE 0855. In the colour picture it is the red dot. "
