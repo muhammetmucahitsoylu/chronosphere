@@ -14,11 +14,17 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 ## What you can do
 
 - **Roam the sky.** The map is the SPHEREx all-sky data cube served by NASA/IPAC, shown with Aladin Lite. A
-  slider moves through all 102 wavelengths; 2MASS, WISE and visible-light maps are one click away.
-- **Click any object, or search by name or coordinates.** The view flies there. The object is identified
-  through SIMBAD (type, spectral type, distance, proper motion), with a Wikipedia card when one exists.
+  slider moves through all 102 wavelengths; 2MASS, WISE and visible-light maps are one click away. A new
+  colour, a new place or a new zoom dissolves in as a whole: the map never flashes or shows half-loaded sky.
+- **Click any object, or search by name or coordinates.** The map dives there. The object is identified
+  through SIMBAD (type, spectral type, distance, proper motion), with a Wikipedia card when one exists. A
+  click picks the brightest catalogued object within a few screen pixels, so the star you aimed at is the one
+  that opens, even in the most crowded parts of the Milky Way.
   Catalogue coordinates of a nearby star point at where it was in the year 2000: the tool notices, says
   how far the star has moved since, and takes you to where it is now.
+- **Get the answer first.** The panel opens with *What the measurements say*: a few plain sentences on
+  whether the spot moved, whether its brightness changed and which molecule bands show, written from the
+  same numbers as the detailed sections below them. Only what is beyond doubt is stated plainly.
 - **Watch it over time.** Every SPHEREx exposure covering the spot is read, aligned and played back.
   *Visits* stacks each SPHEREx visit and loops through them, *Time as colour* paints early red and late blue,
   *Difference* subtracts visits, *Wavelengths* steps through the six detectors.
@@ -37,7 +43,9 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 - **Take it with you.** Copy a link to the exact view, save the image or a video of the sequence, or download
   every measurement as a CSV file.
 - **Take the guided tour.** Ten short steps, in plain language, from "what is SPHEREx" through the five test
-  objects of the challenge. It is saved on the device and runs without a connection.
+  objects of the challenge. One step shows two real SPHEREx pictures of the same patch of sky, a year apart,
+  flipping the way Clyde Tombaugh flipped his photographs: one dot moves. The tour is saved on the device
+  and runs without a connection.
 
 ## How the challenge is covered
 
@@ -82,6 +90,12 @@ talking directly to NASA's open data.
 7. **Offline.** A service worker keeps the page, the five showcase objects, the sky-map tiles of the guided
    tour, every other tile already seen and every position already opened on the device. Each release of the
    site is stored as one set, so a poor connection can never mix new files with old ones.
+8. **No flashes.** The map library repaints from nothing when its picture changes: a new colour of the cube
+   is blank white until its tiles arrive, and a new place starts as empty sky. So every such change is made
+   behind a still copy of the map (`web/js/sky.js`). The copy starts moving with the click, towards the
+   destination; the site follows each of the library's tile requests, and the copy dissolves into the new
+   picture when that picture is complete. Tiles are fetched ahead of the change, so a slow connection delays
+   the change instead of showing it half done.
 
 ## How the numbers were checked
 
@@ -107,8 +121,14 @@ talking directly to NASA's open data.
   Luhman 16 are measured moving at 5.3 and 2.8 arcseconds per year, against catalogue values of 5.1 and 2.8.
   The blind field check finds Luhman 16 from raw coordinates, and rejects a close pair of stars in the same
   field that a naive position comparison would report as moving.
-- **Sky-map tiles.** The HEALPix code (`web/js/healpix.js`) agrees with `astropy-healpix`, and predicts
-  exactly the tiles the map requests.
+- **Sky-map tiles.** The HEALPix code (`web/js/healpix.js`) agrees with `astropy-healpix`, and the tiles it
+  predicts for a view include the ones the map goes on to request.
+- **Map transitions.** The guided tour was filmed frame by frame (about 3,800 frames for the ten steps) and
+  every frame measured: none has more than 0.3 per cent of the map blown out to white, where each change of
+  colour used to flash white. Moving to an object takes about one second.
+- **Clicks.** Ten well-known stars were clicked dead on and a few arcseconds off, at the tolerance of a wide
+  map and of a close view, in empty and in crowded fields: 40 of 40 clicks opened the star that was clicked.
+  The earlier catalogue query, which did not ask for the nearest objects first, managed 32.
 - **Catalogue facts** shown for the five test objects are curated with their sources: Gaia DR3 parallaxes
   and proper motions, and Kirkpatrick et al. 2021 for WISE 0855. A distance is only shown when the parallax
   is measured to better than 20 per cent.

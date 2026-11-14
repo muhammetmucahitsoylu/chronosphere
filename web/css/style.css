@@ -163,8 +163,10 @@ select option { background: var(--surface-2); color: var(--ink); }
 
 .cols { display: grid; gap: 18px 26px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "look" "viewer" "stack"; align-items: start; }
 .cols.nolook { grid-template-areas: "viewer" "stack"; }
-.lookbox { grid-area: look; min-width: 0; }
-.cols.nolook .lookbox { display: none; }
+.lead { grid-area: look; min-width: 0; display: grid; gap: 14px; }          /* what to look for, and what the measurements say */
+.cols.nolook .lead { display: none; }
+.lookbox { min-width: 0; }
+.lookbox:empty { display: none; }
 .viewer { grid-area: viewer; }
 .stack { grid-area: stack; display: grid; gap: 22px; min-width: 0; }
 .look { border-left: 2px solid var(--ember); padding: 1px 0 1px 14px; margin: 0; font-size: 14.5px; line-height: 1.45; color: #e2dbcf; max-width: 70ch; }

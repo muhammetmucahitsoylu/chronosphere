@@ -751,7 +751,10 @@ function renderFindings() {
   const html = rows.length ? `<h2>What the measurements say</h2><ul>${rows.map(([to, r]) => `<li class="${r.cls}"><button type="button" data-to="${to}" title="Show how this was measured">${r.html}</button></li>`).join('')}</ul>` : '';
   if (el.dataset.was !== html) { el.dataset.was = html; el.innerHTML = html; }
   el.hidden = !rows.length;
+  leadState();
 }
+/** The lead of the panel (what to look for, what the measurements say) takes no room while it has nothing to say. */
+function leadState() { document.querySelector('.cols').classList.toggle('nolook', !$('lookbox').innerHTML && $('findings').hidden); }
 $('findings').addEventListener('click', e => {
   const to = e.target.closest('button')?.dataset.to;
   if (to) $(to)?.scrollIntoView({ behavior: calmMotion() ? 'auto' : 'smooth', block: 'center' });
@@ -1091,7 +1094,7 @@ function renderAbout() {
 function renderLook() {
   const t = S.target, show = !!t?.look && tourIdx < 0 && !S.embed;
   $('lookbox').innerHTML = show ? `<p class="look"><b>What to look for</b>${esc(t.look)}</p>` : '';
-  document.querySelector('.cols').classList.toggle('nolook', !show);
+  leadState();
 }
 function renderWiki() {
   const w = S.wiki, i = S.info, el = $('wikibox');

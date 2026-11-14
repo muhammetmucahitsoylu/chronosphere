@@ -130,7 +130,7 @@ function buildVeil() {
   al.view.catalogCanvas.after(veil);              // over the map and its markers, under the library's own controls
 }
 const stopAnims = () => { for (const el of [veil, pic]) for (const a of el.getAnimations()) a.cancel(); };
-function hideVeil() { if (!veil) return; stopAnims(); veil.hidden = true; veilUp = false; lifting = false; moved = false; }
+function hideVeil() { if (!veil) return; stopAnims(); veil.hidden = true; veilUp = false; lifting = false; moved = false; firstShown(); }
 
 /**
  * Put a still copy of the map, exactly as it looks now, over the map: the sky on one layer, the
@@ -261,6 +261,7 @@ function lift(fade = 420) {
   if (!veilUp) return Promise.resolve();
   if (calm() || !veil.animate) { hideVeil(); return Promise.resolve(); }
   const my = gen; lifting = true;
+  firstShown();                                   // from here on the map has a picture to show
   const a = veil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: fade, easing: 'ease-in-out', fill: 'forwards' });
   return a.finished.then(() => { if (my === gen && lifting) hideVeil(); }).catch(() => {});
 }
@@ -397,7 +398,7 @@ export async function init(selector, { onClick, onFov } = {}) {
       if (my !== gen) return;
       await settled({ max: 9000, expect: true });      // until then the map would be blank white, or white in patches
       if (my !== gen) return;
-      jobs = []; lift(800); firstShown();
+      jobs = []; lift(800);
     })();
   } catch { hideVeil(); firstShown(); }
   fetch(`${LAYERS[0].url}/properties`).then(r => r.text()).then(t => {

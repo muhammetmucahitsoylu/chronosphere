@@ -102,7 +102,10 @@
     <header id="about" class="ohead"></header>
 
     <div class="cols">
-      <div id="lookbox" class="lookbox"></div>
+      <div class="lead">
+        <div id="lookbox" class="lookbox"></div>
+        <section id="findings" class="findings" aria-live="polite" hidden></section>
+      </div>
 
       <section class="block viewer" aria-label="SPHEREx images over time">
         <h2 class="blocktitle">Over time <small>every SPHEREx exposure of this spot</small></h2>
@@ -167,8 +170,6 @@
       </section>
 
       <div class="stack">
-        <section id="findings" class="findings" aria-live="polite" hidden></section>
-
         <section class="block">
           <h2 class="blocktitle">Spectrum <small>its light by colour</small>
             <label class="inline" title="Mark the wavelengths where common molecules absorb light"><input id="bandsOn" type="checkbox" checked> molecule bands</label></h2>
