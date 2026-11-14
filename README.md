@@ -7,6 +7,8 @@ spectrum on the spot, and checks whether what you see is real.
 
 Live: https://muhammetmucahitsoylu.github.io/chronosphere/ · guided tour: add `?tour`
 
+![Epsilon Indi B in Chronosphere: the sky map, the image sequence, and a spectrum showing water and methane](web/preview.png)
+
 Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHEREx*) by team The Bright Nobles.
 
 ## What you can do
