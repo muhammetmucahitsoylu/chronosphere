@@ -9,7 +9,7 @@ function niceTicks(lo, hi, target = 5) {
 }
 const fmtNum = (v, step) => {
   const d = Math.max(0, Math.min(4, -Math.floor(Math.log10(step) + 1e-9)));
-  return Math.abs(v) >= 10000 ? v.toExponential(1) : v.toFixed(step < 1 ? d : 0);
+  return Math.abs(v) >= 1e6 ? v.toExponential(1) : v.toFixed(step < 1 ? d : 0);
 };
 
 export class Plot {
@@ -74,6 +74,7 @@ export class Plot {
     c.strokeRect(L, T, pw, ph);
     if (o.xlabel) c.fillText(o.xlabel, L + pw / 2, H - 14);
     if (o.ylabel) { c.save(); c.translate(11, T + ph / 2); c.rotate(-Math.PI / 2); c.textBaseline = 'middle'; c.fillText(o.ylabel, 0, 0); c.restore(); }
+    if (o.band) { c.fillStyle = o.band.color || '#ffffff14'; const ya = Y(o.band.y1), yb = Y(o.band.y0); c.fillRect(L, ya, pw, yb - ya); }
     if (o.hline !== undefined) { c.setLineDash([4, 4]); c.beginPath(); c.moveTo(L, Y(o.hline)); c.lineTo(W - R, Y(o.hline)); c.stroke(); c.setLineDash([]); }
     for (const s of o.shade || []) {
       const xa = X(Math.max(s.x0, x0)), xb = X(Math.min(s.x1, x1));
@@ -86,7 +87,8 @@ export class Plot {
       p._x = X(p.x); p._y = Y(p.y);
       c.globalAlpha = p.dim ? 0.35 : 0.9; c.strokeStyle = c.fillStyle = p.color || '#4cc9f0';
       if (p.err && o.errors !== false) { c.beginPath(); c.moveTo(p._x, Y(p.y - p.err)); c.lineTo(p._x, Y(p.y + p.err)); c.stroke(); }
-      c.beginPath(); c.arc(p._x, p._y, p.big ? 5 : 2.6, 0, 7); c.fill();
+      c.beginPath(); c.arc(p._x, p._y, p.big ? 5 : 2.6, 0, 7);
+      if (p.hollow && !p.big) { c.lineWidth = 1.2; c.stroke(); } else c.fill();      // hollow = approximate level
     }
     c.globalAlpha = 1;
     for (const p of pts) if (p.big) { c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.arc(p._x, p._y, 7, 0, 7); c.stroke(); }

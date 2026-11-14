@@ -54,7 +54,7 @@
    "det": 5,
    "mode": "epochs"
   },
-  "look": "Press Play. The star hops north by roughly a pixel each season, following the dotted line. Its core is bright enough to saturate the shorter-wavelength detectors, so D5 gives the cleanest view. The table compares the shift measured from these images with the catalogue prediction.",
+  "look": "The images loop through three visits: the star hops north by roughly a pixel each time, following the dotted line. Its core is bright enough to saturate the shorter-wavelength detectors, so D5 gives the cleanest view. The table compares the shift measured from these images with the catalogue prediction.",
   "wiki": "Barnard's Star",
   "info": {
    "oid": 2669393,
@@ -67,6 +67,7 @@
    "pmra": -801.551,
    "pmdec": 10362.394,
    "plx": 546.9759,
+   "plxErr": 0.0401,
    "sptype": "M4V",
    "redshift": -0.00036721999996314203,
    "mags": {
@@ -106,6 +107,13 @@
    "description": "Red dwarf star in the constellation Ophiuchus",
    "url": "https://en.wikipedia.org/wiki/Barnard's_Star",
    "thumb": "data/barnard/thumb.jpg"
+  },
+  "type": "Red dwarf star",
+  "sp": "M4",
+  "dist": {
+   "plx": 546.9759,
+   "err": 0.0401,
+   "src": "Gaia DR3 parallax"
   }
  },
  {
@@ -113,7 +121,7 @@
   "query": "eps Ind B",
   "label": "Epsilon Indi B",
   "kind": "motion",
-  "blurb": "A pair of brown dwarfs orbiting a nearby star, moving 4.7 arcseconds per year.",
+  "blurb": "Two brown dwarfs orbiting a nearby star, moving 4.7 arcseconds per year. SPHEREx sees the pair as one dot.",
   "ra": 331.098399,
   "dec": -56.801256,
   "size": 5.0,
@@ -167,7 +175,7 @@
    "det": 2,
    "mode": "epochs"
   },
-  "look": "Press Play and watch it slide to the south-east. Then look at the spectrum: the deep dips near 1.4, 1.9 and 2.7 microns are water vapour and the one near 3.3 microns is methane, in the atmosphere of a brown dwarf.",
+  "look": "Watch it slide to the south-east from visit to visit. Then look at the spectrum: the deep dips near 1.4, 1.9 and 2.7 microns are water vapour and the one near 3.3 microns is methane, in the atmospheres of the brown dwarfs.",
   "wiki": "Epsilon Indi",
   "info": {
    "oid": 3387843,
@@ -180,6 +188,7 @@
    "pmra": 3981.977,
    "pmdec": -2466.832,
    "plx": 270.658,
+   "plxErr": 0.6896,
    "sptype": "T1V+T6V",
    "redshift": null,
    "mags": {
@@ -198,6 +207,13 @@
    "description": "Star system in the constellation of Indus",
    "url": "https://en.wikipedia.org/wiki/Epsilon_Indi",
    "thumb": "data/epsindib/thumb.jpg"
+  },
+  "type": "Pair of brown dwarfs",
+  "sp": "T1 + T6",
+  "dist": {
+   "plx": 274.8431,
+   "err": 0.0956,
+   "src": "Gaia DR3 parallax of its host star"
   }
  },
  {
@@ -205,7 +221,7 @@
   "query": "WISE J085510.83-071442.5",
   "label": "WISE 0855",
   "kind": "motion",
-  "blurb": "The coldest known brown dwarf, 7 light-years away, moving 8.1 arcseconds per year.",
+  "blurb": "The coldest known brown dwarf, 7.4 light-years away, moving 8.1 arcseconds per year.",
   "ra": 133.757787,
   "dec": -7.242023,
   "size": 5.0,
@@ -254,7 +270,7 @@
    "det": 6,
    "mode": "bands"
   },
-  "look": "Step through the wavelengths. Below 4 microns the circle holds only the edge of an ordinary star just to its west. In the two longest-wavelength detectors a second source appears that is not in the Gaia catalogue: that is WISE 0855. In the colour picture it is the red dot. Switch to Seasons in D6 to see it move.",
+  "look": "The images step through the wavelengths. Below 4 microns the circle holds only the edge of an ordinary star just to its west. In the two longest-wavelength detectors a second source appears that is not in the Gaia catalogue: that is WISE 0855. In the colour picture it is the red dot. Switch to Visits in D6 to see it move.",
   "wiki": "WISE 0855\u22120714",
   "info": {
    "oid": 8596164,
@@ -267,6 +283,7 @@
    "pmra": -8123.7,
    "pmdec": 673.2,
    "plx": 439,
+   "plxErr": 2.4,
    "sptype": "Y2",
    "redshift": null,
    "mags": {
@@ -285,6 +302,13 @@
    "description": "Brown dwarf in the constellation Hydra",
    "url": "https://en.wikipedia.org/wiki/WISE_0855%E2%88%920714",
    "thumb": "data/wise0855/thumb.jpg"
+  },
+  "type": "Brown dwarf",
+  "sp": "Y",
+  "dist": {
+   "plx": 439.0,
+   "err": 2.4,
+   "src": "parallax from Kirkpatrick et al. 2021"
   }
  },
  {
@@ -292,7 +316,7 @@
   "query": "RW Aur",
   "label": "RW Aurigae",
   "kind": "variable",
-  "blurb": "A young star that dims unpredictably when dust crosses in front of it.",
+  "blurb": "A young star, still surrounded by dust, whose brightness changes unpredictably.",
   "ra": 76.956589,
   "dec": 30.401286,
   "size": 5.0,
@@ -342,7 +366,7 @@
    "det": 5,
    "mode": "epochs"
   },
-  "look": "Look at the spectrum: the colours are the observing seasons, and beyond 3 microns they pull apart, because the star was clearly fainter in the latest season than a year earlier. Its position stays put, which shows how well the images line up.",
+  "look": "The colours in the spectrum are the three visits, and they cross over. Between September 2025 and September 2026 the star grew more than 40% brighter below 1.6 microns and lost almost half of its brightness beyond 3.8 microns, while ordinary stars in the same images stayed constant to about 1%. Astronomers saw the reverse during its deep fading of 2014 to 2016: hot dust close to the star hides it while glowing in the infrared itself.",
   "wiki": "RW Aurigae",
   "info": {
    "oid": 756681,
@@ -355,6 +379,7 @@
    "pmra": 7.23,
    "pmdec": -20.33,
    "plx": 15.42,
+   "plxErr": 3.69,
    "sptype": "K1/5e+K5e",
    "redshift": 5.0035866073772084e-05,
    "mags": {
@@ -384,6 +409,18 @@
    "description": "Young binary star system in the constellation Auriga",
    "url": "https://en.wikipedia.org/wiki/RW_Aurigae",
    "thumb": "data/rwaur/thumb.jpg"
+  },
+  "type": "Young star (T Tauri type)",
+  "sp": "K",
+  "dist": {
+   "plx": 6.4062,
+   "err": 0.0441,
+   "src": "Gaia DR3 parallax of RW Aur A"
+  },
+  "pm": {
+   "pmra": 2.641,
+   "pmdec": -27.398,
+   "src": "Gaia DR3, RW Aur A"
   }
  },
  {
@@ -391,7 +428,7 @@
   "query": "R Dra",
   "label": "R Draconis",
   "kind": "variable",
-  "blurb": "A pulsating red giant (a Mira variable) that brightens and fades over about 245 days.",
+  "blurb": "A red giant that swells and shrinks, brightening and fading over about 245 days.",
   "ra": 248.16722,
   "dec": 66.755025,
   "size": 5.0,
@@ -436,10 +473,10 @@
    ]
   },
   "view": {
-   "det": 1,
+   "det": 4,
    "mode": "epochs"
   },
-  "look": "Press Play: each image covers about a month. This star is so bright that its core saturates every detector, so the tool measures its outer halo instead. The brightness curve shows it fading and brightening again.",
+  "look": "Each image covers about a month. This star is so bright that its core saturates every detector, so the tool measures its faint outer glow instead. The brightness curve shows the pulse: brightest in July 2025, about half as bright that autumn, and climbing again in the latest images.",
   "wiki": "R Draconis",
   "info": {
    "oid": 376084,
@@ -452,6 +489,7 @@
    "pmra": -20.643,
    "pmdec": 6.149,
    "plx": 1.2509,
+   "plxErr": 0.0648,
    "sptype": "M4.5-6+e",
    "redshift": -0.00044287504927820187,
    "mags": {
@@ -463,6 +501,13 @@
    "dec": 66.755025,
    "dist": 0,
    "others": []
+  },
+  "type": "Pulsating red giant (Mira variable)",
+  "sp": "M",
+  "dist": {
+   "plx": 1.2509,
+   "err": 0.0648,
+   "src": "Gaia DR3 parallax"
   }
  }
 ]

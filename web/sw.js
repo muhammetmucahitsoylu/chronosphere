@@ -1,7 +1,7 @@
 // Offline support. After one visit the page, the tour objects and every sky-map tile already seen
 // are served from this device, so a poor connection does not stop a demonstration.
 
-const SHELL = 'chrono-shell-v3', DATA = 'chrono-data-v1', TILES = 'chrono-tiles-v1', LOOKUP = 'chrono-lookup-v1';
+const SHELL = 'chrono-shell-v4', DATA = 'chrono-data-v1', TILES = 'chrono-tiles-v1', LOOKUP = 'chrono-lookup-v1';
 const KEEP = new Set([SHELL, DATA, TILES, LOOKUP, 'chrono-live-v1']);
 const SHELL_FILES = ['./', 'index.html', 'css/style.css', 'css/fonts.css', 'config.js', 'vendor/aladin.js', 'data/targets.json',
   'js/app.js', 'js/core.js', 'js/plot.js', 'js/sky.js', 'js/info.js', 'js/tour.js', 'js/pages.js', 'js/archive.js',
@@ -57,7 +57,7 @@ self.addEventListener('fetch', e => {
     e.respondWith(cacheFirst(req, TILES, 4000));                        // sky-map tiles never change
     return;
   }
-  if (/simbad|wikipedia\.org|wikimedia\.org|cds\.unistra\.fr/.test(url.hostname)) {
+  if (/simbad|wikipedia\.org|wikimedia\.org|cds\.unistra\.fr|cfa\.harvard\.edu/.test(url.hostname)) {
     e.respondWith(networkFirst(req, LOOKUP, 7000));                     // names, types, encyclopedia cards
   }
 });

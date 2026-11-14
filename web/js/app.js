@@ -9,12 +9,16 @@ import * as Archive from './archive.js';
 const API = (window.CHRONO_API || '').replace(/\/$/, '');
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const isNarrow = () => window.matchMedia('(max-width: 900px)').matches;
+const calmMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const yearNow = () => 1970 + Date.now() / 31557600000;
 
 const MODES = {
-  epochs: 'One stacked image per observing season. Blink between them: anything that moved between seasons jumps.',
+  epochs: 'One stacked image per SPHEREx visit to this spot, played in a loop. Anything that moved between visits jumps.',
   frames: 'Every single exposure in time order. Each one sees the sky at a slightly different wavelength, so stars flicker naturally.',
-  color: 'Time shown as colour: first season in red, last in blue. Stars that stayed put look white; anything that moved or changed splits into colours.',
-  diff: 'A later season minus an earlier one. Steady stars cancel; a moving object leaves a dark-and-bright pair.',
+  color: 'Time shown as colour: first visit in red, last in blue. Stars that stayed put look white; anything that moved or changed splits into colours.',
+  diff: 'A later visit minus an earlier one. Steady stars cancel; a moving object leaves a dark-and-bright pair.',
   deep: 'All exposures of this detector added together: the deepest, cleanest image.',
   bands: 'The same patch of sky in each of the six detectors, from 0.75 to 5 microns, then all six as one colour picture (short wavelengths blue, long red). Cold objects only appear at the long end.',
 };
@@ -67,15 +71,16 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   Object.assign(S, { ra, dec, size: size || 5, target, track: track || (target && target.resolved) || null,
     head: null, grid: null, dets: {}, seq: [], idx: 0, sel: null, gaia: null, catwise: null, deep: null, off: new Set(), stacks: null, epochs: null, pts: [], bandCache: {}, haloDets: [] });
   S.info = info; S.infoState = info ? 'done' : 'loading'; S.wiki = null; S.found = null;
+  S.wantPlay = !calmMotion();          // the sequence starts playing by itself once it has loaded
   if (det) S.det = det;
   if (mode && MODES[mode]) S.mode = mode;
   openPanel();
-  if (Sky.isReady()) { Sky.mark(ra, dec, S.size); if (fly) Sky.flyTo(ra, dec, Math.max(1.5, S.size / 8)); }
+  if (Sky.isReady()) { Sky.mark(ra, dec, S.size, target ? target.label : info ? info.name : track?.name || ''); if (fly) Sky.flyTo(ra, dec, Math.max(3, S.size / 5)); }
   loadInfo(gen);
   $('fov').value = String(S.size);
   $('notice').hidden = true;
   syncUrl(); renderChips(); renderAbout(); renderModes(); renderDets(); paint(); refreshPlots();
-  setStatus('Asking the archive which exposures cover this spot…');
+  setStatus('Finding the exposures that cover this spot…');
   loadCatalog(gen);
   try {
     if (S.showWise) setTimeout(loadCatwise, 1500);
@@ -86,7 +91,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
       if (gen !== S.gen) return;
       if (!S.dets[d] && +S.head.avail[d] > 0) await loadDet(d, gen);
     }
-    if (gen === S.gen) setStatus('');
+    if (gen === S.gen) { setStatus(''); maybeAutoplay(); }
   } catch (e) {
     if (e.name === 'AbortError' || gen !== S.gen) return;
     console.error(e);
@@ -104,9 +109,10 @@ async function loadDet(det, gen) {
     if (line.t === 'head') {
       D.found = line.found; D.total = line.use ?? Math.min(line.found ?? line.total, 160);   // exposures coming for this detector
       if (!S.head) {
-        line.epochs = C.refineEpochs(line.epochs || []);
+        const raw = line.epochs || [];
+        line.epochs = C.refineEpochs(raw); line.split = line.epochs.length > raw.length;     // a long continuous visit, cut into months
         S.head = line; S.grid = line.grid;
-        const c = (S.grid.n - 1) / 2; S.view = { z: 1, cx: c, cy: c };
+        resetView();
         renderReleases(); renderAbout();
         if (!line.total && !+line.avail[det]) {
           const other = [1, 2, 3, 4, 5, 6].find(d => +line.avail[d] > 0);
@@ -165,6 +171,18 @@ function onData(det) {
   }
   renderDets();
   refreshPlots();
+  if (D.done) maybeAutoplay();
+}
+
+/** Start the sequence by itself, once, when everything it needs has arrived. */
+function maybeAutoplay() {
+  if (!S.wantPlay || !S.head || S.playing) return;
+  const ready = S.mode === 'bands'
+    ? [1, 2, 3, 4, 5, 6].every(d => !+S.head.avail[d] || S.dets[d]?.done)
+    : !!S.dets[S.det]?.done;
+  if (!ready) return;
+  S.wantPlay = false;
+  if (S.seq.length > 1) play();
 }
 
 async function loadCatalog(gen) {
@@ -213,7 +231,7 @@ function rebuild() {
   const stacks = S.epochs.map(e => {
     const img = C.medianStack(e.frames, npx);
     return { kind: 'stack', img, sig: C.robustStats(img).sig, mjd: e.mid, n: e.frames.length, ep: e,
-      title: `Season ${gEpoch(e.mid) + 1} · ${C.fmtMonth(e.mid)}`, sub: `${e.frames.length} exposures · ${C.fmtDate(e.t0)} to ${C.fmtDate(e.t1)}` };
+      title: `${S.head?.split ? '' : `Visit ${gEpoch(e.mid) + 1} · `}${C.fmtMonth(e.mid)}`, sub: `${e.frames.length} exposures · ${C.fmtRange(e.t0, e.t1)}` };
   });
   S.stacks = stacks;
   const deepFrames = frames.length > 80 ? frames.filter((_, i) => i % Math.ceil(frames.length / 80) === 0) : frames;
@@ -229,7 +247,7 @@ function rebuild() {
   } else if (S.mode === 'epochs') seq = stacks;
   else if (S.mode === 'deep') {
     if (S.deep) seq = [{ kind: 'stack', img: S.deep, sig: S.deepSig, mjd: frames[frames.length >> 1].mjd, n: frames.length,
-      title: 'Deep sum', sub: `${frames.length} exposures, all seasons` }];
+      title: 'Deep sum', sub: `${frames.length} exposures, all visits` }];
   } else if (S.mode === 'bands') {
     S.bandCache = S.bandCache || {};
     const per = {};
@@ -240,7 +258,7 @@ function rebuild() {
         const sub = fr.length > 80 ? fr.filter((_, i) => i % Math.ceil(fr.length / 80) === 0) : fr;
         const img = C.medianStack(sub, npx), st = C.robustStats(img);
         S.bandCache[d] = { key, kind: 'stack', det: d, img, sig: st.sig, hi: Math.max(st.p(0.997), 25 * st.sig), mjd: fr[fr.length >> 1].mjd,
-          n: fr.length, title: `${C.DET_BANDS[d][0]} to ${C.DET_BANDS[d][1]} µm`, sub: `${fr.length} exposures, all seasons` };
+          n: fr.length, title: `${C.DET_BANDS[d][0]} to ${C.DET_BANDS[d][1]} µm`, sub: `${fr.length} exposures, all visits` };
       }
       per[d] = S.bandCache[d]; seq.push(per[d]);
     }
@@ -377,8 +395,8 @@ function overlays(it, W, H, s) {
       const pm = Math.hypot(src.pmra || 0, src.pmdec || 0);
       ctx.strokeStyle = pm > 150 ? '#ffd166' : '#4cc9f066';
       ctx.beginPath(); ctx.arc(X, Y, Math.max(3.5, 4 / g.scale * s), 0, 7); ctx.stroke();
-      if (pm > 150) {   // arrow: motion over the next 10 years
-        const [ra2, dec2] = C.propagate(src, S.gaia.epoch, year + 10), [x2, y2] = C.skyToGrid(g, ra2, dec2), [X2, Y2] = g2c(x2, y2, W, H, s);
+      if (pm > 150) {   // arrow: motion over the next 5 years
+        const [ra2, dec2] = C.propagate(src, S.gaia.epoch, year + 5), [x2, y2] = C.skyToGrid(g, ra2, dec2), [X2, Y2] = g2c(x2, y2, W, H, s);
         arrow(X, Y, X2, Y2, '#ffd166');
         ctx.fillStyle = '#ffd166'; ctx.fillText(`${(pm / 1000).toFixed(1)}″/yr`, X2 + 6, Y2 - 6);
       }
@@ -423,9 +441,9 @@ function overlays(it, W, H, s) {
   ctx.beginPath(); ctx.moveTo(W - 14 - bl, by); ctx.lineTo(W - 14, by); ctx.stroke();
   ctx.textAlign = 'right'; ctx.fillText(bar >= 60 ? `${bar / 60}′` : `${bar}″`, W - 14, by - 6);
   ctx.lineWidth = 1.2; ctx.textAlign = 'center';
-  const ox = W - 30, oy = 52;
-  arrow(ox, oy, ox, oy - 26, '#fff'); ctx.fillText('N', ox, oy - 30);
-  arrow(ox, oy, ox - 26, oy, '#fff'); ctx.fillText('E', ox - 33, oy + 4);
+  const ox = W - 16, oy = 44;
+  arrow(ox, oy, ox, oy - 20, '#fff'); ctx.fillText('N', ox, oy - 24);
+  arrow(ox, oy, ox - 20, oy, '#fff'); ctx.fillText('E', ox - 27, oy + 4);
   ctx.textAlign = 'left';
 }
 function niceBar(arcsec) { return [600, 300, 120, 60, 30, 20, 10, 5, 2, 1].find(v => v <= arcsec) || 1; }
@@ -446,7 +464,7 @@ function show() {
   if (single) stop();
   if (!S.seq.length && S.head && S.dets[S.det]?.done) {
     $('caption').innerHTML = S.mode === 'color' || S.mode === 'diff'
-      ? '<b>Needs two seasons</b><span>This detector has only one observing season here so far.</span>'
+      ? '<b>Needs two visits</b><span>SPHEREx has visited this spot only once with this detector so far.</span>'
       : `<b>No exposures</b><span>Detector ${S.det} has no data at this position.</span>`;
   }
   paint(); renderMeta(); markCurrent();
@@ -491,20 +509,33 @@ function measureAll() {
       pts.push({ lam: f.lam + f.lgx * (p[0] - c) + f.lgy * (p[1] - c), flux: a.flux, err: a.err, mjd: f.mjd, det, frame: f, halo: useHalo });
     });
   }
+  // Saturated detectors follow the shape of the spectrum but not its level: join each to its neighbour.
+  S.haloAnchored = pts.some(p => !p.halo);
+  if (S.haloDets.length) {
+    const sc = C.stitchScales(pts);
+    let norm = 1;
+    if (!S.haloAnchored) {              // every detector saturated: no absolute level at all, show it relative to its own median
+      const v = pts.map(p => p.flux * (sc[p.det] ?? 1)).filter(x => x > 0).sort((a, b) => a - b);
+      if (v.length) norm = 1 / v[v.length >> 1];
+    }
+    for (const p of pts) if (p.halo) { const k = (sc[p.det] ?? 1) * norm; p.flux *= k; p.err *= k; }
+  }
   return pts;
 }
 function pct(v, f) { const s = [...v].sort((a, b) => a - b); return s[clamp(Math.round(f * (s.length - 1)), 0, s.length - 1)]; }
 function drawPlots() {
   const pts = S.pts = measureAll(), cur = S.seq[S.idx]?.frame;
   const fl = pts.map(p => p.flux);
-  const sp = pts.map(p => ({ x: p.lam, y: p.flux, err: p.err, color: epochColor(p.mjd), src: p, big: p.frame === cur }));
-  const ymax = fl.length ? pct(fl, 0.98) * 1.25 : 1, ymin = fl.length ? Math.min(0, pct(fl, 0.02)) : 0;
+  const relative = S.haloDets?.length > 0 && !S.haloAnchored;
+  const inJy = !relative && fl.length > 0 && pct(fl, 0.9) >= 2000, u = inJy ? 0.001 : 1, unit = inJy ? 'Jy' : 'mJy';
+  const sp = pts.map(p => ({ x: p.lam, y: p.flux * u, err: p.err * u, color: epochColor(p.mjd), src: p, big: p.frame === cur, hollow: p.halo }));
+  const ymax = fl.length ? pct(fl, 0.98) * 1.25 * u : 1, ymin = fl.length ? Math.min(0, pct(fl, 0.02)) * u : 0;
   specPlot.set(sp, {
-    xlabel: 'wavelength (µm)', ylabel: S.haloDets?.length === 6 ? 'halo flux (relative)' : 'flux (mJy)', ylim: [ymin - (ymax - ymin) * 0.04, ymax > ymin ? ymax : ymin + 1],
+    xlabel: 'wavelength (µm)', ylabel: relative ? 'relative brightness' : `flux (${unit})`, ylim: [ymin - (ymax - ymin) * 0.04, ymax > ymin ? ymax : ymin + 1],
     xlim: [0.7, 5.1], empty: S.sel ? 'Measuring…' : 'Click a star in the image',
     shade: [...(S.grid ? [{ x0: C.DET_BANDS[S.det][0], x1: C.DET_BANDS[S.det][1], color: '#ff7b3916' }] : []),
       ...(S.showBands ? C.MOLECULES.map((m, i) => ({ x0: m.band[0], x1: m.band[1], color: '#ffffff12', label: m.f, row: i % 2 })) : [])],
-    tipText: p => `${p.x.toFixed(3)} µm · ${p.y.toFixed(2)} ± ${p.err.toFixed(2)} mJy · ${C.fmtDate(p.src.mjd)} · D${p.src.det}`,
+    tipText: p => `${p.x.toFixed(3)} µm · ${relative ? `×${p.y.toFixed(2)}` : `${p.src.halo ? '≈ ' : ''}${p.y.toFixed(p.y >= 100 ? 0 : 2)}${p.src.halo ? '' : ` ± ${p.err.toFixed(2)}`} ${unit}`} · ${C.fmtDate(p.src.mjd)} · D${p.src.det}`,
     onPick: p => jumpTo(p.src),
   });
   // Variability: each point relative to the spot's own median spectrum.
@@ -518,17 +549,37 @@ function drawPlots() {
     lc.push({ x: p.mjd, y: p.flux / r, err: p.err / r, color: epochColor(p.mjd), src: p, big: p.frame === cur });
   }
   const ly = lc.map(p => p.y), lo = ly.length ? Math.min(0.5, pct(ly, 0.02)) : 0, hi = ly.length ? Math.max(1.5, pct(ly, 0.98)) : 2;
+  const check = realityCheck(lc);
   lcPlot.set(lc, {
     xlabel: 'date', ylabel: 'relative brightness', ylim: [lo - 0.1, hi + 0.1], hline: 1, errors: lc.length < 400,
+    band: check?.steady != null ? { y0: 1 - check.steady, y1: 1 + check.steady } : null,
     xTicks: dateTicks, empty: pts.length ? `Too faint (or saturated) in D${S.det} to measure changes` : 'Click a star in the image',
     tipText: p => `${C.fmtDate(p.x)} · ×${p.y.toFixed(2)} · ${p.src.lam.toFixed(2)} µm`,
     onPick: p => jumpTo(p.src),
   });
-  renderMolecules(pts);
+  renderMolecules(steadied(pts));
   $('lctitle').textContent = `Brightness over time · D${S.det} (${C.DET_BANDS[S.det].join('–')} µm)`;
-  const legend = (S.head?.epochs || []).map((e, i) => `<span><i style="background:${C.EPOCH_COLORS[i % C.EPOCH_COLORS.length]}"></i>${C.fmtMonth((e[0] + e[1]) / 2)}</span>`).join('');
-  const haloNote = S.haloDets?.length ? `<b>Too bright for the detector:</b> the star's core is saturated in ${S.haloDets.map(d => 'D' + d).join(', ')}, so those points are measured from its outer halo (a ring well outside the core). Their scale is relative; the changes over time are real. ` : '';
-  $('specnote').innerHTML = `<span class="legend">${legend}</span>${haloNote}Every exposure sees the spot at a different wavelength, so stepping through time builds a spectrum (${pts.length} measurements so far). Click a point to jump to that exposure. Aperture radius 9″, no aperture correction.`;
+  $('speclegend').innerHTML = (S.head?.epochs || []).map((e, i) => `<span><i style="background:${C.EPOCH_COLORS[i % C.EPOCH_COLORS.length]}"></i>${C.fmtMonth((e[0] + e[1]) / 2)}</span>`).join('');
+  const loadingMore = !!S.head && [1, 2, 3, 4, 5, 6].some(d => +S.head.avail[d] > 0 && !S.dets[d]?.done);
+  const haloNote = !S.haloDets?.length ? ''
+    : relative ? `<b>Too bright for the camera in ${loadingMore ? 'the detectors loaded so far' : 'every detector'}.</b> The star's core is saturated, so it is measured from its faint outer glow instead (hollow points). The scale is relative${loadingMore ? ' until the other detectors arrive' : ''}; the changes over time are real. `
+      : `<b>Too bright for the camera in ${S.haloDets.map(d => 'D' + d).join(', ')}.</b> There the star's core is saturated, so it is measured from its faint outer glow and each detector is scaled to join its neighbour (hollow points). The overall shape is right; the level and the fine detail are approximate. `;
+  $('specnote').innerHTML = `${haloNote}Every exposure sees the spot at a different wavelength, so stepping through time builds a spectrum (${pts.length} measurements so far). Click a point to jump to that exposure. Measured in a circle of 9″ radius, which reads roughly 10 to 15% low because some starlight falls outside it.`;
+}
+/** Take out visit-to-visit brightness changes, detector by detector, so that a variable star's
+ *  spectrum from different visits lines up before absorption bands are measured in it. */
+function steadied(pts) {
+  const med = v => { const s = [...v].sort((a, b) => a - b); return s[s.length >> 1]; };
+  const out = [];
+  for (let d = 1; d <= 6; d++) {
+    const v = pts.filter(p => p.det === d);
+    if (v.length < 8) { out.push(...v); continue; }
+    const ref = C.referenceSpectrum(v), by = new Map();
+    for (const p of v) { const r = ref(p.lam); if (!(r > 0)) continue; const k = gEpoch(p.mjd); if (!by.has(k)) by.set(k, []); by.get(k).push(p.flux / r); }
+    const fac = new Map([...by].map(([k, a]) => [k, a.length >= 3 ? med(a) : 1]));
+    for (const p of v) { const f = fac.get(gEpoch(p.mjd)); out.push(f > 0.2 && f < 5 ? { ...p, flux: p.flux / f, err: p.err / f } : p); }
+  }
+  return out;
 }
 function renderMolecules(pts) {
   const el = $('molecules');
@@ -545,7 +596,7 @@ function renderMolecules(pts) {
     return `<tr><td>${m.name} <span class="none">${m.f}</span></td><td>${m.band[0].toFixed(2)}–${m.band[1].toFixed(2)}</td><td class="${cls}">${txt}</td></tr>`;
   }).join('');
   if (rowsData.every(m => m.depth === null)) {
-    el.innerHTML = `<p class="hint">Molecule bands cannot be measured here: ${rowsData.some(m => m.why === 'star too bright to tell') ? 'the star is too bright for the detector' : rowsData.some(m => m.why === 'too faint to tell') ? 'the spot is too faint' : 'there are not enough measurements yet'}.</p>`;
+    el.innerHTML = `<p class="hint">Molecule bands cannot be measured here: ${rowsData.some(m => m.why === 'star too bright to tell') ? 'the star is too bright for the camera' : rowsData.some(m => m.why === 'too faint to tell') ? 'the spot is too faint' : rowsData.some(m => m.why === 'too uneven to tell') ? 'the measurements scatter too much' : 'there are not enough measurements yet'}.</p>`;
     return;
   }
   el.innerHTML = `<table class="t mol"><thead><tr><th>Molecule</th><th>Band, µm</th><th>Measured</th></tr></thead><tbody>${rows}</tbody></table>
@@ -556,12 +607,107 @@ function markCurrent() {
   for (const pl of [specPlot, lcPlot]) { for (const p of pl.pts) p.big = !!cur && p.src.frame === cur; pl.draw(); }
 }
 function jumpTo(src) {
-  stop();
+  S.wantPlay = false; stop();
   S.det = src.det; S.mode = 'frames';
   renderModes(); renderDets(); rebuild();
   const i = S.seq.findIndex(it => it.frame === src.frame);
   if (i >= 0) { S.idx = i; show(); }
   syncUrl();
+}
+
+// ------------------------------------------------------------ is the change real?
+/**
+ * Bright, isolated, unsaturated stars in the stacked image of the selected detector: the yardstick.
+ * A star close to a much brighter target sits in that target's glow and would follow its changes,
+ * so the fainter a star is compared with the target, the farther away it has to be.
+ */
+function findComparisons(targetFlux = 0) {
+  const g = S.grid, n = g.n, img = S.deep, frames = usable(S.det);
+  if (!img || frames.length < 6) return [];
+  const noise = pct(frames.map(f => f.sig), 0.5);              // per-pixel noise of one exposure
+  const edge = Math.ceil(34 / g.scale), peaks = [];
+  for (let j = edge; j < n - edge; j++) for (let i = edge; i < n - edge; i++) {
+    const v = img[j * n + i];
+    if (!(v > 0)) continue;
+    let top = true;
+    for (let dj = -2; dj <= 2 && top; dj++) for (let di = -2; di <= 2; di++) {
+      const u = img[(j + dj) * n + i + di];
+      if (u !== u || u > v) { top = false; break; }          // masked pixels nearby: a saturated star, no use as a yardstick
+    }
+    if (!top) continue;
+    // Bright enough to be measured to better than about 8% in a single exposure.
+    const a = C.aperture(img, n, g.scale, i, j, noise);
+    if (a && a.flux > 12 * a.err) peaks.push({ x: i, y: j, v: a.flux });
+  }
+  peaks.sort((a, b) => b.v - a.v);
+  const eps = S.head?.epochs || [];
+  const mine = S.sel?.follow && S.track ? eps.map(e => trackPos((e[0] + e[1]) / 2)) : S.sel ? [[S.sel.x, S.sel.y]] : [];
+  const crowd = 26 / g.scale;
+  const clear = p => mine.every(m => {
+    const d = Math.hypot(m[0] - p.x, m[1] - p.y) * g.scale;                       // arcseconds from the target
+    return d >= 40 && p.v >= targetFlux * 0.006 * Math.pow(40 / d, 2.2);
+  });
+  return peaks.filter(p => clear(p) && !peaks.some(q => q !== p && q.v > 0.3 * p.v && Math.hypot(q.x - p.x, q.y - p.y) < crowd))
+    .slice(0, 5).map(p => C.centroid(img, n, p.x, p.y, 2) || p);
+}
+/**
+ * How much did the circled spot change from visit to visit, and how much did ordinary stars in the
+ * very same images change? If they stayed steady and the spot did not, the change is in the sky.
+ */
+function realityCheck(lc) {
+  const el = $('lccheck'), eps = S.head?.epochs || [];
+  const med = v => { const s = [...v].sort((a, b) => a - b); return s[s.length >> 1]; };
+  const perVisit = rows => {                                   // rows: [{mjd, ratio}] -> ratios per visit
+    const by = new Map();
+    for (const r of rows) { const k = gEpoch(r.mjd); if (!by.has(k)) by.set(k, []); by.get(k).push(r.ratio); }
+    return by;
+  };
+  const tv = perVisit(lc.map(p => ({ mjd: p.x, ratio: p.y })));
+  const visits = [...tv.keys()].filter(k => tv.get(k).length >= 5).sort((a, b) => a - b);
+  if (!S.grid || visits.length < 2) { el.innerHTML = ''; return null; }
+  const base = med(tv.get(visits[0]));
+  const target = visits.map(k => { const v = tv.get(k), m = med(v); return { k, n: v.length, rel: m / base, err: 1.4826 * med(v.map(x => Math.abs(x - m))) / Math.sqrt(v.length) / base }; });
+  const mine = (S.pts || []).filter(p => p.det === S.det);
+  const sn = mine.length ? med(mine.map(p => Math.abs(p.flux) / p.err)) : 0;                    // how well one exposure measures the spot
+  const relative = S.haloDets?.length > 0 && !S.haloAnchored;
+  const flux = relative ? Infinity : mine.length ? med(mine.map(p => p.flux)) : 0;
+  // the same measurement on comparison stars
+  const g = S.grid, n = g.n, c = (n - 1) / 2, frames = usable(S.det), comps = [];
+  for (const s of findComparisons(flux)) {
+    const pts = [];
+    for (const f of frames) {
+      const a = C.aperture(f.data, n, g.scale, s.x, s.y, f.sig);
+      if (a && a.flux > 0) pts.push({ lam: f.lam + f.lgx * (s.x - c) + f.lgy * (s.y - c), flux: a.flux, mjd: f.mjd });
+    }
+    if (pts.length < 0.6 * frames.length) continue;
+    const ref = C.referenceSpectrum(pts), pv = perVisit(pts.map(p => ({ mjd: p.mjd, ratio: p.flux / ref(p.lam) })));
+    if (!visits.every(k => (pv.get(k)?.length || 0) >= 3)) continue;
+    const b = med(pv.get(visits[0]));
+    comps.push(visits.map(k => med(pv.get(k)) / b));
+  }
+  // "within X%": the largest departure among the comparison stars (leaving out the single worst when there are four or more)
+  const steadyAt = i => {
+    if (comps.length < 2) return null;
+    const d = comps.map(cs => Math.abs(cs[i] - 1)).sort((x, y) => y - x);
+    return Math.max(0.01, comps.length >= 4 ? d[1] : d[0]);
+  };
+  const steady = comps.length >= 2 ? Math.max(...visits.slice(1).map((_, i) => steadyAt(i + 1))) : null;
+  const biggest = target.slice(1).reduce((m, t) => (Math.abs(t.rel - 1) > Math.abs(m.rel - 1) ? t : m), target[1]);
+  const change = Math.abs(biggest.rel - 1), sig = change / Math.max(Math.hypot(biggest.err, target[0].err), 1e-3);
+  const pc = v => `${Math.round(v * 100)}%`;
+  const stars = `${comps.length} ordinary star${comps.length === 1 ? '' : 's'}`;
+  let verdict, word = 'none';
+  if (sn < 5) verdict = `The spot is too faint in D${S.det} to check for changes: one exposure measures it only to about ${pc(Math.min(1, 1 / Math.max(sn, 1)))}. Try a detector where it is brighter.`;
+  else if (steady == null) verdict = relative
+    ? `A change of ${pc(change)} between visits. It cannot be checked against other stars here: next to a star this bright, every faint neighbour sits in its glow.`
+    : `A change of ${pc(change)} between visits. There are not enough ordinary stars in this small field to check it against.`;
+  else if (change >= Math.max(3 * steady, 0.08) && sig >= 5) { word = 'real'; verdict = `<b>The change is real.</b> The spot ${biggest.rel > 1 ? 'brightened' : 'faded'} by ${pc(change)} between visits in D${S.det}, while ${stars} in the same images stayed constant to within ${pc(steady)}.`; }
+  else if (change >= Math.max(2 * steady, 0.04) && sig >= 3) { word = 'maybe'; verdict = `Possibly changing: ${pc(change)} between visits in D${S.det}, against ${pc(steady)} for ${stars} in the same images. Worth a closer look.`; }
+  else { word = 'steady'; verdict = `<b>No significant change.</b> Between visits the spot differs by ${pc(change)} in D${S.det}; ${stars} in the same images differ by up to ${pc(steady)}.`; }
+  const rows = visits.length <= 6 ? `<table class="t"><thead><tr><th>${S.head.split ? 'Month' : 'Visit'}</th><th>This spot</th><th>Ordinary stars</th></tr></thead><tbody>${target.map((t, i) =>
+    `<tr><td><i style="background:${C.EPOCH_COLORS[t.k % C.EPOCH_COLORS.length]}"></i>${C.fmtMonth((eps[t.k][0] + eps[t.k][1]) / 2)}</td><td>${i ? `×${t.rel.toFixed(2)}` : 'reference'}</td><td>${i ? (steadyAt(i) == null ? '–' : `within ${pc(steadyAt(i))}`) : ''}</td></tr>`).join('')}</tbody></table>` : '';
+  el.innerHTML = `${sn >= 5 ? rows : ''}<p class="hint verdict">${verdict}${steady != null && sn >= 5 ? ' The grey band in the plot is that steadiness.' : ''}</p>`;
+  return { steady: sn >= 5 ? steady : null, comps: comps.length, word };
 }
 
 // ------------------------------------------------------------ side panels
@@ -596,9 +742,10 @@ async function loadInfo(gen) {
     if (!S.info) {
       S.info = await Info.identify(S.ra, S.dec, 10).catch(() => null);
       if (gen !== S.gen) return;
+      if (S.info && !S.target && Sky.isReady()) Sky.mark(S.ra, S.dec, S.size, S.info.name);      // now the marker can carry its name
     }
     S.infoState = 'done'; renderAbout();
-    if (S.target?.wikiCard) { S.wiki = S.target.wikiCard; renderAbout(); return; }      // baked in: no look-up needed
+    if (S.target && 'info' in S.target) { S.wiki = S.target.wikiCard || null; renderAbout(); return; }      // baked in: no look-up needed
     const titles = [];
     if (S.target?.wiki) titles.push(S.target.wiki);
     if (S.info) titles.push(...Info.wikiTitles([S.info.mainId, ...(await Info.aliases(S.info.oid))]));
@@ -608,39 +755,75 @@ async function loadInfo(gen) {
   } catch { S.infoState = 'done'; if (gen === S.gen) renderAbout(); }
 }
 
+/** Light-years from a parallax in milliarcseconds, rounded to what the measurement supports. */
+function fmtDistance(plx, err) {
+  const ly = 3261.5638 / plx, rel = err != null ? err / plx : 0.01;
+  const v = Number(ly.toPrecision(rel < 0.003 ? 3 : 2));
+  return `${rel < 0.003 ? '' : 'about '}${v.toLocaleString('en', { maximumFractionDigits: 2 })} light-years`;
+}
+
 function renderAbout() {
   const t = S.target, k = S.track, i = S.info, el = $('about');
   const name = t ? t.label : i ? i.name : k?.name ? k.name : 'Uncatalogued spot';
-  const kind = i ? `${i.type}${i.sptype ? ` · type ${i.sptype}` : ''}` : S.infoState === 'loading' ? 'Identifying…' : 'Nothing catalogued within 10″';
+  const sp = t?.sp || i?.sptype;
+  const spHtml = sp ? ` · spectral type <span class="asis">${esc(sp)}</span>` : '';
+  const kind = t?.type ? `${esc(t.type)}${spHtml}` : i ? `${esc(i.type)}${spHtml}`
+    : S.infoState === 'loading' ? 'Identifying…' : 'Nothing catalogued at this spot';
   const gloss = t ? t.blurb : i ? Info.gloss(i.otype) : S.infoState === 'done' ? 'No catalogue lists an object exactly here. SPHEREx still has images of this patch: what do you see?' : '';
   const facts = [];
-  const fact = (label, value) => facts.push(`<div><dt>${label}</dt><dd>${value}</dd></div>`);
-  const pmSrc = k && k.pmra != null ? k : i && i.pmra != null ? i : null;
-  const fast = pmSrc && Math.hypot(pmSrc.pmra, pmSrc.pmdec) > 200;
-  const drift = fast ? Math.hypot(pmSrc.pmra, pmSrc.pmdec) / 1000 * (C.mjdToYear(S.head?.epochs?.[0]?.[0] ?? 61000) - 2000) : 0;
-  fact(fast ? 'Position today' : 'Position', `${C.fmtSex(S.ra, S.dec)}<br><small>${fast ? `${drift.toFixed(0)}″ from where catalogues list it (year 2000)` : `${S.ra.toFixed(5)}°, ${S.dec >= 0 ? '+' : ''}${S.dec.toFixed(5)}°`}</small>`);
+  const fact = (label, value, small, title) => facts.push(`<div${title ? ` title="${esc(title)}"` : ''}><dt>${label}</dt><dd>${value}${small ? `<small>${small}</small>` : ''}</dd></div>`);
+
+  // Motion on the sky. Curated values first, then what the look-up returned.
+  const pmSrc = t?.pm || (i && i.pmra != null ? i : k && k.pmra != null ? k : null);
+  const pm = pmSrc ? Math.hypot(pmSrc.pmra, pmSrc.pmdec) / 1000 : 0;          // arcseconds per year
+  const fast = pm > 0.2;
+  const [sra, sdec] = C.fmtSex(S.ra, S.dec).split(' ');
+  fact(fast ? 'Position today' : 'Position', `${sra}<br>${sdec}`,
+    fast ? `${(pm * (yearNow() - 2000)).toFixed(0)}″ from its year-2000 place` : `${S.ra.toFixed(5)}°, ${S.dec >= 0 ? '+' : ''}${S.dec.toFixed(5)}°`,
+    fast ? 'Catalogues list where a star was in the year 2000. This one has moved since; the position shown is for today.' : 'Right ascension and declination (ICRS)');
   if (pmSrc) {
-    const pm = Math.hypot(pmSrc.pmra, pmSrc.pmdec) / 1000;
-    fact('Moves across the sky', `${pm.toFixed(pm < 0.1 ? 3 : 2)}″ per year${pm > 0.3 ? `<br><small>${(pm / 6.15).toFixed(2)} SPHEREx pixels</small>` : ''}`);
+    fact('Moves across the sky', `${pm.toFixed(pm < 0.1 ? 3 : 2)}″ per year`,
+      pm >= 0.3 ? `${(pm / 6.15).toFixed(2)} SPHEREx pixels a year` : pm > 0.003 ? `one SPHEREx pixel in ${Math.round(6.15 / pm).toLocaleString('en')} years` : 'too slow to see here',
+      `Proper motion${pmSrc.src ? `, ${pmSrc.src}` : ', from SIMBAD'}`);
   }
-  const plx = (k && k.plx) || (i && i.plx);
-  if (plx > 0.2) fact('Distance', `${(3261.56 / plx).toFixed(plx > 30 ? 1 : 0)} light-years`);
-  if (i?.redshift > 0.002) fact('Redshift', i.redshift.toFixed(4));
-  const mags = i ? ['V', 'J', 'K'].filter(b => i.mags[b] != null).map(b => `${b} ${(+i.mags[b]).toFixed(1)}`) : [];
-  if (mags.length) fact('Brightness (magnitude)', mags.join(' · '));
-  if (S.head) fact('SPHEREx has', `${S.head.estimated ? 'about ' : ''}${S.head.total} exposures<br><small>${S.head.epochs.length} time slice${S.head.epochs.length === 1 ? '' : 's'}, ${C.fmtMonth(S.head.epochs[0]?.[0] ?? 0)} to ${C.fmtMonth(S.head.epochs.at(-1)?.[1] ?? 0)}</small>`);
+  // Distance: only from a parallax measured to better than 20%.
+  const plx = t?.dist?.plx ?? i?.plx ?? k?.plx, plxErr = t?.dist?.err ?? (i?.plx != null ? i.plxErr : null);
+  if (plx > 0 && (plxErr != null ? plx / plxErr >= 5 : plx > 5)) {
+    fact('Distance', fmtDistance(plx, plxErr), t?.dist?.src || 'from its parallax',
+      `Parallax ${plx} ${plxErr != null ? `± ${plxErr} ` : ''}milliarcseconds`);
+  }
+  if (i?.redshift > 0.002) fact('Redshift', i.redshift.toFixed(4), 'its light is stretched by the expanding universe');
+  if (S.head) {
+    const eps = S.head.epochs, split = !!S.head.split;
+    fact('SPHEREx has', `${S.head.estimated ? 'about ' : ''}${S.head.total.toLocaleString('en')} exposures`,
+      `${eps.length} ${split ? 'time slice' : 'visit'}${eps.length === 1 ? '' : 's'}, ${C.fmtMonth(eps[0]?.[0] ?? 0)} to ${C.fmtMonth(eps.at(-1)?.[1] ?? 0)}`);
+  }
   const w = S.wiki;
-  const wiki = w ? `<div class="wiki">${w.thumb ? `<img src="${w.thumb}" alt="${w.title}, image from Wikipedia" loading="lazy">` : ''}<div><p>${w.extract}</p><small><a href="${w.url}" target="_blank" rel="noopener">Wikipedia: ${w.title}</a></small></div></div>` : '';
-  const links = Info.externalLinks(S.ra, S.dec, i).map(l => `<a href="${l.url}" target="_blank" rel="noopener" title="${l.title}">${l.label}</a>`).join('');
-  const others = i?.others?.length ? `<p class="others">Also catalogued at this position: ${i.others.map(o => `${o.name} (${o.type})`).join(', ')}</p>` : '';
-  el.innerHTML = `<p class="kind">${kind}</p>
-    <div class="titlerow"><h1>${name}</h1><button type="button" class="close" id="closepanel" title="Close and return to the map" aria-label="Close">×</button></div>
-    ${gloss ? `<p class="gloss">${gloss}</p>` : ''}
-    <div class="dossgrid">${wiki}<dl class="facts">${facts.join('')}</dl></div>
-    ${t?.look ? `<p class="look"><b>What to look for</b>${t.look}</p>` : ''}
-    <div class="links"><span>Check it in</span>${links}</div>${others}`;
+  const thumb = w?.thumb ? `<a class="thumb" href="${esc(w.url)}" target="_blank" rel="noopener" title="Wikipedia: ${esc(w.title)}"><img src="${esc(w.thumb)}" alt="${esc(w.title)}, image from Wikipedia" loading="lazy"></a>` : '';
+  const links = [...(w ? [{ label: 'Wikipedia', title: `Encyclopedia article: ${w.title}`, url: w.url }] : []), ...Info.externalLinks(S.ra, S.dec, i)]
+    .map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.title)}">${l.label}</a>`).join('');
+  el.innerHTML = `<div class="toprow">
+      <div class="idblock"><p class="kind">${kind}</p><h1>${esc(name)}</h1>${gloss ? `<p class="gloss">${esc(gloss)}</p>` : ''}</div>
+      ${thumb}<button type="button" class="close" id="closepanel" title="Close and return to the map" aria-label="Close">×</button>
+    </div>
+    <dl class="facts">${facts.join('')}</dl>
+    <div class="links"><span>Check it in</span>${links}</div>`;
   $('closepanel').onclick = closePanel;
-  renderMotion();
+  renderLook(); renderWiki(); renderMotion();
+}
+/** Guidance for the showcase objects. The guided tour says the same thing in its own card. */
+function renderLook() {
+  const t = S.target, show = !!t?.look && tourIdx < 0 && !S.embed;
+  $('lookbox').innerHTML = show ? `<p class="look"><b>What to look for</b>${esc(t.look)}</p>` : '';
+  document.querySelector('.cols').classList.toggle('nolook', !show);
+}
+function renderWiki() {
+  const w = S.wiki, i = S.info, el = $('wikibox');
+  const mags = i ? ['V', 'J', 'K'].filter(b => i.mags?.[b] != null).map(b => `${b} ${(+i.mags[b]).toFixed(1)}`) : [];
+  const others = (mags.length > 1 ? `<p class="others" title="V is visible light; J (1.2 µm) and K (2.2 µm) are near-infrared">Catalogued brightness (SIMBAD): magnitude ${mags.join(', ')}. Lower numbers are brighter.</p>` : '')
+    + (i?.others?.length ? `<p class="others">Also catalogued at this position: ${i.others.map(o => `${esc(o.name)} (${esc(o.type)})`).join(', ')}</p>` : '');
+  el.hidden = !w && !others;
+  el.innerHTML = `${w ? `<h2>From Wikipedia</h2><div class="wiki">${w.thumb ? `<img src="${esc(w.thumb)}" alt="" loading="lazy">` : ''}<div><p>${esc(w.extract)}</p><small><a href="${esc(w.url)}" target="_blank" rel="noopener">Read the article: ${esc(w.title)}</a></small></div></div>` : ''}${others}`;
 }
 /** Measured position per season versus the catalogue prediction. */
 function renderMotion() {
@@ -661,7 +844,7 @@ function renderMotion() {
   if (!m0) { el.innerHTML = '<p class="hint">The target is not detected in this detector, so its motion cannot be measured here. Try another detector.</p>'; return; }
   if (Math.hypot(S.track.pmra, S.track.pmdec) < 100) {
     const worst = Math.max(...rows.filter(r => r.m).map(r => Math.hypot(r.m.x - m0.x, r.m.y - m0.y)));
-    el.innerHTML = `<p class="hint">This star does not move measurably on the sky. Its measured position changes by at most ${as(worst)}″ between seasons in D${S.det}: that is how well the images are aligned (1 SPHEREx pixel = 6.15″).</p>`;
+    el.innerHTML = `<p class="hint">This star does not move measurably on the sky. Its measured position changes by at most ${as(worst)}″ between visits in D${S.det}: that is how well the images are aligned (1 SPHEREx pixel = 6.15″).</p>`;
     return;
   }
   const body = rows.map(({ st, p, m }) => {
@@ -670,8 +853,8 @@ function renderMotion() {
     const me = -(m.x - m0.x), mn = m.y - m0.y, d = Math.hypot(me - pe, mn - pn);
     return `<tr><td><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${epochColor(st.mjd)};margin-right:5px"></i>${C.fmtMonth(st.mjd)}</td><td>${as(Math.hypot(me, mn))}″</td><td>${as(Math.hypot(pe, pn))}″</td><td>${as(d)}″</td></tr>`;
   }).join('');
-  el.innerHTML = `<table class="t"><thead><tr><th>Season</th><th>Measured</th><th>Predicted</th><th>Off by</th></tr></thead><tbody>${body}</tbody></table>
-  <p class="hint">How far it has moved since the first season: measured in these D${S.det} images, and predicted from its catalogued motion. One SPHEREx pixel is 6.15″.</p>`;
+  el.innerHTML = `<table class="t"><thead><tr><th>Visit</th><th>Measured</th><th>Predicted</th><th>Off by</th></tr></thead><tbody>${body}</tbody></table>
+  <p class="hint">How far it has moved since the first visit: measured in these D${S.det} images, and predicted from its catalogued motion. One SPHEREx pixel is 6.15″.</p>`;
 }
 function renderModes() {
   for (const b of $('modes').children) b.setAttribute('aria-pressed', b.dataset.mode === S.mode);
@@ -750,13 +933,19 @@ async function resolveName(name) {
     [r.ra, r.dec] = C.propagate({ ra, dec, pmra: r.pmra, pmdec: r.pmdec }, 2000, year);
     return r;
   };
-  try {
-    const r = await fetch('https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?' + encodeURIComponent(name));
-    if (r.ok) { const v = parse(await r.text()); if (v) return v; }
-  } catch { /* fall through to our own API */ }
-  const r = await fetch(`${API}/api/resolve?q=${encodeURIComponent(name)}`);
-  if (!r.ok) return null;
-  return r.json();
+  // The CDS name resolver and its mirror at Harvard; then SIMBAD itself, which knows exact identifiers.
+  for (const base of ['https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?', 'https://vizier.cfa.harvard.edu/viz-bin/nph-sesame/-oxp/SNV?']) {
+    try {
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 8000);
+      const r = await fetch(base + encodeURIComponent(name), { signal: ctl.signal });
+      clearTimeout(timer);
+      if (r.ok) { const v = parse(await r.text()); if (v) return v; }
+    } catch { /* try the next one */ }
+  }
+  if (API) {
+    try { const r = await fetch(`${API}/api/resolve?q=${encodeURIComponent(name)}`); if (r.ok) return await r.json(); } catch { /* fall through */ }
+  }
+  return Info.byName(name).catch(() => null);
 }
 const sepArcsec = (ra1, dec1, ra2, dec2) => Math.hypot((ra1 - ra2) * Math.cos(dec1 * Math.PI / 180), dec1 - dec2) * 3600;
 
@@ -799,8 +988,8 @@ async function search(text) {
 /** A click on the map: work out what is there today and open it. */
 async function openAt(ra, dec, mapFov) {
   if (mapFov > 12) {                       // too far out to mean one object: dive in first
-    note('Zooming in. Click again to pick an object.', 3500);
-    Sky.flyTo(ra, dec, Math.max(mapFov / 6, 1.5));
+    note('Zooming in. Pick an object when you are closer.', 3500);
+    Sky.flyTo(ra, dec, Math.max(mapFov / 6, 2));
     return;
   }
   const tok = ++S.openTok, r = clamp(mapFov * 3600 * 0.006, 8, 60), size = +$('fov').value;
@@ -834,10 +1023,10 @@ function syncUrl() {
 // ------------------------------------------------------------ events
 $('search').onsubmit = e => { e.preventDefault(); search($('q').value); };
 $('fov').onchange = () => { if (S.grid || S.ra) go({ ra: S.ra, dec: S.dec, size: +$('fov').value, target: S.target, track: S.track }); };
-$('play').onclick = () => S.playing ? stop() : play();
-$('prev').onclick = () => { stop(); step(-1); };
-$('next').onclick = () => { stop(); step(1); };
-$('seek').oninput = e => { stop(); S.idx = +e.target.value; show(); };
+$('play').onclick = () => { S.wantPlay = false; S.playing ? stop() : play(); };
+$('prev').onclick = () => { S.wantPlay = false; stop(); step(-1); };
+$('next').onclick = () => { S.wantPlay = false; stop(); step(1); };
+$('seek').oninput = e => { S.wantPlay = false; stop(); S.idx = +e.target.value; show(); };
 $('fps').onchange = e => { S.fps = +e.target.value; if (S.playing) play(); };
 for (const b of $('modes').children) b.onclick = () => { stop(); S.mode = b.dataset.mode; S.seq = []; S.idx = 0; renderModes(); rebuild(); syncUrl(); };
 $('white').oninput = e => { S.white = +e.target.value; paint(); };
@@ -848,16 +1037,16 @@ $('bandsOn').onchange = e => { S.showBands = e.target.checked; drawPlots(); };
 
 $('wise').onchange = e => { S.showWise = e.target.checked; if (S.showWise) loadCatwise(); paint(); };
 $('mask').onchange = e => { S.mask = e.target.checked; paint(); };
-$('resetview').onclick = () => { if (S.grid) { const c = (S.grid.n - 1) / 2; S.view = { z: 1, cx: c, cy: c }; paint(); } };
+$('resetview').onclick = () => { resetView(); paint(); };
 document.addEventListener('keydown', e => {
   if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && e.target.type !== 'range' && e.target.type !== 'checkbox') return;
   if (tourIdx >= 0 && (e.key === 'PageDown' || e.key === 'n')) { e.preventDefault(); return tourGo(tourIdx + 1); }
   if (tourIdx >= 0 && (e.key === 'PageUp' || e.key === 'b')) { e.preventDefault(); return tourGo(tourIdx - 1); }
   if (!$('sheetwrap').hidden && e.key === 'Escape') return closeSheet();
   if (tourIdx >= 0 && e.key === 'Escape') return tourEnd();
-  if (e.key === ' ') { e.preventDefault(); S.playing ? stop() : play(); }
-  else if (e.key === 'ArrowRight') { stop(); step(1); }
-  else if (e.key === 'ArrowLeft') { stop(); step(-1); }
+  if (e.key === ' ') { e.preventDefault(); S.wantPlay = false; S.playing ? stop() : play(); }
+  else if (e.key === 'ArrowRight') { S.wantPlay = false; stop(); step(1); }
+  else if (e.key === 'ArrowLeft') { S.wantPlay = false; stop(); step(-1); }
 });
 new ResizeObserver(() => paint()).observe(cv);
 
@@ -865,7 +1054,15 @@ new ResizeObserver(() => paint()).observe(cv);
 const ptrs = new Map(); let pinch = null;
 function clampView() {
   const n = S.grid.n; S.view.z = clamp(S.view.z, 1, 32);
-  S.view.cx = clamp(S.view.cx, 0, n - 1); S.view.cy = clamp(S.view.cy, 0, n - 1);
+  const half = n / (2 * S.view.z);                       // the image always fills the frame
+  S.view.cx = clamp(S.view.cx, half - 0.5, n - 0.5 - half); S.view.cy = clamp(S.view.cy, half - 0.5, n - 0.5 - half);
+  // Not zoomed in: a vertical swipe scrolls the page. Zoomed in: dragging pans the image.
+  cv.classList.toggle('zoomed', S.view.z > 1.01);
+}
+function resetView() {
+  if (!S.grid) return;
+  const c = (S.grid.n - 1) / 2; S.view = { z: 1, cx: c, cy: c };
+  cv.classList.remove('zoomed');
 }
 function zoomAt(X, Y, factor) {
   const [gx, gy] = c2g(X, Y);
@@ -944,24 +1141,35 @@ const tourApi = {
   layer: id => { if (Sky.isReady() && Sky.currentLayer() !== id) setLayer(id); },
   slice: z => { if (Sky.isReady()) setWave(z); },
   sweep: on => { if (Sky.isReady()) sweep(on); },
-  fly: (ra, dec, fov) => { if (Sky.isReady()) Sky.flyTo(ra, dec, fov); },
+  fly: (ra, dec, fov) => { if (Sky.isReady()) Sky.flyTo(ra, dec, Sky.fitFov(fov)); },
   open: t => openTarget(t),
 };
+/** The tour card docks under the map or floats over it, which changes the map's size. */
+function relayout() {
+  requestAnimationFrame(() => { if (Sky.isReady()) Sky.resize(); paint(); specPlot.draw(); lcPlot.draw(); });
+}
 function tourGo(i) {
   if (!tourSteps.length) tourSteps = buildTour(S.targets);
   if (i < 0) return;
   if (i >= tourSteps.length) return tourEnd();
   tourIdx = i;
   const st = tourSteps[i];
+  document.body.classList.add('touring');
   $('welcome').hidden = true; $('tour').hidden = false;
   $('tourcount').textContent = `Guided tour · ${i + 1} of ${tourSteps.length}`;
+  $('tourmini').textContent = `${i + 1} / ${tourSteps.length}`;
   $('tourprog').style.width = `${(i + 1) / tourSteps.length * 100}%`;
   $('tourtitle').textContent = st.title; $('tourtext').textContent = st.text;
   $('tourback').disabled = i === 0;
   $('tournext').textContent = i === tourSteps.length - 1 ? 'Finish' : 'Next';
   st.run(tourApi);
+  renderLook(); relayout();
+  if (isNarrow()) window.scrollTo({ top: 0, behavior: calmMotion() ? 'auto' : 'smooth' });
 }
-function tourEnd() { tourIdx = -1; $('tour').hidden = true; sweep(false); }
+function tourEnd() {
+  tourIdx = -1; $('tour').hidden = true; document.body.classList.remove('touring');
+  sweep(false); renderLook(); relayout();
+}
 $('tourbtn').onclick = $('tourbtn2').onclick = () => tourGo(0);
 $('tournext').onclick = () => tourGo(tourIdx + 1);
 $('tourback').onclick = () => tourGo(tourIdx - 1);
@@ -978,7 +1186,17 @@ function openSheet(id) {
 }
 function closeSheet() { $('sheetwrap').hidden = true; }
 $('sheetwrap').addEventListener('click', e => { if (e.target === $('sheetwrap')) closeSheet(); });
-document.querySelectorAll('[data-sheet]').forEach(b => { b.onclick = () => openSheet(b.dataset.sheet); });
+document.querySelectorAll('[data-sheet]').forEach(b => { b.onclick = () => { closeMenu(); openSheet(b.dataset.sheet); }; });
+function closeMenu() { $('nav').classList.remove('open'); $('menubtn').setAttribute('aria-expanded', 'false'); }
+$('menubtn').onclick = () => { const open = $('nav').classList.toggle('open'); $('menubtn').setAttribute('aria-expanded', String(open)); };
+document.addEventListener('click', e => { if (!e.target.closest('#nav')) closeMenu(); });
+$('zoomin').onclick = () => Sky.zoomBy(0.5);
+$('zoomout').onclick = () => Sky.zoomBy(2);
+// Phones: the map fills what is left under the header, whatever its height.
+const setTopH = () => document.documentElement.style.setProperty('--toph', `${$('top').offsetHeight}px`);
+new ResizeObserver(setTopH).observe($('top')); setTopH();
+// A library request that fails while offline must not surface as an error.
+window.addEventListener('unhandledrejection', e => { if (/Failed to fetch|NetworkError|Load failed/i.test(String(e.reason?.message || e.reason))) e.preventDefault(); });
 $('wave').oninput = e => { sweep(false); setWave(+e.target.value); };
 $('waveplay').onclick = () => sweep(!sweepTimer);
 $('layer').onchange = e => setLayer(e.target.value);
@@ -1010,6 +1228,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 (async function init() {
   const q = new URLSearchParams(location.search);
   S.embed = q.has('embed');
+  if (q.has('debug')) window.__app = { S, C, findComparisons, usable, gEpoch };      // for inspection from the console
   if (S.embed) document.body.classList.add('embed');
   renderModes(); renderDets();
   try { S.targets = await (await fetch('data/targets.json')).json(); } catch { S.targets = []; }
@@ -1017,7 +1236,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   $('layer').innerHTML = Sky.LAYERS.map(l => `<option value="${l.id}">${l.label}</option>`).join('');
   if (!S.embed) {
     try {
-      await Sky.init('#map', { onClick: openAt });
+      await Sky.init('#map', { onClick: openAt, onFov: f => { $('fovlabel').textContent = f >= 10 ? `${Math.round(f)}°` : f >= 1 ? `${f.toFixed(1)}°` : `${Math.round(f * 60)}′`; } });
       setWave(25);
     } catch (e) {
       console.error(e);

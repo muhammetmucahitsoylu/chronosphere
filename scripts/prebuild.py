@@ -21,38 +21,54 @@ import pipeline  # noqa: E402
 
 SIZE_ARCMIN = 5.0
 
+# The descriptive fields are curated and every number has a source:
+#   dist  parallax in milliarcseconds, its uncertainty, and where it comes from
+#   pm    proper motion in milliarcseconds per year, when the default look-up is not the best value
 TARGETS = [
     {"slug": "barnard", "wiki": "Barnard's Star", "query": "Barnard's Star", "label": "Barnard's Star", "kind": "motion",
      "view": {"det": 5, "mode": "epochs"},
+     "type": "Red dwarf star", "sp": "M4",
+     "dist": {"plx": 546.9759, "err": 0.0401, "src": "Gaia DR3 parallax"},
      "blurb": "The fastest-moving star in the sky: 10.4 arcseconds per year, about 1.7 SPHEREx pixels.",
-     "look": "Press Play. The star hops north by roughly a pixel each season, following the dotted line. "
-             "Its core is bright enough to saturate the shorter-wavelength detectors, so D5 gives the cleanest view. "
-             "The table compares the shift measured from these images with the catalogue prediction."},
+     "look": "The images loop through three visits: the star hops north by roughly a pixel each time, following "
+             "the dotted line. Its core is bright enough to saturate the shorter-wavelength detectors, so D5 gives "
+             "the cleanest view. The table compares the shift measured from these images with the catalogue prediction."},
     {"slug": "epsindib", "wiki": "Epsilon Indi", "query": "eps Ind B", "label": "Epsilon Indi B", "kind": "motion",
      "view": {"det": 2, "mode": "epochs"},
-     "blurb": "A pair of brown dwarfs orbiting a nearby star, moving 4.7 arcseconds per year.",
-     "look": "Press Play and watch it slide to the south-east. Then look at the spectrum: the deep dips near "
+     "type": "Pair of brown dwarfs", "sp": "T1 + T6",
+     "dist": {"plx": 274.8431, "err": 0.0956, "src": "Gaia DR3 parallax of its host star"},
+     "blurb": "Two brown dwarfs orbiting a nearby star, moving 4.7 arcseconds per year. SPHEREx sees the pair as one dot.",
+     "look": "Watch it slide to the south-east from visit to visit. Then look at the spectrum: the deep dips near "
              "1.4, 1.9 and 2.7 microns are water vapour and the one near 3.3 microns is methane, in the "
-             "atmosphere of a brown dwarf."},
+             "atmospheres of the brown dwarfs."},
     {"slug": "wise0855", "wiki": "WISE 0855−0714", "query": "WISE J085510.83-071442.5", "label": "WISE 0855", "kind": "motion",
      "view": {"det": 6, "mode": "bands"},
-     "blurb": "The coldest known brown dwarf, 7 light-years away, moving 8.1 arcseconds per year.",
-     "look": "Step through the wavelengths. Below 4 microns the circle holds only the edge of an ordinary "
+     "type": "Brown dwarf", "sp": "Y",
+     "dist": {"plx": 439.0, "err": 2.4, "src": "parallax from Kirkpatrick et al. 2021"},
+     "blurb": "The coldest known brown dwarf, 7.4 light-years away, moving 8.1 arcseconds per year.",
+     "look": "The images step through the wavelengths. Below 4 microns the circle holds only the edge of an ordinary "
              "star just to its west. In the two longest-wavelength detectors a second source appears that is "
              "not in the Gaia catalogue: that is WISE 0855. In the colour picture it is the red dot. "
-             "Switch to Seasons in D6 to see it move."},
+             "Switch to Visits in D6 to see it move."},
     {"slug": "rwaur", "wiki": "RW Aurigae", "query": "RW Aur", "label": "RW Aurigae", "kind": "variable",
      "view": {"det": 5, "mode": "epochs"},
-     "blurb": "A young star that dims unpredictably when dust crosses in front of it.",
-     "look": "Look at the spectrum: the colours are the observing seasons, and beyond 3 microns they pull "
-             "apart, because the star was clearly fainter in the latest season than a year earlier. "
-             "Its position stays put, which shows how well the images line up."},
+     "type": "Young star (T Tauri type)", "sp": "K",
+     "dist": {"plx": 6.4062, "err": 0.0441, "src": "Gaia DR3 parallax of RW Aur A"},
+     "pm": {"pmra": 2.641, "pmdec": -27.398, "src": "Gaia DR3, RW Aur A"},
+     "blurb": "A young star, still surrounded by dust, whose brightness changes unpredictably.",
+     "look": "The colours in the spectrum are the three visits, and they cross over. Between September 2025 and "
+             "September 2026 the star grew more than 40% brighter below 1.6 microns and lost almost half of its "
+             "brightness beyond 3.8 microns, while ordinary stars in the same images stayed constant to about 1%. "
+             "Astronomers saw the reverse during its deep fading of 2014 to 2016: hot dust close to the star hides "
+             "it while glowing in the infrared itself."},
     {"slug": "rdra", "wiki": "R Draconis", "query": "R Dra", "label": "R Draconis", "kind": "variable",
-     "view": {"det": 1, "mode": "epochs"},
-     "blurb": "A pulsating red giant (a Mira variable) that brightens and fades over about 245 days.",
-     "look": "Press Play: each image covers about a month. This star is so bright that its core saturates "
-             "every detector, so the tool measures its outer halo instead. The brightness curve shows it "
-             "fading and brightening again."},
+     "view": {"det": 4, "mode": "epochs"},
+     "type": "Pulsating red giant (Mira variable)", "sp": "M",
+     "dist": {"plx": 1.2509, "err": 0.0648, "src": "Gaia DR3 parallax"},
+     "blurb": "A red giant that swells and shrinks, brightening and fading over about 245 days.",
+     "look": "Each image covers about a month. This star is so bright that its core saturates every detector, so "
+             "the tool measures its faint outer glow instead. The brightness curve shows the pulse: brightest in "
+             "July 2025, about half as bright that autumn, and climbing again in the latest images."},
 ]
 
 
@@ -79,7 +95,7 @@ def bake_info(t: dict, out_dir: Path) -> dict:
     import re
     import requests
     res = t["resolved"]
-    rows = _adql("SELECT TOP 8 b.oid, b.main_id, b.otype, o.label, o.description, b.ra, b.dec, b.pmra, b.pmdec, b.plx_value, "
+    rows = _adql("SELECT TOP 8 b.oid, b.main_id, b.otype, o.label, o.description, b.ra, b.dec, b.pmra, b.pmdec, b.plx_value, b.plx_err, "
                  "b.sp_type, b.rvz_redshift, f.V, f.J, f.K FROM basic AS b LEFT JOIN otypedef AS o ON o.otype = b.otype "
                  "LEFT JOIN allfluxes AS f ON f.oidref = b.oid WHERE CONTAINS(POINT('ICRS', b.ra, b.dec), "
                  f"CIRCLE('ICRS', {res['ra2000']:.6f}, {res['dec2000']:.6f}, 0.002)) = 1")
@@ -91,7 +107,7 @@ def bake_info(t: dict, out_dir: Path) -> dict:
         extra["info"] = {
             "oid": r["oid"], "mainId": r["main_id"], "name": clean(r["main_id"]), "otype": r["otype"],
             "type": r["description"] or r["label"] or r["otype"], "ra2000": r["ra"], "dec2000": r["dec"],
-            "pmra": r["pmra"], "pmdec": r["pmdec"], "plx": r["plx_value"], "sptype": r["sp_type"], "redshift": r["rvz_redshift"],
+            "pmra": r["pmra"], "pmdec": r["pmdec"], "plx": r["plx_value"], "plxErr": r["plx_err"], "sptype": r["sp_type"], "redshift": r["rvz_redshift"],
             "mags": {"V": r["V"], "J": r["J"], "K": r["K"]}, "ra": t["ra"], "dec": t["dec"], "dist": 0,
             "others": [{"name": clean(o["main_id"]), "type": o["description"] or o["otype"], "dist": 0} for o in rows[1:5]],
         }

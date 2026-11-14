@@ -59,6 +59,14 @@ export function fmtDate(mjd, withTime = false) {
   const d = mjdToDate(mjd).toISOString();
   return withTime ? d.slice(0, 16).replace('T', ' ') + ' UTC' : d.slice(0, 10);
 }
+/** A short date range: "21–30 Aug 2025", "21 Aug – 3 Sep 2025", "21 Dec 2025 – 3 Jan 2026". */
+export function fmtRange(mjd0, mjd1) {
+  const a = mjdToDate(mjd0), b = mjdToDate(mjd1), M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const d = x => x.getUTCDate(), m = x => M[x.getUTCMonth()], y = x => x.getUTCFullYear();
+  if (y(a) !== y(b)) return `${d(a)} ${m(a)} ${y(a)} – ${d(b)} ${m(b)} ${y(b)}`;
+  if (m(a) !== m(b)) return `${d(a)} ${m(a)} – ${d(b)} ${m(b)} ${y(b)}`;
+  return d(a) === d(b) ? `${d(a)} ${m(a)} ${y(a)}` : `${d(a)}–${d(b)} ${m(b)} ${y(b)}`;
+}
 export function fmtMonth(mjd) {
   return mjdToDate(mjd).toLocaleDateString('en', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
@@ -267,6 +275,56 @@ export function halo(img, n, scale, x, y, sigma, r1 = 21, width = 15) {
   return { valid, flux: (ring[ring.length >> 1] - bg) * nr * omega, err: sigma * 1.25 * Math.sqrt(nr) * omega, halo: true };
 }
 
+/**
+ * A saturated star is measured from its outer halo. That follows the shape of its spectrum within
+ * one detector, but not its level: the halo of an overloaded star does not scale simply with its
+ * brightness. So each such detector is scaled to join the neighbouring detector where their
+ * wavelength ranges meet, working outward from the detectors that were measured normally.
+ * Returns { det: factor } for the halo detectors. If every detector is saturated the chain starts
+ * from the one with the most measurements, and the overall level stays arbitrary.
+ */
+export function stitchScales(pts) {
+  const dets = [...new Set(pts.map(p => p.det))].sort((a, b) => a - b);
+  const haloDets = new Set(pts.filter(p => p.halo).map(p => p.det));
+  const scale = {};
+  if (!haloDets.size) return scale;
+  const med = v => { const s = [...v].sort((a, b) => a - b); return s[s.length >> 1]; };
+  // Level of one detector's spectrum at a boundary wavelength: a straight line in log-log through
+  // the third of its points nearest that boundary.
+  const edge = (det, lamB) => {
+    const v = pts.filter(p => p.det === det && p.flux > 0).sort((a, b) => Math.abs(a.lam - lamB) - Math.abs(b.lam - lamB));
+    const near = v.slice(0, Math.max(8, Math.ceil(v.length * 0.33)));
+    if (near.length < 6) return NaN;
+    const a = near.slice(0, near.length >> 1), b = near.slice(near.length >> 1);
+    const xa = med(a.map(p => Math.log(p.lam))), ya = med(a.map(p => Math.log(p.flux)));
+    const xb = med(b.map(p => Math.log(p.lam))), yb = med(b.map(p => Math.log(p.flux)));
+    if (Math.abs(xb - xa) < 1e-4) return Math.exp(ya);
+    const slope = Math.max(-6, Math.min(6, (yb - ya) / (xb - xa)));
+    return Math.exp(ya + slope * (Math.log(lamB) - xa));
+  };
+  const done = new Set(dets.filter(d => !haloDets.has(d)));
+  if (!done.size) {                                      // nothing to anchor on: keep the best-sampled detector as it is
+    const start = dets.reduce((best, d) => (pts.filter(p => p.det === d).length > pts.filter(p => p.det === best).length ? d : best), dets[0]);
+    scale[start] = 1; done.add(start);
+  }
+  for (let pass = 0; pass < 6; pass++) {
+    for (const d of dets) {
+      if (done.has(d)) continue;
+      const est = [];
+      for (const nb of [d - 1, d + 1]) {
+        if (!done.has(nb)) continue;
+        const lamB = nb < d ? DET_BANDS[d][0] : DET_BANDS[d][1];
+        const mine = edge(d, lamB), theirs = edge(nb, lamB) * (scale[nb] ?? 1);
+        if (mine > 0 && theirs > 0) est.push(theirs / mine);
+      }
+      if (!est.length) continue;
+      scale[d] = Math.exp(est.reduce((s, x) => s + Math.log(x), 0) / est.length);
+      done.add(d);
+    }
+  }
+  return scale;
+}
+
 /** Split long, continuously observed seasons into roughly monthly pieces. */
 export function refineEpochs(eps, maxDays = 60, chunkDays = 40) {
   const out = [];
@@ -316,7 +374,11 @@ export function bandDepths(pts) {
       cont = Math.exp(Math.log(sides[0].med) * (1 - t) + Math.log(sides[1].med) * t);
       cerr = cont * Math.hypot(sides[0].err / sides[0].med * (1 - t), sides[1].err / sides[1].med * t);
     } else { const sd = sides.find(x => x.med > 0); if (!sd) return { ...m, depth: null }; cont = sd.med; cerr = sd.err; }
-    if (!(cont > 0) || cont < 12 * cerr) return { ...m, depth: null, why: 'too faint to tell' };
+    if (!(cont > 0) || cont < 12 * cerr) {
+      // Not clear enough: either the spot is faint, or it is bright but its measurements disagree.
+      const near = pts.filter(p => !p.halo && p.err > 0 && p.lam >= m.band[0] - 0.3 && p.lam <= m.band[1] + 0.3).map(p => p.flux / p.err).sort((a, b) => a - b);
+      return { ...m, depth: null, why: near.length && near[near.length >> 1] > 10 ? 'too uneven to tell' : 'too faint to tell' };
+    }
     return { ...m, depth: 1 - core.med / cont, err: Math.hypot(core.err, cerr * core.med / cont) / cont };
   });
 }

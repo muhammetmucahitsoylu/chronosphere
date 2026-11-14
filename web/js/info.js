@@ -31,7 +31,7 @@ const yearNow = () => 1970 + Date.now() / 31557600000;
 const sep = (ra1, dec1, ra2, dec2) => Math.hypot((ra1 - ra2) * Math.cos(dec1 * Math.PI / 180), dec1 - dec2) * 3600;
 export const cleanName = id => (id || '').replace(/^(NAME|V\*|\*\*|\*|EM\*|PN|Cl\*?)\s+/, '').replace(/\s+/g, ' ').trim();
 
-const COLS = `b.oid, b.main_id, b.otype, o.label, o.description, b.ra, b.dec, b.pmra, b.pmdec, b.plx_value, b.sp_type, b.rvz_redshift, f.V, f.J, f.K`;
+const COLS = `b.oid, b.main_id, b.otype, o.label, o.description, b.ra, b.dec, b.pmra, b.pmdec, b.plx_value, b.plx_err, b.sp_type, b.rvz_redshift, f.V, f.J, f.K`;
 const FROM = `FROM basic AS b LEFT JOIN otypedef AS o ON o.otype = b.otype LEFT JOIN allfluxes AS f ON f.oidref = b.oid`;
 const cone = (ra, dec, rDeg) => `CONTAINS(POINT('ICRS', b.ra, b.dec), CIRCLE('ICRS', ${ra.toFixed(6)}, ${dec.toFixed(6)}, ${rDeg.toFixed(5)})) = 1`;
 
@@ -41,7 +41,7 @@ function shape(row, ra, dec) {
   return {
     oid: row.oid, mainId: row.main_id, name: cleanName(row.main_id), otype: row.otype,
     type: row.description || row.label || row.otype, ra2000: row.ra, dec2000: row.dec, pmra: row.pmra, pmdec: row.pmdec,
-    plx: row.plx_value, sptype: row.sp_type, redshift: row.rvz_redshift, mags: { V: row.V, J: row.J, K: row.K },
+    plx: row.plx_value, plxErr: row.plx_err, sptype: row.sp_type, redshift: row.rvz_redshift, mags: { V: row.V, J: row.J, K: row.K },
     ra: raNow, dec: decNow, epoch: year, dist: ra == null ? 0 : sep(ra, dec, raNow, decNow),
   };
 }
@@ -72,6 +72,17 @@ export async function identify(ra, dec, radiusArcsec = 12) {
   const best = cands[0];
   best.others = cands.slice(1, 5).map(c => ({ name: c.name, type: c.type, dist: c.dist }));
   return best;
+}
+
+/** Look an object up by name in SIMBAD itself. Used when the name resolvers cannot be reached. */
+export async function byName(name) {
+  const t = name.trim().replace(/\s+/g, ' '), q = s => s.replace(/'/g, "''");
+  const spaced = t.replace(/^(M|NGC|IC|HD|HR|HIP|GJ|LHS|TYC|BD|SAO|UGC|PGC|TOI|WASP|2MASS|WISE|WISEA)\s*(?=[\d+J-])/i, (m, c) => `${c.toUpperCase()} `);
+  const ids = [...new Set([t, `NAME ${t}`, spaced, `V* ${t}`, `* ${t}`])];
+  const rows = await adql(`SELECT TOP 1 ${COLS} ${FROM} JOIN ident AS i ON i.oidref = b.oid WHERE i.id IN (${ids.map(s => `'${q(s)}'`).join(', ')})`);
+  if (!rows.length || rows[0].ra == null) return null;
+  const c = shape(rows[0], null, null);
+  return { name: c.name, ra2000: c.ra2000, dec2000: c.dec2000, pmra: c.pmra, pmdec: c.pmdec, plx: c.plx, ra: c.ra, dec: c.dec };
 }
 
 export async function aliases(oid) {
@@ -134,9 +145,8 @@ export function externalLinks(ra, dec, info) {
   links.push(
     { label: 'WiseView', title: 'Backyard Worlds blink tool: the same spot in 15 years of WISE images', url: `http://byw.tools/wiseview#ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&size=300&band=3&speed=20&zoom=9` },
     { label: 'ESASky', title: 'ESA sky viewer, 2MASS infrared', url: `https://sky.esa.int/esasky/?target=${c}&hips=2MASS+color+JHK&fov=0.15&cooframe=J2000&sci=true` },
-    { label: 'Aladin Lite', title: 'CDS sky atlas', url: `https://aladin.cds.unistra.fr/AladinLite/?target=${c}&fov=0.15&survey=CDS%2FP%2F2MASS%2Fcolor` },
     { label: 'Legacy Survey', title: 'unWISE deep infrared image', url: `https://www.legacysurvey.org/viewer?ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&layer=unwise-neo7&zoom=13` },
-    { label: 'VizieR photometry', title: 'Published brightness measurements at every wavelength', url: `https://vizier.cds.unistra.fr/vizier/sed/?submitSimbad=Photometry&-c=${c}&-c.r=5&-c.u=arcsec` },
+    { label: 'VizieR', title: 'Published brightness measurements at every wavelength', url: `https://vizier.cds.unistra.fr/vizier/sed/?submitSimbad=Photometry&-c=${c}&-c.r=5&-c.u=arcsec` },
   );
   return links;
 }
