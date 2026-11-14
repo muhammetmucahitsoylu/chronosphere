@@ -91,3 +91,5 @@ footer { padding: 16px; color: var(--ink-2); font-size: 12px; border-top: 1px so
 /* ?embed=1 : viewer only, for iframes on other sites */
 body.embed .top, body.embed .side, body.embed footer { display: none; }
 body.embed main { grid-template-columns: 1fr; padding: 6px; }
+
+#about .look { background: var(--panel-2); border-left: 3px solid var(--accent); border-radius: 6px; padding: 8px 10px; margin: 8px 0; }

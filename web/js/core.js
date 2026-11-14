@@ -216,3 +216,48 @@ export function saturatedMask(img, n, thresh) {
   }
   return m;
 }
+
+/** Number of masked pixels inside the measurement aperture (saturated cores are masked). */
+export function coreMasked(img, n, scale, x, y, rApArcsec = 9.2) {
+  const ra = rApArcsec / scale, R = Math.ceil(ra), x0 = Math.round(x), y0 = Math.round(y);
+  let bad = 0;
+  for (let j = y0 - R; j <= y0 + R; j++) for (let i = x0 - R; i <= x0 + R; i++) {
+    if (i < 0 || j < 0 || i >= n || j >= n) continue;
+    if (Math.hypot(i - x, j - y) <= ra && img[j * n + i] !== img[j * n + i]) bad++;
+  }
+  return bad;
+}
+
+/** Photometry for saturated stars: median surface brightness in a ring of the outer halo,
+ *  which scales with the star's brightness even when the core is saturated. Masked pixels
+ *  and neighbouring stars are tolerated by the median. Relative units. */
+export function halo(img, n, scale, x, y, sigma, r1 = 21, width = 15) {
+  const a = r1 / scale, b = (r1 + width) / scale, c = b + 30 / scale, d = c + 20 / scale, R = Math.ceil(d);
+  const x0 = Math.round(x), y0 = Math.round(y);
+  const ring = [], sky = []; let nr = 0;
+  for (let j = y0 - R; j <= y0 + R; j++) for (let i = x0 - R; i <= x0 + R; i++) {
+    const dist = Math.hypot(i - x, j - y);
+    if (dist < a || dist > d || (dist > b && dist < c)) continue;
+    const v = (i >= 0 && j >= 0 && i < n && j < n) ? img[j * n + i] : NaN;
+    if (dist <= b) { nr++; if (v === v) ring.push(v); }
+    else if (v === v) sky.push(v);
+  }
+  const valid = nr ? ring.length / nr : 0;
+  if (ring.length < 20 || sky.length < 30) return { valid, flux: NaN };
+  ring.sort((p, q) => p - q); sky.sort((p, q) => p - q);
+  const bg = sky[Math.floor(sky.length * 0.3)];      // lower quantile: the halo still reaches the sky ring
+  const omega = (scale / ARCSEC) ** 2 * 1e9;
+  return { valid, flux: (ring[ring.length >> 1] - bg) * nr * omega, err: sigma * 1.25 * Math.sqrt(nr) * omega, halo: true };
+}
+
+/** Split long, continuously observed seasons into roughly monthly pieces. */
+export function refineEpochs(eps, maxDays = 60, chunkDays = 40) {
+  const out = [];
+  for (const [t0, t1] of eps) {
+    const span = t1 - t0;
+    if (span <= maxDays) { out.push([t0, t1]); continue; }
+    const k = Math.ceil(span / chunkDays), step = span / k;
+    for (let i = 0; i < k; i++) out.push([t0 + i * step, i === k - 1 ? t1 : t0 + (i + 1) * step - 1e-6]);
+  }
+  return out;
+}

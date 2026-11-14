@@ -22,26 +22,50 @@ import pipeline  # noqa: E402
 SIZE_ARCMIN = 5.0
 
 TARGETS = [
-    {"slug": "barnard", "query": "Barnard's Star", "label": "Barnard's Star",
-     "kind": "motion",
-     "blurb": "Fastest-moving star in the sky: 10.4 arcsec per year, about 1.7 SPHEREx pixels."},
-    {"slug": "epsindib", "query": "eps Ind B", "label": "Epsilon Indi B",
-     "kind": "motion",
-     "blurb": "A pair of brown dwarfs orbiting a nearby star, moving 4.7 arcsec per year."},
-    {"slug": "wise0855", "query": "WISE J085510.83-071442.5", "label": "WISE 0855",
-     "kind": "motion",
-     "blurb": "The coldest known brown dwarf: 8.1 arcsec per year, visible only at the longest wavelengths."},
-    {"slug": "rwaur", "query": "RW Aur", "label": "RW Aurigae",
-     "kind": "variable",
-     "blurb": "A young variable star that dims unpredictably when dust crosses in front of it."},
-    {"slug": "rdra", "query": "R Dra", "label": "R Draconis",
-     "kind": "variable",
-     "blurb": "A pulsating red giant (Mira variable) that brightens and fades over about 245 days."},
+    {"slug": "barnard", "query": "Barnard's Star", "label": "Barnard's Star", "kind": "motion",
+     "view": {"det": 5, "mode": "epochs"},
+     "blurb": "The fastest-moving star in the sky: 10.4 arcseconds per year, about 1.7 SPHEREx pixels.",
+     "look": "Press Play. The star hops north by roughly a pixel each season, following the dotted line. "
+             "Its core is bright enough to saturate the shorter-wavelength detectors, so D5 gives the cleanest view. "
+             "The table compares the shift measured from these images with the catalogue prediction."},
+    {"slug": "epsindib", "query": "eps Ind B", "label": "Epsilon Indi B", "kind": "motion",
+     "view": {"det": 2, "mode": "epochs"},
+     "blurb": "A pair of brown dwarfs orbiting a nearby star, moving 4.7 arcseconds per year.",
+     "look": "Press Play and watch it slide to the south-east. Then look at the spectrum: the deep dips near "
+             "1.4, 1.9 and 2.7 microns are water vapour and the one near 3.3 microns is methane, in the "
+             "atmosphere of a brown dwarf."},
+    {"slug": "wise0855", "query": "WISE J085510.83-071442.5", "label": "WISE 0855", "kind": "motion",
+     "view": {"det": 6, "mode": "bands"},
+     "blurb": "The coldest known brown dwarf, 7 light-years away, moving 8.1 arcseconds per year.",
+     "look": "Step through the wavelengths. Below 4 microns the circle holds only the edge of an ordinary "
+             "star just to its west. In the two longest-wavelength detectors a second source appears that is "
+             "not in the Gaia catalogue: that is WISE 0855. In the colour picture it is the red dot. "
+             "Switch to Seasons in D6 to see it move."},
+    {"slug": "rwaur", "query": "RW Aur", "label": "RW Aurigae", "kind": "variable",
+     "view": {"det": 5, "mode": "epochs"},
+     "blurb": "A young star that dims unpredictably when dust crosses in front of it.",
+     "look": "Look at the spectrum: the colours are the observing seasons, and beyond 3 microns they pull "
+             "apart, because the star was clearly fainter in the latest season than a year earlier. "
+             "Its position stays put, which shows how well the images line up."},
+    {"slug": "rdra", "query": "R Dra", "label": "R Draconis", "kind": "variable",
+     "view": {"det": 1, "mode": "epochs"},
+     "blurb": "A pulsating red giant (a Mira variable) that brightens and fades over about 245 days.",
+     "look": "Press Play: each image covers about a month. This star is so bright that its core saturates "
+             "every detector, so the tool measures its outer halo instead. The brightness curve shows it "
+             "fading and brightening again."},
 ]
 
 
 def main():
-    want = set(sys.argv[1:])
+    args = sys.argv[1:]
+    out_root = ROOT / "web" / "data"
+    if "--meta" in args:      # refresh only the descriptive text, keep the built data
+        idx_path = out_root / "targets.json"
+        old = {t["slug"]: t for t in json.loads(idx_path.read_text(encoding="utf-8"))}
+        idx_path.write_text(json.dumps([{**old[t["slug"]], **t} for t in TARGETS if t["slug"] in old], indent=1), encoding="utf-8")
+        print("metadata refreshed")
+        return
+    want = set(args)
     out_root = ROOT / "web" / "data"
     out_root.mkdir(parents=True, exist_ok=True)
     index = []

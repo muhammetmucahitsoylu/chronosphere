@@ -73,6 +73,7 @@ async function loadDet(det, gen) {
     if (line.t === 'head') {
       D.total = line.total; D.found = line.found;
       if (!S.head) {
+        line.epochs = C.refineEpochs(line.epochs || []);
         S.head = line; S.grid = line.grid;
         const c = (S.grid.n - 1) / 2; S.view = { z: 1, cx: c, cy: c };
         renderReleases(); renderAbout();
@@ -140,8 +141,10 @@ async function loadCatwise() {
 const usable = det => (S.dets[det]?.frames || []).filter(f => !S.off.has(f.coll) && f.cov >= 0.5);
 function gEpoch(mjd) {
   const eps = S.head?.epochs || [];
-  for (let i = 0; i < eps.length; i++) if (mjd >= eps[i][0] - 2 && mjd <= eps[i][1] + 2) return i;
-  return 0;
+  for (let i = 0; i < eps.length; i++) if (mjd >= eps[i][0] && mjd <= eps[i][1]) return i;
+  let best = 0, bd = Infinity;
+  for (let i = 0; i < eps.length; i++) { const d = Math.min(Math.abs(mjd - eps[i][0]), Math.abs(mjd - eps[i][1])); if (d < bd) { bd = d; best = i; } }
+  return best;
 }
 const epochColor = mjd => C.EPOCH_COLORS[gEpoch(mjd) % C.EPOCH_COLORS.length];
 
@@ -403,11 +406,32 @@ let plotTimer = 0;
 function refreshPlots() { clearTimeout(plotTimer); plotTimer = setTimeout(drawPlots, 120); }
 function measureAll() {
   if (!S.grid || !S.sel) return [];
-  const n = S.grid.n, c = (n - 1) / 2, pts = [];
-  for (let det = 1; det <= 6; det++) for (const f of usable(det)) {
-    const p = selPos(f.mjd), a = C.aperture(f.data, n, S.grid.scale, p[0], p[1], f.sig);
-    if (!a) continue;
-    pts.push({ lam: f.lam + f.lgx * (p[0] - c) + f.lgy * (p[1] - c), flux: a.flux, err: a.err, mjd: f.mjd, det, frame: f });
+  const n = S.grid.n, c = (n - 1) / 2, sc = S.grid.scale, pts = [];
+  S.haloDets = [];
+  for (let det = 1; det <= 6; det++) {
+    const fr = usable(det); if (!fr.length) continue;
+    const pos = fr.map(f => selPos(f.mjd));
+    // Saturated star? Then the core is masked in most exposures: measure the halo instead, for all of them.
+    const nSat = fr.reduce((k, f, i) => k + (C.coreMasked(f.data, n, sc, pos[i][0], pos[i][1]) > 0 ? 1 : 0), 0);
+    const useHalo = nSat > 0.3 * fr.length;
+    let ring = 21;
+    if (useHalo) {
+      S.haloDets.push(det);
+      // Smallest ring that clears the saturated core in nearly every exposure of this detector.
+      const sample = fr.filter((_, i) => i % Math.ceil(fr.length / 30) === 0);
+      for (const r of [15, 21, 30, 42, 54]) {
+        ring = r;
+        const ok = sample.filter(f => { const p = selPos(f.mjd); return C.halo(f.data, n, sc, p[0], p[1], f.sig, r).valid >= 0.9; }).length;
+        if (ok >= 0.8 * sample.length) break;
+      }
+    }
+    fr.forEach((f, i) => {
+      const p = pos[i];
+      let a = useHalo ? C.halo(f.data, n, sc, p[0], p[1], f.sig, ring) : C.aperture(f.data, n, sc, p[0], p[1], f.sig);
+      if (a && a.halo && !(a.valid >= 0.7 && a.flux === a.flux)) a = null;
+      if (!a) return;
+      pts.push({ lam: f.lam + f.lgx * (p[0] - c) + f.lgy * (p[1] - c), flux: a.flux, err: a.err, mjd: f.mjd, det, frame: f, halo: useHalo });
+    });
   }
   return pts;
 }
@@ -418,7 +442,7 @@ function drawPlots() {
   const sp = pts.map(p => ({ x: p.lam, y: p.flux, err: p.err, color: epochColor(p.mjd), src: p, big: p.frame === cur }));
   const ymax = fl.length ? pct(fl, 0.98) * 1.25 : 1, ymin = fl.length ? Math.min(0, pct(fl, 0.02)) : 0;
   specPlot.set(sp, {
-    xlabel: 'wavelength (µm)', ylabel: 'flux (mJy)', ylim: [ymin - (ymax - ymin) * 0.04, ymax > ymin ? ymax : ymin + 1],
+    xlabel: 'wavelength (µm)', ylabel: S.haloDets?.length === 6 ? 'halo flux (relative)' : 'flux (mJy)', ylim: [ymin - (ymax - ymin) * 0.04, ymax > ymin ? ymax : ymin + 1],
     xlim: [0.7, 5.1], empty: S.sel ? 'Measuring…' : 'Click a star in the image',
     shade: S.grid ? [{ x0: C.DET_BANDS[S.det][0], x1: C.DET_BANDS[S.det][1], color: '#4cc9f012' }] : [],
     tipText: p => `${p.x.toFixed(3)} µm · ${p.y.toFixed(2)} ± ${p.err.toFixed(2)} mJy · ${C.fmtDate(p.src.mjd)} · D${p.src.det}`,
@@ -429,6 +453,7 @@ function drawPlots() {
   const ref = C.referenceSpectrum(pts);
   const lc = [];
   for (const p of pts) {
+    if (p.det !== S.det) continue;
     const r = ref(p.lam);
     if (!(r > 5 * medErr)) continue;
     lc.push({ x: p.mjd, y: p.flux / r, err: p.err / r, color: epochColor(p.mjd), src: p, big: p.frame === cur });
@@ -436,12 +461,14 @@ function drawPlots() {
   const ly = lc.map(p => p.y), lo = ly.length ? Math.min(0.5, pct(ly, 0.02)) : 0, hi = ly.length ? Math.max(1.5, pct(ly, 0.98)) : 2;
   lcPlot.set(lc, {
     xlabel: 'date', ylabel: 'relative brightness', ylim: [lo - 0.1, hi + 0.1], hline: 1, errors: lc.length < 400,
-    xTicks: dateTicks, empty: pts.length ? 'Too faint to measure changes here' : 'Click a star in the image',
+    xTicks: dateTicks, empty: pts.length ? `Too faint (or saturated) in D${S.det} to measure changes` : 'Click a star in the image',
     tipText: p => `${C.fmtDate(p.x)} · ×${p.y.toFixed(2)} · ${p.src.lam.toFixed(2)} µm`,
     onPick: p => jumpTo(p.src),
   });
+  $('lctitle').textContent = `Brightness over time · D${S.det} (${C.DET_BANDS[S.det].join('–')} µm)`;
   const legend = (S.head?.epochs || []).map((e, i) => `<span><i style="background:${C.EPOCH_COLORS[i % C.EPOCH_COLORS.length]}"></i>${C.fmtMonth((e[0] + e[1]) / 2)}</span>`).join('');
-  $('specnote').innerHTML = `<span class="legend">${legend}</span>Every exposure sees the spot at a different wavelength, so stepping through time builds a spectrum (${pts.length} measurements so far). Click a point to jump to that exposure. Aperture radius 9″, no aperture correction.`;
+  const haloNote = S.haloDets?.length ? `<b>Too bright for the detector:</b> the star's core is saturated in ${S.haloDets.map(d => 'D' + d).join(', ')}, so those points are measured from its outer halo (a ring well outside the core). Their scale is relative; the changes over time are real. ` : '';
+  $('specnote').innerHTML = `<span class="legend">${legend}</span>${haloNote}Every exposure sees the spot at a different wavelength, so stepping through time builds a spectrum (${pts.length} measurements so far). Click a point to jump to that exposure. Aperture radius 9″, no aperture correction.`;
 }
 function markCurrent() {
   const cur = S.seq[S.idx]?.frame;
@@ -464,7 +491,7 @@ function renderChips() {
     b.className = 'chip'; b.type = 'button';
     b.innerHTML = `${t.label}<small>${t.kind === 'motion' ? 'moves' : 'varies'}</small>`;
     b.setAttribute('aria-pressed', S.target?.slug === t.slug);
-    b.onclick = () => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, mode: 'epochs' });
+    b.onclick = () => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, ...(t.view || { mode: 'epochs' }) });
     $('chips').appendChild(b);
   }
 }
@@ -481,7 +508,7 @@ function renderAbout() {
   if (S.head) facts.push(`<span><b>${S.head.total}</b> exposures, <b>${S.head.epochs.length}</b> seasons (${C.fmtMonth(S.head.epochs[0]?.[0] ?? 0)} to ${C.fmtMonth(S.head.epochs.at(-1)?.[1] ?? 0)})</span>`);
   const moved = k && k.pmra != null && Math.hypot(k.pmra, k.pmdec) > 200
     ? `<p class="hint">Centred on where it is now, not its year-2000 catalogue position (it has moved ${(Math.hypot(k.pmra, k.pmdec) / 1000 * (C.mjdToYear(S.head?.epochs?.[0]?.[0] ?? 61000) - 2000)).toFixed(0)}″ since then). Dots mark the predicted position in each season.</p>` : '';
-  el.innerHTML = `<h2>${name}</h2>${t ? `<p>${t.blurb}</p>` : ''}${moved}<div class="facts">${facts.join('')}</div><div id="motion"></div>`;
+  el.innerHTML = `<h2>${name}</h2>${t ? `<p>${t.blurb}</p>${t.look ? `<p class="look"><b>What to look for.</b> ${t.look}</p>` : ''}` : ''}${moved}<div class="facts">${facts.join('')}</div><div id="motion"></div>`;
   renderMotion();
 }
 /** Measured position per season versus the catalogue prediction. */
@@ -498,8 +525,14 @@ function renderMotion() {
     if (!m0 && m) { m0 = m; p0 = p; }
     rows.push({ st, p, m });
   }
-  if (!m0) { el.innerHTML = '<p class="hint">The target is not detected in this detector, so its motion cannot be measured here. Try another detector.</p>'; return; }
   const as = v => (v * g.scale).toFixed(1);
+  if (Math.hypot(S.track.pmra, S.track.pmdec) < 100 && (!m0 || rows.filter(r => r.m).length < 2)) { el.innerHTML = ''; return; }
+  if (!m0) { el.innerHTML = '<p class="hint">The target is not detected in this detector, so its motion cannot be measured here. Try another detector.</p>'; return; }
+  if (Math.hypot(S.track.pmra, S.track.pmdec) < 100) {
+    const worst = Math.max(...rows.filter(r => r.m).map(r => Math.hypot(r.m.x - m0.x, r.m.y - m0.y)));
+    el.innerHTML = `<p class="hint">This star does not move measurably on the sky. Its measured position changes by at most ${as(worst)}″ between seasons in D${S.det}: that is how well the images are aligned (1 SPHEREx pixel = 6.15″).</p>`;
+    return;
+  }
   const body = rows.map(({ st, p, m }) => {
     const pe = -(p[0] - p0[0]), pn = p[1] - p0[1];
     if (!m) return `<tr><td>${C.fmtMonth(st.mjd)}</td><td colspan="3">not detected</td></tr>`;
@@ -613,14 +646,14 @@ async function search(text) {
         const el = $('notice');
         el.innerHTML = `These look like older coordinates of <b>${t.label}</b>. It has since moved ${(here / 60).toFixed(1)}′ from here.<br><button type="button">Jump to where it is now</button>`;
         el.hidden = false;
-        el.querySelector('button').onclick = () => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, mode: 'epochs' });
+        el.querySelector('button').onclick = () => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, ...(t.view || {}) });
       }
     }
     return;
   }
   const q = text.toLowerCase().replace(/[^a-z0-9]/g, '');
   const preset = S.targets.find(t => [t.label, t.slug, t.query].some(s => { const v = s.toLowerCase().replace(/[^a-z0-9]/g, ''); return v.includes(q) || q.includes(v); }));
-  if (preset && size === preset.size) return go({ ra: preset.ra, dec: preset.dec, size, target: preset });
+  if (preset && size === preset.size) return go({ ra: preset.ra, dec: preset.dec, size, target: preset, ...(preset.view || {}) });
   setStatus(`Looking up “${text}”…`);
   const r = await resolveName(text).catch(() => null);
   if (!r) { setStatus(`Could not find “${text}”. Try coordinates, e.g. 269.446 4.771`); return; }
@@ -726,8 +759,8 @@ function pick(X, Y) {
   renderChips();
   const q = new URLSearchParams(location.search), det = +q.get('det') || undefined, mode = q.get('mode') || undefined;
   const t = S.targets.find(x => x.slug === q.get('target'));
-  if (t) return go({ ra: t.ra, dec: t.dec, size: t.size, target: t, det, mode });
+  if (t) return go({ ra: t.ra, dec: t.dec, size: t.size, target: t, ...(t.view || {}), ...(det ? { det } : {}), ...(mode ? { mode } : {}) });
   if (q.has('ra') && q.has('dec')) return go({ ra: +q.get('ra'), dec: +q.get('dec'), size: +(q.get('fov') || q.get('size') || 5), det, mode });
-  if (S.targets.length) { const d = S.targets[0]; return go({ ra: d.ra, dec: d.dec, size: d.size, target: d }); }
+  if (S.targets.length) { const d = S.targets[0]; return go({ ra: d.ra, dec: d.dec, size: d.size, target: d, ...(d.view || {}) }); }
   setStatus('Type an object name or coordinates above.');
 })();

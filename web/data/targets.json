@@ -4,7 +4,7 @@
   "query": "Barnard's Star",
   "label": "Barnard's Star",
   "kind": "motion",
-  "blurb": "Fastest-moving star in the sky: 10.4 arcsec per year, about 1.7 SPHEREx pixels.",
+  "blurb": "The fastest-moving star in the sky: 10.4 arcseconds per year, about 1.7 SPHEREx pixels.",
   "ra": 269.446074,
   "dec": 4.770706,
   "size": 5.0,
@@ -49,14 +49,19 @@
      61305.628021
     ]
    ]
-  }
+  },
+  "view": {
+   "det": 5,
+   "mode": "epochs"
+  },
+  "look": "Press Play. The star hops north by roughly a pixel each season, following the dotted line. Its core is bright enough to saturate the shorter-wavelength detectors, so D5 gives the cleanest view. The table compares the shift measured from these images with the catalogue prediction."
  },
  {
   "slug": "epsindib",
   "query": "eps Ind B",
   "label": "Epsilon Indi B",
   "kind": "motion",
-  "blurb": "A pair of brown dwarfs orbiting a nearby star, moving 4.7 arcsec per year.",
+  "blurb": "A pair of brown dwarfs orbiting a nearby star, moving 4.7 arcseconds per year.",
   "ra": 331.098399,
   "dec": -56.801256,
   "size": 5.0,
@@ -105,14 +110,19 @@
      61315.478076
     ]
    ]
-  }
+  },
+  "view": {
+   "det": 2,
+   "mode": "epochs"
+  },
+  "look": "Press Play and watch it slide to the south-east. Then look at the spectrum: the deep dips near 1.4, 1.9 and 2.7 microns are water vapour and the one near 3.3 microns is methane, in the atmosphere of a brown dwarf."
  },
  {
   "slug": "wise0855",
   "query": "WISE J085510.83-071442.5",
   "label": "WISE 0855",
   "kind": "motion",
-  "blurb": "The coldest known brown dwarf: 8.1 arcsec per year, visible only at the longest wavelengths.",
+  "blurb": "The coldest known brown dwarf, 7 light-years away, moving 8.1 arcseconds per year.",
   "ra": 133.757787,
   "dec": -7.242023,
   "size": 5.0,
@@ -156,14 +166,19 @@
      61174.287218
     ]
    ]
-  }
+  },
+  "view": {
+   "det": 6,
+   "mode": "bands"
+  },
+  "look": "Step through the wavelengths. Below 4 microns the circle holds only the edge of an ordinary star just to its west. In the two longest-wavelength detectors a second source appears that is not in the Gaia catalogue: that is WISE 0855. In the colour picture it is the red dot. Switch to Seasons in D6 to see it move."
  },
  {
   "slug": "rwaur",
   "query": "RW Aur",
   "label": "RW Aurigae",
   "kind": "variable",
-  "blurb": "A young variable star that dims unpredictably when dust crosses in front of it.",
+  "blurb": "A young star that dims unpredictably when dust crosses in front of it.",
   "ra": 76.956589,
   "dec": 30.401286,
   "size": 5.0,
@@ -208,6 +223,66 @@
      61299.895897
     ]
    ]
-  }
+  },
+  "view": {
+   "det": 5,
+   "mode": "epochs"
+  },
+  "look": "Look at the spectrum: the colours are the observing seasons, and beyond 3 microns they pull apart, because the star was clearly fainter in the latest season than a year earlier. Its position stays put, which shows how well the images line up."
+ },
+ {
+  "slug": "rdra",
+  "query": "R Dra",
+  "label": "R Draconis",
+  "kind": "variable",
+  "blurb": "A pulsating red giant (a Mira variable) that brightens and fades over about 245 days.",
+  "ra": 248.16722,
+  "dec": 66.755025,
+  "size": 5.0,
+  "resolved": {
+   "name": "V* R Dra",
+   "otype": "Mi*",
+   "ra2000": 248.16761083295,
+   "dec2000": 66.75497941722,
+   "pmra": -20.643,
+   "pmdec": 6.149,
+   "plx": 1.2509,
+   "epoch": 2026.87,
+   "ra": 248.16722044421238,
+   "dec": 66.75502531128006
+  },
+  "built": "2026-11-14T11:16:20Z",
+  "summary": {
+   "total": 2497,
+   "avail": {
+    "1": 585,
+    "2": 90,
+    "3": 574,
+    "4": 584,
+    "5": 91,
+    "6": 573
+   },
+   "releases": {
+    "spherex_dr1_deep": 1225,
+    "spherex_dr1": 417,
+    "spherex_qr3": 126,
+    "spherex_qr3_deep": 729
+   },
+   "epochs": [
+    [
+     60789.879611,
+     60878.608219
+    ],
+    [
+     60916.370508,
+     61310.291175
+    ]
+   ]
+  },
+  "view": {
+   "det": 1,
+   "mode": "epochs"
+  },
+  "look": "Press Play: each image covers about a month. This star is so bright that its core saturates every detector, so the tool measures its outer halo instead. The brightness curve shows it fading and brightening again."
  }
 ]

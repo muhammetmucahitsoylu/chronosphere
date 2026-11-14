@@ -81,15 +81,32 @@ def stream(ra: float, dec: float, size_arcmin: float, det: int,
         **summary(ra, dec),
     }
     yield json.dumps(head) + "\n"
-    n_ok = skipped = 0
-    for f, r in sx.build(use, grid):
-        if r is None:
-            skipped += 1
-            continue
+    n_ok = skipped = failed = 0
+
+    def emit(r):
         data = r.pop("data")
         r.pop("key", None)
         r["t"] = "frame"
         r["b64"] = base64.b64encode(np.ascontiguousarray(data, dtype="<f2").tobytes()).decode()
+        return json.dumps(r) + "\n"
+
+    retry = []
+    for f, r in sx.build(use, grid):
+        if r is None:
+            if f.pop("error", None):
+                retry.append(f)        # network hiccup: try once more at the end
+            else:
+                skipped += 1           # exposure does not cover the stamp
+            continue
         n_ok += 1
-        yield json.dumps(r) + "\n"
-    yield json.dumps({"t": "done", "n": n_ok, "skipped": skipped}) + "\n"
+        yield emit(r)
+    for f in retry:
+        try:
+            r = sx.read_frame(f, grid)
+        except Exception:
+            r = None
+            failed += 1
+        if r is not None:
+            n_ok += 1
+            yield emit(r)
+    yield json.dumps({"t": "done", "n": n_ok, "skipped": skipped, "failed": failed}) + "\n"
