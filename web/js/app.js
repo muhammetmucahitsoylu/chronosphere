@@ -38,7 +38,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode }) {
   const gen = ++S.gen;
   stop();
   Object.assign(S, { ra, dec, size: size || 5, target, track: track || (target && target.resolved) || null,
-    head: null, grid: null, dets: {}, seq: [], idx: 0, sel: null, gaia: null, catwise: null, deep: null, off: new Set() });
+    head: null, grid: null, dets: {}, seq: [], idx: 0, sel: null, gaia: null, catwise: null, deep: null, off: new Set(), stacks: null, epochs: null, pts: [], bandCache: {}, haloDets: [] });
   if (det) S.det = det;
   if (mode && MODES[mode]) S.mode = mode;
   $('fov').value = String(S.size);
@@ -151,7 +151,7 @@ const epochColor = mjd => C.EPOCH_COLORS[gEpoch(mjd) % C.EPOCH_COLORS.length];
 function rebuild() {
   if (!S.grid) return;
   const n = S.grid.n, npx = n * n, frames = usable(S.det);
-  const keepMjd = S.seq[S.idx]?.mjd;
+  const keepMjd = S.seq[S.idx]?.mjd, keepDet = S.seq[S.idx]?.det;
   // Group by the archive-wide observing seasons so every detector agrees on what "season 2" is.
   const byEp = new Map();
   for (const f of frames) { const k = gEpoch(f.mjd); if (!byEp.has(k)) byEp.set(k, []); byEp.get(k).push(f); }
@@ -214,6 +214,12 @@ function rebuild() {
   if (keepMjd !== undefined && seq.length) {
     let bd = Infinity;
     seq.forEach((it, i) => { const d = Math.abs(it.mjd - keepMjd); if (d < bd) { bd = d; idx = i; } });
+  }
+  if (S.mode === 'bands' && seq.length) {     // stay on the same detector; start on the colour picture
+    const want = keepDet !== undefined ? keepDet : 0;
+    let i = seq.findIndex(it => it.det === want);
+    if (i < 0) i = seq.findIndex(it => it.det === S.det);
+    idx = i < 0 ? seq.length - 1 : i;
   }
   S.idx = clamp(idx, 0, Math.max(0, seq.length - 1));
   if (!S.sel) defaultSelection();
@@ -515,7 +521,7 @@ function renderAbout() {
 function renderMotion() {
   const el = $('motion');
   if (!el) return;
-  if (!S.track || S.track.pmra == null || !S.stacks || S.stacks.length < 2) { el.innerHTML = ''; return; }
+  if (!S.grid || !S.track || S.track.pmra == null || !S.stacks || S.stacks.length < 2) { el.innerHTML = ''; return; }
   const g = S.grid, rows = [];
   let m0 = null, p0 = null;
   for (const st of S.stacks) {
@@ -591,7 +597,7 @@ function renderMeta() {
   } else {
     add('Image', it.title);
     add('Built from', it.sub);
-    add('Detector', `D${S.det} (${C.DET_BANDS[S.det].join('–')} µm)`);
+    if (it.det !== 0) { const d = it.det || S.det; add('Detector', `D${d} (${C.DET_BANDS[d].join('–')} µm)`); }
     if (it.sig) add('Noise (1σ)', `${it.sig.toFixed(3)} MJy/sr`);
     if (it.ep) add('Releases', [...new Set(it.ep.frames.map(f => f.coll))].join(', '));
   }
