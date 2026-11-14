@@ -75,6 +75,13 @@
         <output id="wavelabel" for="wave">1.35 µm</output>
       </div>
       <div id="mapnote" class="mapnote" hidden></div>
+      <figure class="mapui blink" id="blink" hidden>
+        <button type="button" class="blinkstage" id="blinkstage" aria-label="Two SPHEREx images of the same patch of sky, taken about a year apart. Press to flip between them.">
+          <canvas id="blinkcv" width="300" height="300"></canvas>
+          <span class="blinkdate" id="blinkdate"></span>
+        </button>
+        <figcaption><b>Spot the dot that moves.</b> <span id="blinkcap"></span></figcaption>
+      </figure>
     </div>
 
     <div class="tour" id="tour" hidden role="region" aria-label="Guided tour" aria-live="polite">

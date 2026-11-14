@@ -53,7 +53,7 @@ select option { background: var(--surface-2); color: var(--ink); }
 .app { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 0; }
 .app[data-panel=open] { grid-template-columns: minmax(0, 1fr) var(--panelw); }
 .mapwrap { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #050505; }
-.mapstage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.mapstage { position: relative; flex: 1; min-height: 0; overflow: hidden; container: stage / size; }
 #map { position: absolute; inset: 0; }
 .mapui { position: absolute; z-index: 7; }
 .layerpick { top: 12px; right: 12px; }
@@ -78,6 +78,16 @@ select option { background: var(--surface-2); color: var(--ink); }
 .offline button { font: inherit; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; }
 .offline button:hover { color: var(--ember); }
 
+/* the tour's worked example: two real pictures of one patch of sky, flipping */
+.blink { margin: 0; right: clamp(16px, 6cqw, 96px); top: 46%; transform: translateY(-50%); width: min(300px, 36cqw, calc(100cqh - 190px)); min-width: 150px;
+  background: #141210f5; border: 1px solid var(--line-2); border-radius: 14px; padding: 10px 10px 11px; box-shadow: 0 18px 50px #000c; }
+.blinkstage { display: block; position: relative; width: 100%; aspect-ratio: 1; padding: 0; border-radius: 6px; overflow: hidden; background: #000; cursor: pointer; }
+.blinkstage canvas { display: block; width: 100%; height: 100%; }
+.blinkdate { position: absolute; left: 9px; top: 7px; font: 500 12.5px var(--mono); color: var(--ink); text-shadow: 0 1px 3px #000, 0 0 8px #000; }
+.blink figcaption { margin-top: 9px; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
+.blink figcaption b { display: block; font: 400 20px/1.15 var(--serif); color: var(--ink); margin-bottom: 2px; }
+@container stage (max-height: 340px) { .blink figcaption span { display: none; } .blink { width: min(250px, 64cqw, calc(100cqh - 84px)); } }      /* a short map: the dates on the pictures say enough */
+
 /* wavelength ruler under the map */
 .ruler { left: 14px; right: 14px; bottom: 14px; display: flex; gap: 12px; align-items: center; background: #0a0908d9; border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px 6px 8px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .ruler button { width: 34px; height: 34px; border-radius: 50%; background: var(--surface-2); flex: none; font-size: 12px; }
@@ -91,6 +101,11 @@ select option { background: var(--surface-2); color: var(--ink); }
 .rulerticks span:nth-child(1) { left: 0; transform: none; } .rulerticks span:nth-child(2) { left: 29.2%; } .rulerticks span:nth-child(3) { left: 41.6%; }
 .rulerticks span:nth-child(4) { left: 58%; } .rulerticks span:nth-child(5) { left: 72.2%; } .rulerticks span:nth-child(6) { left: auto; right: 0; transform: none; }
 #wavelabel { flex: none; font: 500 15px var(--mono); min-width: 74px; text-align: right; }
+
+/* A still copy of the map, shown while the map changes behind it, so no change ever flashes (see sky.js) */
+.veil { position: absolute; inset: 0; overflow: hidden; background: #050505; pointer-events: none; }
+.veil canvas { position: absolute; left: 0; top: 0; display: block; }
+.veil canvas:first-child { will-change: transform, opacity; }
 
 /* Aladin Lite's own controls, restyled to belong here */
 .aladin-container { background: #050505 !important; }
@@ -332,6 +347,15 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
   .ruler { left: 10px; right: 10px; bottom: 10px; gap: 8px; padding: 7px 10px 5px 7px; }
   #wavelabel { font-size: 13.5px; min-width: 62px; }
   .mapnote { font-size: 13px; top: 10px; left: 10px; right: 10px; transform: none; max-width: none; white-space: normal; text-align: center; border-radius: 12px; }
+  .blink { right: auto; left: 50%; top: 10px; transform: translateX(-50%); width: min(250px, 64cqw, calc(100cqh - 140px)); min-width: 110px; padding: 8px 8px 9px; }
+  /* While the example is on show it needs the room, and the map is only its backdrop: the map's controls step aside,
+     and on a short screen the map keeps a workable height (the page then scrolls to the text). */
+  body.example .layerpick, body.example .zoom, body.example .ruler { visibility: hidden; }
+  body.example.touring .app[data-panel=closed] .mapwrap { height: auto; min-height: calc(100vh - var(--toph, 104px) - 62px); min-height: calc(100dvh - var(--toph, 104px) - 62px - env(safe-area-inset-bottom)); }
+  body.example .mapstage { flex: 1 0 290px; }
+  .blink { width: min(250px, 64cqw, calc(100cqh - 124px)); }
+  .blink figcaption { font-size: 12.5px; margin-top: 7px; }
+  .blink figcaption b { font-size: 18px; }
 
   .tour, .app[data-panel=closed] .tour { position: relative; left: auto; bottom: auto; width: auto; border: 0; border-top: 1px solid var(--line-2); border-radius: 0; box-shadow: none; background: var(--surface); padding: 0 16px 14px; }
   .tourbar { margin: 0 -16px 10px; }

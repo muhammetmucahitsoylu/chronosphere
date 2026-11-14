@@ -96,6 +96,8 @@ export class Plot {
   }
 }
 
+// One formatter for all labels: making a new one for every label is slow enough to be felt.
+const MONTH = new Intl.DateTimeFormat('en', { month: 'short', year: '2-digit', timeZone: 'UTC' });
 export function dateTicks(x0, x1) {
   // x in MJD; label every N months
   const d0 = new Date((x0 - 40587) * 864e5), d1 = new Date((x1 - 40587) * 864e5);
@@ -103,7 +105,7 @@ export function dateTicks(x0, x1) {
   const step = months > 30 ? 6 : months > 14 ? 3 : months > 6 ? 2 : 1, out = [];
   const d = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + 1, 1));
   while (d <= d1) {
-    if (d.getUTCMonth() % step === 0) out.push({ v: d.getTime() / 864e5 + 40587, label: d.toLocaleDateString('en', { month: 'short', year: '2-digit', timeZone: 'UTC' }) });
+    if (d.getUTCMonth() % step === 0) out.push({ v: d.getTime() / 864e5 + 40587, label: MONTH.format(d) });
     d.setUTCMonth(d.getUTCMonth() + 1);
   }
   if (!out.length) out.push({ v: (x0 + x1) / 2, label: new Date(((x0 + x1) / 2 - 40587) * 864e5).toISOString().slice(0, 10) });

@@ -67,8 +67,9 @@ export function fmtRange(mjd0, mjd1) {
   if (m(a) !== m(b)) return `${d(a)} ${m(a)} – ${d(b)} ${m(b)} ${y(b)}`;
   return d(a) === d(b) ? `${d(a)} ${m(a)} ${y(a)}` : `${d(a)}–${d(b)} ${m(b)} ${y(b)}`;
 }
+const MONTH_YEAR = new Intl.DateTimeFormat('en', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 export function fmtMonth(mjd) {
-  return mjdToDate(mjd).toLocaleDateString('en', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+  return MONTH_YEAR.format(mjdToDate(mjd));
 }
 
 // ---------- sky geometry (tangent plane, north up, east left) ----------
@@ -148,21 +149,31 @@ export function splitEpochs(frames, gapDays = 30) {
 export function medianStack(frames, npx) {
   const out = new Float32Array(npx), K = frames.length, buf = new Float32Array(K);
   const need = Math.max(1, Math.min(3, Math.ceil(K * 0.3)));
+  const data = frames.map(f => f.data);
   for (let p = 0; p < npx; p++) {
     let m = 0;
-    for (let k = 0; k < K; k++) { const v = frames[k].data[p]; if (v === v) buf[m++] = v; }
+    for (let k = 0; k < K; k++) {
+      const v = data[k][p];
+      if (v !== v) continue;
+      let i = m++;                                // insert in order: the list is short, so this beats sorting it afterwards
+      while (i > 0 && buf[i - 1] > v) { buf[i] = buf[i - 1]; i--; }
+      buf[i] = v;
+    }
     if (m < need) { out[p] = NaN; continue; }
-    const s = buf.subarray(0, m).sort();
-    out[p] = m & 1 ? s[m >> 1] : 0.5 * (s[m / 2 - 1] + s[m / 2]);
+    out[p] = m & 1 ? buf[m >> 1] : 0.5 * (buf[m / 2 - 1] + buf[m / 2]);
   }
   return out;
 }
 export function robustStats(a) {
-  const v = Array.from(a).filter(x => x === x).sort((x, y) => x - y);
-  if (!v.length) return { med: 0, sig: 1, p: () => 1 };
-  const q = f => v[Math.min(v.length - 1, Math.max(0, Math.round(f * (v.length - 1))))];
-  const med = q(0.5), dev = v.map(x => Math.abs(x - med)).sort((x, y) => x - y);
-  return { med, sig: Math.max(1.4826 * dev[dev.length >> 1], 1e-6), p: q };
+  let m = 0; const v = new Float64Array(a.length);
+  for (let i = 0; i < a.length; i++) { const x = a[i]; if (x === x) v[m++] = x; }
+  if (!m) return { med: 0, sig: 1, p: () => 1 };
+  const s = v.subarray(0, m).sort();            // typed arrays sort by value
+  const q = f => s[Math.min(m - 1, Math.max(0, Math.round(f * (m - 1))))];
+  const med = q(0.5), dev = new Float64Array(m);
+  for (let i = 0; i < m; i++) dev[i] = Math.abs(s[i] - med);
+  dev.sort();
+  return { med, sig: Math.max(1.4826 * dev[m >> 1], 1e-6), p: q };
 }
 export function subtract(a, b) {
   const o = new Float32Array(a.length);

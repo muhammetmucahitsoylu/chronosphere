@@ -51,23 +51,30 @@ function shape(row, ra, dec) {
  * A plain cone search fails for nearby stars: catalogues store where they were in 2000, and
  * Barnard's Star has moved 270 arcseconds since. So fast movers in a wider area are fetched too
  * and every candidate is moved to today's date before matching.
+ * `aimArcsec` is how precisely the position was pointed at (a click on a wide map is only good to
+ * a few screen pixels): within that distance the brightest object wins, not the nearest.
  */
-export const identify = (ra, dec, radiusArcsec = 12) => identifyFull(ra, dec, radiusArcsec).then(x => x.best);
+export const identify = (ra, dec, radiusArcsec = 12, aimArcsec = 0) => identifyFull(ra, dec, radiusArcsec, aimArcsec).then(x => x.best);
 
 /**
  * Like identify, and also: `moved`, a star that catalogues list at this spot (where it was in
  * 2000) but that has since moved away. Typing a nearby star's catalogue coordinates lands here.
  */
-export async function identifyFull(ra, dec, radiusArcsec = 12) {
-  const r = Math.max(radiusArcsec, 4);
-  const [near, movers] = await Promise.all([
-    adql(`SELECT TOP 12 ${COLS} ${FROM} WHERE ${cone(ra, dec, (r + 3) / 3600)}`),
+export async function identifyFull(ra, dec, radiusArcsec = 12, aimArcsec = 0) {
+  const r = Math.max(radiusArcsec, 4), aim = Math.min(aimArcsec, r);
+  const here = `POINT('ICRS', ${ra.toFixed(6)}, ${dec.toFixed(6)})`, away = `DISTANCE(POINT('ICRS', b.ra, b.dec), ${here})`;
+  // The sky is crowded: a minute of arc around the centre of the Milky Way holds three thousand
+  // catalogued objects. So the catalogue is asked for the nearest ones, and for the brightest ones
+  // within the pointing tolerance, never for "any".
+  const [near, bright, movers] = await Promise.all([
+    adql(`SELECT TOP 30 ${COLS}, ${away} AS d ${FROM} WHERE ${cone(ra, dec, (r + 6) / 3600)} ORDER BY d`),
+    aim > 4 ? adql(`SELECT TOP 8 ${COLS} ${FROM} WHERE ${cone(ra, dec, (aim + 6) / 3600)} AND f.K IS NOT NULL ORDER BY f.K`).catch(() => []) : [],
     adql(`SELECT TOP 40 ${COLS} ${FROM} WHERE ${cone(ra, dec, 0.13)} AND (b.pmra*b.pmra + b.pmdec*b.pmdec) > 40000`).catch(() => []),
   ]);
   // Planets and sub-components share their host's coordinates: prefer the host.
   const minor = c => /^(Pl|Pl\?|ev|err|reg|\?)$/.test(c.otype) ? 1 : 0;
   const seen = new Set(), cands = [], gone = [];
-  for (const row of [...near, ...movers]) {
+  for (const row of [...near, ...bright, ...movers]) {
     if (row.ra == null || seen.has(row.oid)) continue;
     seen.add(row.oid);
     const c = shape(row, ra, dec);
@@ -77,9 +84,15 @@ export async function identifyFull(ra, dec, radiusArcsec = 12) {
   gone.sort((a, b) => minor(a) - minor(b) || Math.hypot(b.pmra, b.pmdec) - Math.hypot(a.pmra, a.pmdec) || (a.mags.K ?? 99) - (b.mags.K ?? 99));
   const moved = gone[0] || null;
   if (!cands.length) return { best: null, moved };
-  cands.sort((a, b) => minor(a) - minor(b) || a.dist - b.dist || (a.mags.K ?? 99) - (b.mags.K ?? 99));
-  const best = cands[0];
-  best.others = cands.slice(1, 5).map(c => ({ name: c.name, type: c.type, dist: c.dist }));
+  const mag = c => c.mags.K ?? c.mags.J ?? c.mags.V ?? null;
+  cands.sort((a, b) => minor(a) - minor(b) || a.dist - b.dist || (mag(a) ?? 99) - (mag(b) ?? 99));
+  let best = cands[0];
+  // Pointed at by hand: the brightest thing within reach of the pointer is what was meant. Distance
+  // still counts (a full tolerance away costs as much as 2.5 magnitudes), so that the fainter of two
+  // stars can be picked by clicking right on it.
+  const reach = cands.filter(c => c.dist <= aim && !minor(c) && mag(c) !== null);
+  if (reach.length) best = reach.sort((a, b) => (mag(a) + 2.5 * a.dist / aim) - (mag(b) + 2.5 * b.dist / aim))[0];
+  best.others = cands.filter(c => c !== best).slice(0, 4).map(c => ({ name: c.name, type: c.type, dist: c.dist }));
   return { best, moved: null };
 }
 

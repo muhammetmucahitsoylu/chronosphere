@@ -13,7 +13,8 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const isNarrow = () => window.matchMedia('(max-width: 900px)').matches;
 const calmMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const yearNow = () => 1970 + Date.now() / 31557600000;
-const nExp = n => `${(+n).toLocaleString('en')} exposure${+n === 1 ? '' : 's'}`;
+const NUM = new Intl.NumberFormat('en'), NUM2 = new Intl.NumberFormat('en', { maximumFractionDigits: 2 });      // made once: making one per number is slow
+const nExp = n => `${NUM.format(+n)} exposure${+n === 1 ? '' : 's'}`;
 
 const MODES = {
   epochs: 'One stacked image per SPHEREx visit to this spot, played in a loop. Anything that moved between visits jumps.',
@@ -79,8 +80,15 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   S.busyUntil = performance.now() + 9000;
   if (det) S.det = det;
   if (mode && MODES[mode]) S.mode = mode;
+  if (Sky.isReady()) {
+    // The panel opens (which changes the size of the map) and the map goes to the object, as one move.
+    const opening = $('app').dataset.panel !== 'open';
+    if (fly) Sky.flyTo(ra, dec, Math.max(3, S.size / 5), { layout: opening ? openPanel : null });
+    else if (opening) Sky.reshape(openPanel);
+    Sky.mark(ra, dec, S.size, target ? target.label : info ? info.name : track?.name || '');
+  }
   openPanel();
-  if (Sky.isReady()) { Sky.mark(ra, dec, S.size, target ? target.label : info ? info.name : track?.name || ''); if (fly) { const f = Math.max(3, S.size / 5); Sky.flyTo(ra, dec, f); if (Sky.isSpherex()) warm(Sky.tiles({ ra, dec, fov: f })); } }      // fetch the destination's tiles while flying there
+  const mapFirst = Sky.isReady() ? Promise.race([Sky.onItsWay(), nap(450)]) : null;
   loadInfo(gen);
   $('fov').value = String(S.size);
   $('notice').hidden = true; S.failed = null;
@@ -89,6 +97,8 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   loadCatalog(gen);
   try {
     if (S.showWise) setTimeout(loadCatwise, 1500);
+    // The map and the images want the same processor: the map goes first (it needs a fraction of a second).
+    if (mapFirst) { await mapFirst; if (gen !== S.gen) return; }
     await loadDet(S.det, gen);
     if (gen !== S.gen) return;
     if (!S.head || !S.head.total) return;
@@ -557,8 +567,14 @@ function play() {
 function stop() { S.playing = false; $('play').textContent = '▶ Play'; clearInterval(S.timer); }
 
 // ------------------------------------------------------------ photometry & plots
-let plotTimer = 0;
-function refreshPlots() { clearTimeout(plotTimer); plotTimer = setTimeout(drawPlots, 120); }
+let plotTimer = 0, plotDue = 0;
+/** Redraw the plots soon. While detectors are still arriving one after another, wait for a pause (but never long). */
+function refreshPlots() {
+  const now = performance.now(), busy = !!S.head && [1, 2, 3, 4, 5, 6].some(d => S.dets[d]?.loading);
+  if (!plotDue) plotDue = now + 900;
+  clearTimeout(plotTimer);
+  plotTimer = setTimeout(() => { plotDue = 0; drawPlots(); }, Math.max(0, Math.min(busy ? 320 : 120, plotDue - now)));
+}
 function measureAll() {
   if (!S.grid || !S.sel) return [];
   const n = S.grid.n, c = (n - 1) / 2, sc = S.grid.scale, pts = [];
@@ -566,23 +582,28 @@ function measureAll() {
   for (let det = 1; det <= 6; det++) {
     const fr = usable(det); if (!fr.length) continue;
     const pos = fr.map(f => selPos(f.mjd));
+    // What is measured in an exposure depends only on the spot and the method, so it is worked out once
+    // and remembered on the exposure: the plots are redrawn many times while detectors arrive.
+    const memo = (f, key, work) => { const m = (f.memo ||= {}); if (!(key in m)) m[key] = work(); return m[key]; };
+    const at = p => `${p[0].toFixed(3)},${p[1].toFixed(3)}`;
     // Saturated star? Then the core is masked in most exposures: measure the halo instead, for all of them.
-    const nSat = fr.reduce((k, f, i) => k + (C.coreMasked(f.data, n, sc, pos[i][0], pos[i][1]) > 0 ? 1 : 0), 0);
+    const nSat = fr.reduce((k, f, i) => k + (memo(f, `core:${at(pos[i])}`, () => C.coreMasked(f.data, n, sc, pos[i][0], pos[i][1])) > 0 ? 1 : 0), 0);
     const useHalo = nSat > 0.3 * fr.length;
     let ring = 21;
     if (useHalo) {
       S.haloDets.push(det);
       // Smallest ring that clears the saturated core in nearly every exposure of this detector.
-      const sample = fr.filter((_, i) => i % Math.ceil(fr.length / 30) === 0);
+      const stride = Math.ceil(fr.length / 30);
       for (const r of [15, 21, 30, 42, 54]) {
         ring = r;
-        const ok = sample.filter(f => { const p = selPos(f.mjd); return C.halo(f.data, n, sc, p[0], p[1], f.sig, r).valid >= 0.9; }).length;
-        if (ok >= 0.8 * sample.length) break;
+        let ok = 0, all = 0;
+        fr.forEach((f, i) => { if (i % stride) return; all++; if (memo(f, `halo${r}:${at(pos[i])}`, () => C.halo(f.data, n, sc, pos[i][0], pos[i][1], f.sig, r)).valid >= 0.9) ok++; });
+        if (ok >= 0.8 * all) break;
       }
     }
     fr.forEach((f, i) => {
       const p = pos[i];
-      let a = useHalo ? C.halo(f.data, n, sc, p[0], p[1], f.sig, ring) : C.aperture(f.data, n, sc, p[0], p[1], f.sig);
+      let a = useHalo ? memo(f, `halo${ring}:${at(p)}`, () => C.halo(f.data, n, sc, p[0], p[1], f.sig, ring)) : memo(f, `ap:${at(p)}`, () => C.aperture(f.data, n, sc, p[0], p[1], f.sig));
       if (a && a.halo && !(a.valid >= 0.7 && a.flux === a.flux)) a = null;
       if (!a) return;
       pts.push({ lam: f.lam + f.lgx * (p[0] - c) + f.lgy * (p[1] - c), flux: a.flux, err: a.err, mjd: f.mjd, det, frame: f, halo: useHalo });
@@ -922,8 +943,8 @@ function openPanel() {
 }
 function closePanel() {
   S.abort?.abort(); S.gen++; stop();
-  $('app').dataset.panel = 'closed';
-  if (Sky.isReady()) { Sky.clearMark(); Sky.resize(); }
+  const shut = () => { $('app').dataset.panel = 'closed'; if (Sky.isReady()) { Sky.clearMark(); Sky.resize(); } };
+  if (Sky.isReady()) Sky.reshape(shut); else shut();
   history.replaceState(null, '', location.pathname);
 }
 
@@ -931,7 +952,7 @@ function closePanel() {
 async function loadInfo(gen) {
   try {
     if (!S.info) {
-      const found = await Info.identifyFull(S.ra, S.dec, 10).catch(() => null);
+      const found = await Info.identifyFull(S.ra, S.dec, 10, 6).catch(() => null);      // within one SPHEREx pixel, the brightest object is the one whose light is seen
       if (gen !== S.gen) return;
       if (!found) { S.infoState = 'failed'; renderAbout(); return; }          // the catalogue did not answer
       S.info = found.best; S.moved = found.moved;
@@ -958,7 +979,7 @@ async function loadInfo(gen) {
 function fmtDistance(plx, err) {
   const ly = 3261.5638 / plx, rel = err != null ? err / plx : 0.01;
   const v = Number(ly.toPrecision(rel < 0.003 ? 3 : 2));
-  return `${rel < 0.003 ? '' : 'about '}${v.toLocaleString('en', { maximumFractionDigits: 2 })} light-years`;
+  return `${rel < 0.003 ? '' : 'about '}${NUM2.format(v)} light-years`;
 }
 
 function renderAbout() {
@@ -987,7 +1008,7 @@ function renderAbout() {
     fast ? 'Catalogues list where a star was in the year 2000. This one has moved since; the position shown is for today.' : 'Right ascension and declination (ICRS)');
   if (pmSrc) {
     fact('Moves across the sky', `${pm.toFixed(pm < 0.1 ? 3 : 2)}″ per year`,
-      pm >= 0.3 ? `${(pm / 6.15).toFixed(2)} SPHEREx pixels a year` : pm > 0.003 ? `one SPHEREx pixel in ${Math.round(6.15 / pm).toLocaleString('en')} years` : 'too slow to see here',
+      pm >= 0.3 ? `${(pm / 6.15).toFixed(2)} SPHEREx pixels a year` : pm > 0.003 ? `one SPHEREx pixel in ${NUM.format(Math.round(6.15 / pm))} years` : 'too slow to see here',
       `Proper motion${pmSrc.src ? `, ${pmSrc.src}` : ', from SIMBAD'}`);
   }
   // Distance: only from a parallax measured to better than 20%.
@@ -1334,11 +1355,13 @@ async function openAt(ra, dec, mapFov) {
     Sky.flyTo(ra, dec, Math.max(mapFov / 6, 2));
     return;
   }
-  const tok = ++S.openTok, r = clamp(mapFov * 3600 * 0.006, 8, 60), size = +$('fov').value;
-  const preset = S.targets.find(t => sepArcsec(ra, dec, t.ra, t.dec) < Math.max(20, r));
+  // How well can a click be aimed? A few pixels of the map, whatever that is on the sky at this zoom.
+  const pixel = mapFov * 3600 / Math.max(200, $('map').clientWidth);
+  const tok = ++S.openTok, r = clamp(12 * pixel, 8, 90), aim = clamp(5 * pixel, 5, 40), size = +$('fov').value;
+  const preset = S.targets.find(t => sepArcsec(ra, dec, t.ra, t.dec) < Math.max(20, aim));
   if (preset && size === preset.size) return openTarget(preset);
   note('Looking up what is here…');
-  const info = await Info.identify(ra, dec, r).catch(() => null);
+  const info = await Info.identify(ra, dec, r, aim).catch(() => null);
   if (tok !== S.openTok) return;
   note('');
   if (info) go({ ra: info.ra, dec: info.dec, size, track: info, info });
@@ -1523,33 +1546,108 @@ let sweeping = false, sweepTok = 0;
 const TOUR_FRAMES = [2, 8, 14, 20, 25, 31, 37, 43, 48, 54, 60, 66, 71, 77, 83, 89, 95, 100];
 const nap = ms => new Promise(r => setTimeout(r, ms));
 /** Fetch map tiles ahead of time. They land in this device's storage, where the map then finds them. */
-const warm = urls => Promise.all(urls.map(u => fetch(u, { mode: 'cors' }).then(r => r.arrayBuffer()).catch(() => null)));
-function setWave(z) {
-  z = Sky.setSlice(z);
+const warm = Sky.prefetch;
+function showWave(z) {
   $('wave').value = z;
   $('wavelabel').textContent = `${Sky.waves()[z].toFixed(2)} µm`;
 }
-/** Step the map through its colours. Each step waits for its tiles, so the sky changes as a whole. */
+/** Show one colour of the SPHEREx map. The map dissolves into it once it is complete. */
+function setWave(z) {
+  const r = Sky.setSlice(z);
+  showWave(r.z);
+  r.done.then(ok => {
+    if (ok !== 'missing') return;
+    showWave(Sky.currentSlice());
+    note(navigator.onLine === false ? 'That colour is not saved on this device.' : 'That colour could not be loaded just now.', 4000);
+  });
+  return r.done;
+}
+/** Step the map through its colours. Each one is loaded out of sight and dissolves in as a whole. */
 async function sweep(on, frames = null) {
   sweeping = on; const my = ++sweepTok;
   $('waveplay').textContent = on ? '❚❚' : '▶';
   if (!on) return;
-  const list = frames || Sky.waves().map((_, i) => i);
-  let i = list.findIndex(z => z >= Sky.currentSlice());
+  const list = (frames || Sky.waves().map((_, i) => i)).filter(z => !Sky.isBlank(z));
+  let i = list.findIndex(z => z >= Sky.currentSlice()), misses = 0;
   if (i < 0) i = list.length - 1;
   while (sweeping && my === sweepTok) {
     i = (i + 1) % list.length;
-    const t0 = performance.now();
-    await Promise.race([warm(Sky.tiles({ z: list[i] })), nap(2500)]);
-    await nap(Math.max(0, (frames ? 850 : 420) - (performance.now() - t0)));
+    const z = list[i];
+    const ok = await Sky.setSlice(z, { fade: frames ? 420 : 280, onShow: () => showWave(z) }).done;
     if (!sweeping || my !== sweepTok) break;
-    setWave(list[i]);
+    if (ok === 'missing') {
+      if (++misses >= 3) { sweeping = false; $('waveplay').textContent = '▶'; showWave(Sky.currentSlice()); note('These colours are not saved on this device.', 4000); break; }
+    } else misses = 0;
+    if (ok !== true) await nap(250);
   }
 }
 function setLayer(id) {
   Sky.setLayer(id); $('layer').value = id;
   $('wavebox').style.display = id === 'spherex' ? '' : 'none';
   if (id !== 'spherex') sweep(false);
+}
+
+// ------------------------------------------------------------ the tour's worked example
+/**
+ * Two real SPHEREx pictures of one small patch of sky, about a year apart, for the step of the tour
+ * that explains why the same place is looked at twice: the first and the last visit to Barnard's
+ * Star, the middle of the stamp, drawn the way the viewer draws them. They are made here, from the
+ * same file that the Barnard step opens, so nothing is shown that the tool itself did not compute.
+ */
+let blinkPair = null, blinkTimer = 0, blinkSide = 0;
+function blinkFrames() {
+  blinkPair ||= (async () => {
+    const t = S.targets.find(x => x.slug === 'barnard');
+    if (!t) return null;
+    const frames = []; let head = null;
+    await C.loadStream(dataUrl(t, `d${t.view?.det || 5}.ndjson`), line => {
+      if (line.t === 'head') head = line;
+      else if (line.t === 'frame') { if (line.b64) { line.data = C.decodeF16(line.b64); delete line.b64; } frames.push(line); }
+    });
+    if (!head?.grid || frames.length < 4) return null;
+    frames.sort((a, b) => a.mjd - b.mjd);
+    const visits = C.splitEpochs(frames, 60);
+    if (visits.length < 2) return null;
+    const n = head.grid.n, npx = n * n, crop = Math.round(n * 0.74), x0 = (n - crop) >> 1, px = 5;      // most of the stamp, 5 screen pixels per image pixel
+    const all = C.robustStats(C.medianStack(frames.filter((_, i) => i % Math.ceil(frames.length / 60) === 0), npx));
+    const top = Math.max(all.p(0.9996), 60 * all.sig);         // one brightness scale for both pictures; high, so that the bright star stays a dot
+    return [visits[0], visits[visits.length - 1]].map(v => {
+      const img = C.medianStack(v.frames, npx), sig = C.robustStats(img).sig;
+      const lo = -2 * sig, soft = 3 * sig, norm = Math.asinh((Math.max(top, 10 * sig) - lo) / soft);
+      const small = document.createElement('canvas'); small.width = small.height = crop;
+      const sx = small.getContext('2d'), im = sx.createImageData(crop, crop);
+      for (let j = 0; j < crop; j++) for (let i = 0; i < crop; i++) {
+        const val = img[(x0 + crop - 1 - j) * n + x0 + i], o = (j * crop + i) * 4;          // north up: the stamp's rows run from the bottom
+        const g = val === val ? 255 * stretch(val, lo, soft, norm) : 255;                   // a hole inside a star is a saturated core
+        im.data[o] = im.data[o + 1] = im.data[o + 2] = g; im.data[o + 3] = 255;
+      }
+      sx.putImageData(im, 0, 0);
+      const canvas = document.createElement('canvas'); canvas.width = canvas.height = crop * px;
+      const cx = canvas.getContext('2d'); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+      cx.drawImage(small, 0, 0, crop * px, crop * px);
+      return { canvas, label: C.fmtMonth(v.mid) };
+    });
+  })().catch(() => null);
+  return blinkPair;
+}
+async function showExample(on) {
+  const el = $('blink');
+  clearInterval(blinkTimer); blinkTimer = 0;
+  if (!on) { el.hidden = true; document.body.classList.remove('example'); return; }
+  const pair = await blinkFrames();
+  if (!pair || tourSteps[tourIdx]?.demo !== 'blink') return;
+  const c = $('blinkcv'), x = c.getContext('2d');
+  const draw = () => {
+    const f = pair[blinkSide];
+    if (c.width !== f.canvas.width) c.width = c.height = f.canvas.width;
+    x.drawImage(f.canvas, 0, 0); $('blinkdate').textContent = f.label;
+  };
+  const flip = () => { blinkSide = 1 - blinkSide; draw(); };
+  const byHand = 'Press the picture to flip it.';
+  $('blinkcap').textContent = `Two SPHEREx photographs of the same patch of sky, ${pair[0].label} and ${pair[1].label}. ${calmMotion() ? byHand : ''}`;
+  $('blinkstage').onclick = () => { if (blinkTimer) { clearInterval(blinkTimer); blinkTimer = 0; $('blinkcap').textContent += ` ${byHand}`; } flip(); };
+  blinkSide = 0; draw(); el.hidden = false; document.body.classList.add('example');
+  if (!calmMotion()) blinkTimer = setInterval(flip, 850);          // a blink comparator: a hard flip, not a fade
 }
 
 // ------------------------------------------------------------ guided tour
@@ -1559,15 +1657,16 @@ const tourApi = {
   layer: id => { if (Sky.isReady() && Sky.currentLayer() !== id) setLayer(id); },
   slice: z => { if (Sky.isReady()) setWave(z); },
   sweep: on => { if (Sky.isReady()) sweep(on && !calmMotion(), TOUR_FRAMES); },      // no automatic sweep for people who asked for less motion
-  fly: (ra, dec, fov) => { if (Sky.isReady()) { S.busyUntil = performance.now() + 9000; Sky.flyTo(ra, dec, Sky.fitFov(fov)); } },
+  fly: (ra, dec, fov) => { if (Sky.isReady()) { S.busyUntil = performance.now() + 9000; Sky.flyTo(ra, dec, fov); } },
   open: t => openTarget(t),
   // Getting the next step ready while the current one is being read: its map tiles and its first images.
   warm: (ra, dec, fov, layout = 'open') => {
     if (!Sky.isReady() || !Sky.isSpherex()) return;
     const [w, h] = tourSizes()[layout];                    // the size the map will have at that step, not the size it has now
-    warm(Sky.tiles({ ra, dec, fov: Sky.fitFov(fov, w, h), w, h }));
+    warm(Sky.tiles({ ra, dec, fov: Sky.fitFov(fov, w, h), w, h, coarse: true }));
   },
   preload: t => { fetch(dataUrl(t, `d${t.view?.det || 2}.ndjson`), { priority: 'low' }).then(r => r.arrayBuffer()).catch(() => {}); },
+  example: () => { blinkFrames(); },
 };
 /** The tour card docks under the map or floats over it, which changes the map's size. */
 function relayout() {
@@ -1584,7 +1683,8 @@ function tourGo(i) {
   $('tourcount').textContent = `Guided tour · ${i + 1} of ${tourSteps.length}`;
   $('tourmini').textContent = `${i + 1} / ${tourSteps.length}`;
   $('tourprog').style.width = `${(i + 1) / tourSteps.length * 100}%`;
-  $('tourtitle').textContent = st.title; $('tourtext').textContent = st.text;
+  $('tourtitle').textContent = st.title;
+  $('tourtext').innerHTML = esc(st.text).replace(/\*([^*]+)\*/g, '<em>$1</em>');          // *words between asterisks* in italics
   const links = $('tourlinks');
   links.hidden = !st.tryNext; links.textContent = st.tryNext ? 'Try next: ' : '';
   for (const name of st.tryNext || []) {
@@ -1596,13 +1696,16 @@ function tourGo(i) {
   $('tourback').disabled = i === 0;
   $('tournext').textContent = i === tourSteps.length - 1 ? 'Finish' : 'Next';
   st.run(tourApi);
+  showExample(st.demo === 'blink');
   setTimeout(() => { if (tourIdx === i) tourSteps[i + 1]?.prep?.(tourApi); }, 1500);
   renderLook(); relayout();
+  if (Sky.isReady()) Sky.reshape();          // the card may have changed the size of the map
   if (isNarrow()) window.scrollTo({ top: 0, behavior: calmMotion() ? 'auto' : 'smooth' });
 }
 function tourEnd() {
-  tourIdx = -1; $('tour').hidden = true; document.body.classList.remove('touring');
+  tourIdx = -1; $('tour').hidden = true; document.body.classList.remove('touring'); showExample(false);
   sweep(false); renderLook(); relayout();
+  if (Sky.isReady()) Sky.reshape();
 }
 $('tourbtn').onclick = $('tourbtn2').onclick = () => tourGo(0);
 $('tournext').onclick = () => tourGo(tourIdx + 1);
@@ -1667,7 +1770,7 @@ function tourTiles() {
   if (!Sky.isReady()) return [];
   const { full, wide, open } = tourSizes();
   const urls = new Set();
-  const add = (ra, dec, fov, [w, h], z = 25) => Sky.tiles({ ra, dec, fov: Sky.fitFov(fov, w, h), z, w, h }).forEach(u => urls.add(u));
+  const add = (ra, dec, fov, [w, h], z = 25) => Sky.tiles({ ra, dec, fov: Sky.fitFov(fov, w, h), z, w, h, coarse: z === 25 }).forEach(u => urls.add(u));      // with the coarse tiles the map asks for first when it arrives somewhere
   for (const size of [wide, full]) {
     for (const z of TOUR_FRAMES) add(266.4, -29.0, 110, size, z);
     add(83.82, -5.39, 60, size);
@@ -1701,7 +1804,7 @@ async function saveTourOffline(full) {
     while (next < files.length) {
       while (busy()) await nap(600);
       const f = files[next++];
-      try { const r = await fetch(f, { mode: 'cors', priority: 'low' }); if (r.ok) await r.arrayBuffer(); else failed++; } catch { failed++; }
+      try { const r = await Sky.quietFetch(f, { mode: 'cors', priority: 'low' }); if (r.ok) await r.arrayBuffer(); else failed++; } catch { failed++; }
       done++;
       if (done % 3 === 0 || done === files.length) say(`Saving the tour for offline use: ${Math.round(done / files.length * 100)}%`);
     }

@@ -3,7 +3,7 @@
 
 // What the presenter says while each test object is on screen. Kept short: the panel shows the rest.
 const STORY = {
-  barnard: 'The fastest-moving star in the whole sky. Three SPHEREx visits play in a loop, and the star hops north by about one pixel each time, along the dotted line that catalogues predict. The table under the images compares the measured hop with the prediction.',
+  barnard: 'The dot that moved in the two photographs: the fastest-moving star in the whole sky. Three SPHEREx visits play in a loop, and the star hops north by about one pixel each time, along the dotted line that catalogues predict. The table under the images compares the measured hop with the prediction.',
   epsindib: 'Two brown dwarfs, objects too small to shine like stars, orbiting a star 12 light-years away. SPHEREx sees the pair as one dot sliding south-east. Its spectrum has deep gaps near 1.4, 1.9 and 2.7 microns, where water vapour absorbs the light, and near 3.3 microns, where methane does.',
   wise0855: 'The coldest brown dwarf known, only 7 light-years away and too cold to shine in visible light. The images step through the wavelengths: at first the circle holds only the glow of a neighbouring star. Beyond 4 microns a new dot appears that is not in the Gaia star catalogue. In the colour picture it is the red one.',
   rwaur: 'A newborn star still wrapped in dust. It does not move, and the images stay steady. But look at the spectrum, where each colour is one visit: within a year the star grew brighter below 1.6 microns and lost almost half its brightness beyond 4 microns, while the stars around it did not change.',
@@ -11,25 +11,28 @@ const STORY = {
 };
 
 export function buildTour(targets) {
+  // In the texts of the steps, *words between asterisks* are set in italics.
   const steps = [
     {
-      title: 'A telescope that sees 102 colours',
-      text: 'NASA launched SPHEREx in March 2025. Every six months it maps the entire sky in 102 colours of infrared light, colours our eyes cannot see. This is that map: the whole sky, with our own galaxy, the Milky Way, stretching across it.',
+      title: 'SPHEREx',
+      text: 'The *Spectro-Photometer for the History of the Universe, Epoch of Reionization and Ices Explorer (SPHEREx)* will survey the entire sky in infrared light. During its planned two-year mission, it will collect data on more than 450 million galaxies and over 100 million stars in the Milky Way to explore the origins of the universe.',
       run: api => { api.closePanel(); api.layer('spherex'); api.slice(25); api.fly(266.4, -29.0, 110); },
     },
     {
-      title: 'One sky, 102 different pictures',
-      text: 'Each colour shows something different: in some, stars dominate; in others, clouds of dust and gas light up. The map is now stepping through them, from 0.75 to 5 microns. How bright an object is in each colour tells us what it is made of.',
-      run: api => { api.closePanel(); api.sweep(true); },
+      title: 'What is SPHEREx looking for?',
+      text: 'SPHEREx maps the sky in 102 infrared bands. By measuring galaxy distances and the light they emit, it helps astronomers investigate the universe’s early expansion. It also studies water and other ices in cold, star-forming clouds across the Milky Way.',
+      run: api => { api.closePanel(); api.sweep(true); },                 // the map steps through the bands meanwhile
     },
     {
       title: 'Why look at the same place twice?',
-      text: 'Because things move and change. In 1930 Clyde Tombaugh discovered Pluto by flipping between two photographs of the same patch of sky and noticing one dot that had jumped. SPHEREx photographs hundreds of millions of stars and galaxies again and again, far too many for any team to check. The more people who can do the flipping, the better.',
+      text: 'Because objects can move or change. In 1930, Clyde Tombaugh discovered Pluto by comparing two photographs of the same patch of sky and spotting a dot that had shifted. SPHEREx repeatedly observes hundreds of millions of stars and galaxies, far too many for one team to inspect. The more people who help compare the images, the more likely we are to spot something interesting.',
+      demo: 'blink',                                    // the worked example shown with this step: two real SPHEREx pictures, flipping
+      prep: api => api.example(),                       // made ready while the step before is on screen
       run: api => { api.closePanel(); api.sweep(false); api.slice(25); },
     },
     {
-      title: 'What this tool does',
-      text: 'Click any point of the sky. Chronosphere reads every SPHEREx exposure of that spot straight from NASA’s open archive, lines them up and plays them like a short video. It also tells you what the object is and builds its spectrum. Let us try it on five test objects.',
+      title: 'What does Chronosphere do?',
+      text: 'Choose any point in the sky. Chronosphere finds every SPHEREx exposure of that spot in NASA’s open archive, lines up the images, and plays them as a short video. It also identifies the object and builds its spectrum. *Let’s try it with five test objects.*',
       run: api => { api.closePanel(); api.sweep(false); },
     },
   ];
