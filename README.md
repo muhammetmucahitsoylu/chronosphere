@@ -124,8 +124,10 @@ talking directly to NASA's open data.
 - **Sky-map tiles.** The HEALPix code (`web/js/healpix.js`) agrees with `astropy-healpix`, and the tiles it
   predicts for a view include the ones the map goes on to request.
 - **Map transitions.** The guided tour was filmed frame by frame (about 3,800 frames for the ten steps) and
-  every frame measured: none has more than 0.3 per cent of the map blown out to white, where each change of
-  colour used to flash white. Moving to an object takes about one second.
+  every frame measured: none is blown out to white or washed out, where each change of colour used to flash
+  white. A probe inside the page then watched some 35,000 frames while the tour was stepped through at
+  awkward moments (forwards and back in the middle of a change of colour or of place): the blank map was
+  never in view. Moving to an object takes about one second.
 - **Clicks.** Ten well-known stars were clicked dead on and a few arcseconds off, at the tolerance of a wide
   map and of a close view, in empty and in crowded fields: 40 of 40 clicks opened the star that was clicked.
   The earlier catalogue query, which did not ask for the nearest objects first, managed 32.

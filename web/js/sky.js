@@ -61,7 +61,7 @@ const plainFetch = window.fetch.bind(window);
 const isTile = url => url.includes('/hips/') && /\.(png|jpe?g|webp|fits)(\?|$)/i.test(url);
 const asked = new Map();             // tile address -> the moments the map library asked for it and has had no answer yet
 const ours = new Map();              // tile address -> how many of this site's own requests for it are on their way
-const answered = new Set();          // tiles the map library asked for since the current change began, and received
+const answered = new Map();          // tiles the map library asked for since the current change began, and received -> when it asked
 let since = 0;                       // when the current change of the map began
 function arrived(u) {
   const mine = ours.get(u);
@@ -69,7 +69,7 @@ function arrived(u) {
   const t = asked.get(u);
   if (!t) return;
   const at = t.shift(); if (!t.length) asked.delete(u);
-  if (at >= since) answered.add(u);
+  if (at >= since) answered.set(u, at);
 }
 try {
   new PerformanceObserver(list => { for (const e of list.getEntries()) if (isTile(e.name)) arrived(e.name); }).observe({ type: 'resource', buffered: false });
@@ -119,6 +119,7 @@ const BG = '#050505';
 let veil = null, pic = null, tags = null, veilUp = false, lifting = false, moved = false, gen = 0, jobs = [], fadeFor = 0;
 let level = '';                      // how the tiles that make up the picture being prepared are recognised (their level)
 let deadline = 0;                    // when, at the latest, the current change shows the map, complete or not
+let hue = null;                      // a colour of the cube was asked for and is not on show yet: when, and how its tiles are recognised
 let firstShown = () => {};
 const firstSeen = new Promise(r => { firstShown = r; });
 let underWay = Promise.resolve();          // resolves once the map, sent to a new place, has its first tiles
@@ -174,7 +175,6 @@ function darken() {
   veil.style.opacity = '1'; veil.hidden = false; veilUp = true; lifting = false;
 }
 
-const hasLevel = tag => { for (const u of answered) if (u.includes(tag)) return true; return false; };
 /** Resolves when the map library has received the first tiles of the current change and has had two frames to act on them. */
 function firstTiles() {
   return new Promise(resolve => {
@@ -201,38 +201,45 @@ function pictureWatch() {
 /**
  * Resolves when the map shows, complete, what it was asked to show: every tile it asked for since
  * the change began has arrived and has been painted.
- * A new colour (`expect`) starts from a blank white map: painted means that the map library has
- * stopped repainting. A new place or size starts from empty sky: painted means that the picture
- * itself has stopped changing.
+ * A new colour starts from a blank white map: painted means that tiles of that colour have come
+ * in and the map library has stopped repainting. A new place or size starts from empty sky:
+ * painted means that the picture itself has stopped changing. A change of place that overlaps a
+ * change of colour has to satisfy both.
  * Waiting is counted in frames as well as in time, so that a busy moment cannot end it early.
  */
 export function settled({ max = 3200, expect = false, level: tag = '' } = {}) {
   return new Promise(resolve => {
     if (!al) return resolve();
     const t0 = performance.now(), changed = expect ? null : pictureWatch();
-    let done = false, ticks = 0, n = answered.size, drawn = false, painted = false, firstAt = 0, lastAt = t0, lastTick = 0, busyTick = 0, waitAt = t0, waitTick = 0, stillAt = t0, stillTick = 0;
+    // While a colour is awaited, only its own tiles count as news: tiles of the colour being left,
+    // asked for again by a change of size just before, say nothing about the new picture.
+    const want = hue, from = want ? Math.max(t0, want.at) : t0;
+    const mine = (u, at) => !want || (at >= want.at && u.includes(want.tag));
+    const count = () => { if (!want) return answered.size; let k = 0; for (const [u, at] of answered) if (mine(u, at)) k++; return k; };
+    const hasLevel = () => { for (const [u, at] of answered) if (u.includes(tag) && mine(u, at)) return true; return false; };
+    let done = false, ticks = 0, n = count(), drawn = false, painted = false, firstAt = 0, lastAt = t0, lastTick = 0, busyTick = 0, waitAt = t0, waitTick = 0, stillAt = t0, stillTick = 0;
     const finish = () => { if (!done) { done = true; resolve(); } };
     setTimeout(finish, max + 600);                // also when the page is in the background and frames do not run
     const tick = () => {
       if (done) return;
-      const now = performance.now(), left = outstanding(), got = answered.size > 0; ticks++;
+      const now = performance.now(), left = outstanding(), k = count(), got = k > 0; ticks++;
       if (left > 0) { waitAt = now; waitTick = ticks; }
-      if (answered.size !== n) { n = answered.size; if (!firstAt) firstAt = now; lastAt = now; lastTick = ticks; drawn = false; }
+      if (k !== n) { n = k; if (!firstAt) firstAt = now; lastAt = now; lastTick = ticks; drawn = false; }
       let busy = false; try { busy = al.view.wasm.isRendering(); } catch { /* not this build */ }
       if (busy) { busyTick = ticks; if (got) { drawn = true; painted = true; } }
       const allIn = left === 0 && now - waitAt >= 120 && ticks - waitTick >= 4;        // nothing on its way, for a while
+      const faded = ticks - busyTick >= 2 && (drawn || (now - lastAt >= 450 && ticks - lastTick >= 5));      // tiles fade in: wait that out
+      const colour = got ? allIn && faded : allIn && now - from >= 1600 && ticks >= 5;      // the awaited colour is on show
       let ok;
-      if (expect) {
-        const shown = ticks - busyTick >= 2 && (drawn || (now - lastAt >= 450 && ticks - lastTick >= 5));      // tiles fade in: wait that out
-        ok = got ? allIn && shown : allIn && now - t0 >= 1600 && ticks >= 5;
-      } else {
+      if (expect) ok = colour;
+      else {
         if (changed()) { stillAt = now; stillTick = ticks; }
         const still = now - stillAt >= 170 && ticks - stillTick >= 6;
         // Coming from a close view to a wide one, the library first asks for coarse tiles and for the real
         // ones only half a second later: the picture is not complete before tiles of its own level are in.
-        const own = tag ? hasLevel(tag) : got;
+        const own = tag ? hasLevel() : got;
         const ready = own || (left === 0 && now - t0 >= (tag ? 750 : 450));        // or nothing was needed: it was all in memory
-        ok = ready && allIn && still && (!got || painted || now - firstAt >= 600);
+        ok = ready && allIn && still && (!got || painted || now - firstAt >= 600) && (!want || colour);
       }
       if (ok || now - t0 >= max) return finish();
       requestAnimationFrame(tick);
@@ -279,7 +286,7 @@ export function change(fn, opts = {}) {
   if (!jobs.length) { since = performance.now(); answered.clear(); deadline = 0; }      // a new change: tile requests from here on belong to it
   lifting = false;
   fadeFor = Math.max(fadeFor, opts.fade ?? 420);      // changes that share a veil: the slowest dissolve asked for,
-  deadline = Math.max(deadline, since + (opts.patience ?? 1800));      // and the longest wait (counted from the first of them)
+  deadline = Math.max(deadline, performance.now() + (opts.patience ?? 1800));      // and the longest wait
   let job; try { job = Promise.resolve(fn?.()); } catch (e) { job = Promise.reject(e); }
   jobs.push(job.catch(() => {}));
   return (async () => {
@@ -287,7 +294,7 @@ export function change(fn, opts = {}) {
     if (my !== gen) return false;
     await settled({ max: Math.max(250, deadline - performance.now()), expect: opts.expect, level: opts.expect ? '' : level });
     if (my !== gen) return false;
-    jobs = []; level = '';
+    jobs = []; level = ''; hue = null;
     try { opts.shown?.(); } catch { /* cosmetic */ }
     const fade = fadeFor; fadeFor = 0;
     await lift(fade);
@@ -297,7 +304,7 @@ export function change(fn, opts = {}) {
 /** The visitor has taken hold of the map: show it live at once. */
 function letGo() {
   if (!veilUp) return;
-  gen++; jobs = []; fadeFor = 0; level = ''; lifting = true;
+  gen++; jobs = []; fadeFor = 0; level = ''; hue = null; lifting = true;
   const my = gen;
   if (!veil.animate) return hideVeil();
   veil.animate([{ opacity: getComputedStyle(veil).opacity }, { opacity: 0 }], { duration: 140, fill: 'forwards' }).finished.then(() => { if (my === gen) hideVeil(); }).catch(() => {});
@@ -398,7 +405,7 @@ export async function init(selector, { onClick, onFov } = {}) {
       if (my !== gen) return;
       await settled({ max: 9000, expect: true });      // until then the map would be blank white, or white in patches
       if (my !== gen) return;
-      jobs = []; lift(800);
+      jobs = []; hue = null; lift(800);
     })();
   } catch { hideVeil(); firstShown(); }
   fetch(`${LAYERS[0].url}/properties`).then(r => r.text()).then(t => {
@@ -428,6 +435,7 @@ function rawSlice(z) {
   const c = 299792458, fMin = c / h.emMax, fMax = c / h.emMin;
   const f = fMin + (z + 0.5) * (fMax - fMin) / h.cubeDepth;
   h.setSliceNumber((c / f - h.emMin) / (h.emMax - h.emMin) * h.cubeDepth);
+  hue = { at: performance.now(), tag: `_${z}.` };      // the map is blank until tiles of this frame are in
   return true;
 }
 /**
