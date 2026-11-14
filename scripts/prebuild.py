@@ -56,13 +56,79 @@ TARGETS = [
 ]
 
 
+SIMBAD = ["https://simbad.cds.unistra.fr/simbad/sim-tap/sync", "https://simbad.harvard.edu/simbad/sim-tap/sync"]
+
+
+def _adql(query: str) -> list[dict]:
+    import requests
+    last = None
+    for base in SIMBAD:
+        try:
+            r = requests.get(base, params={"request": "doQuery", "lang": "adql", "format": "json", "query": query}, timeout=30)
+            js = r.json()
+            cols = [c["name"] for c in js["metadata"]]
+            return [dict(zip(cols, row)) for row in js["data"]]
+        except Exception as e:  # mirror down: try the next one
+            last = e
+    raise last
+
+
+def bake_info(t: dict, out_dir: Path) -> dict:
+    """What the object is (SIMBAD) and its encyclopedia card, stored with the showcase data so the
+    guided tour needs no look-ups at all."""
+    import re
+    import requests
+    res = t["resolved"]
+    rows = _adql("SELECT TOP 8 b.oid, b.main_id, b.otype, o.label, o.description, b.ra, b.dec, b.pmra, b.pmdec, b.plx_value, "
+                 "b.sp_type, b.rvz_redshift, f.V, f.J, f.K FROM basic AS b LEFT JOIN otypedef AS o ON o.otype = b.otype "
+                 "LEFT JOIN allfluxes AS f ON f.oidref = b.oid WHERE CONTAINS(POINT('ICRS', b.ra, b.dec), "
+                 f"CIRCLE('ICRS', {res['ra2000']:.6f}, {res['dec2000']:.6f}, 0.002)) = 1")
+    rows.sort(key=lambda r: (r["otype"] in ("Pl", "Pl?", "ev", "err", "reg", "?"), r["K"] if r["K"] is not None else 99))
+    extra = {}
+    if rows:
+        r = rows[0]
+        clean = lambda s: re.sub(r"\s+", " ", re.sub(r"^(NAME|V\*|\*\*|\*|EM\*|PN|Cl\*?)\s+", "", s or "")).strip()
+        extra["info"] = {
+            "oid": r["oid"], "mainId": r["main_id"], "name": clean(r["main_id"]), "otype": r["otype"],
+            "type": r["description"] or r["label"] or r["otype"], "ra2000": r["ra"], "dec2000": r["dec"],
+            "pmra": r["pmra"], "pmdec": r["pmdec"], "plx": r["plx_value"], "sptype": r["sp_type"], "redshift": r["rvz_redshift"],
+            "mags": {"V": r["V"], "J": r["J"], "K": r["K"]}, "ra": t["ra"], "dec": t["dec"], "dist": 0,
+            "others": [{"name": clean(o["main_id"]), "type": o["description"] or o["otype"], "dist": 0} for o in rows[1:5]],
+        }
+    if t.get("wiki"):
+        js = requests.get("https://en.wikipedia.org/api/rest_v1/page/summary/" + requests.utils.quote(t["wiki"].replace(" ", "_")),
+                          params={"redirect": "true"}, headers={"User-Agent": "chronosphere-prebuild"}, timeout=30).json()
+        if js.get("type") == "standard":
+            card = {"title": js["title"], "extract": js.get("extract", ""), "description": js.get("description", ""),
+                    "url": js.get("content_urls", {}).get("desktop", {}).get("page"), "thumb": None}
+            src = (js.get("thumbnail") or {}).get("source")
+            if src:
+                img = requests.get(src, headers={"User-Agent": "chronosphere-prebuild"}, timeout=30)
+                if img.ok:
+                    ext = ".png" if src.lower().endswith(".png") else ".jpg"
+                    (out_dir / f"thumb{ext}").write_bytes(img.content)
+                    card["thumb"] = f"data/{t['slug']}/thumb{ext}"
+            extra["wikiCard"] = card
+    return extra
+
+
 def main():
     args = sys.argv[1:]
     out_root = ROOT / "web" / "data"
     if "--meta" in args:      # refresh only the descriptive text, keep the built data
         idx_path = out_root / "targets.json"
         old = {t["slug"]: t for t in json.loads(idx_path.read_text(encoding="utf-8"))}
-        idx_path.write_text(json.dumps([{**old[t["slug"]], **t} for t in TARGETS if t["slug"] in old], indent=1), encoding="utf-8")
+        merged = []
+        for t in TARGETS:
+            if t["slug"] not in old:
+                continue
+            entry = {**old[t["slug"]], **t}
+            try:
+                entry.update(bake_info(entry, out_root / t["slug"]))
+            except Exception as e:
+                print(f"  {t['slug']}: info not baked ({e})")
+            merged.append(entry)
+        idx_path.write_text(json.dumps(merged, indent=1), encoding="utf-8")
         print("metadata refreshed")
         return
     want = set(args)

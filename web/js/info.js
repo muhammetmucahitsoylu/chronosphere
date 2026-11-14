@@ -176,3 +176,12 @@ export function gloss(otype) {
   for (const [re, text] of GLOSS) if (re.test(otype || '')) return text;
   return '';
 }
+
+// ---------------------------------------------------------------- overlay without a server
+/** Catalogued stars with measured motion in a field (SIMBAD), shaped like the Gaia overlay. */
+export async function fieldStars(ra, dec, radiusArcmin) {
+  const rows = await adql(`SELECT TOP 300 b.main_id, b.ra, b.dec, b.pmra, b.pmdec, b.plx_value, f.V, f.G FROM basic AS b LEFT JOIN allfluxes AS f ON f.oidref = b.oid `
+    + `WHERE CONTAINS(POINT('ICRS', b.ra, b.dec), CIRCLE('ICRS', ${ra.toFixed(6)}, ${dec.toFixed(6)}, ${(radiusArcmin / 60 + 0.05).toFixed(5)})) = 1 AND b.pmra IS NOT NULL`);
+  return { cat: 'simbad', epoch: 2000.0, sources: rows.map(r => ({ id: r.main_id, ra: r.ra, dec: r.dec, pmra: r.pmra, pmdec: r.pmdec, plx: r.plx_value,
+    g: r.G ?? r.V ?? (Math.hypot(r.pmra || 0, r.pmdec || 0) > 100 ? 10 : 17) })) };
+}

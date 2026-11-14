@@ -16,6 +16,23 @@ export function decodeF16(b64) {
   return out;
 }
 
+const f32 = new Float32Array(1), u32 = new Uint32Array(f32.buffer);
+function toHalf(v) {
+  if (v !== v) return 0x7e00;
+  f32[0] = v;
+  const x = u32[0], s = (x >>> 16) & 0x8000, e = ((x >>> 23) & 0xff) - 112, m = x & 0x7fffff;
+  if (e <= 0) return e < -10 ? s : s | (((m | 0x800000) >>> (1 - e)) + 0x1000 >>> 13);
+  if (e >= 31) return s | 0x7c00;
+  const h = s | (e << 10) | ((m + 0x1000) >>> 13);
+  return h;
+}
+/** Float32Array -> base64 of little-endian float16 (the storage format of image stamps). */
+export function encodeF16(arr) {
+  let bin = '';
+  for (let i = 0; i < arr.length; i++) { const h = toHalf(arr[i]); bin += String.fromCharCode(h & 255, (h >> 8) & 255); }
+  return btoa(bin);
+}
+
 // ---------- NDJSON stream ----------
 export async function loadStream(url, onLine, signal) {
   const r = await fetch(url, { signal });

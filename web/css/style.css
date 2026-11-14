@@ -59,6 +59,7 @@ select { background: var(--surface-2); border: 1px solid var(--line); border-rad
 .startwith { margin: 18px 0 0; color: var(--ink-2); font-size: 14px; }
 .startwith button { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; padding: 2px 0; margin: 0 8px 0 4px; }
 .startwith button:hover { text-decoration-color: var(--ember); color: var(--ember); }
+.offline { margin: 12px 0 0; font: 11.5px var(--mono); color: var(--ink-3); min-height: 16px; }
 
 /* wavelength ruler under the map */
 .ruler { left: 132px; right: 14px; bottom: 14px; display: flex; gap: 12px; align-items: center; background: #0a0908d9; border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px 6px 8px; backdrop-filter: blur(6px); }

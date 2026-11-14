@@ -29,12 +29,12 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 
 | Challenge request | In Chronosphere |
 |---|---|
-| Public web tool | Static page plus a small API; no login, works on a phone |
+| Public web tool | A static site with no server and no login; works on a phone and offline |
 | Enter RA and Dec | Decimal degrees, sexagesimal, or an object name; or just click the map |
 | Series of images like a little video | Play, pause, step, speed; zoom and pan |
 | Easy to spot moving objects | Season stacks, time-as-colour, difference images; the measured shift is compared with the catalogue prediction, season by season |
 | Tested on Barnard's Star, Epsilon Indi B, WISE 0855, RW Aurigae, R Draconis | In the Examples menu and the guided tour, each with a note on what to look for |
-| Easy to update with new data releases | Nothing about releases is hard-coded: the archive is asked which collections exist when a spot is opened, and each can be switched on or off |
+| Easy to update with new data releases | Nothing about releases is hard-coded: a scheduled job rebuilds the sky index from the archive, and each release can be switched on or off in the viewer |
 | Use the 102 bands, add detectors, spectra on the fly | Per-detector stacks; the 102-band all-sky map; click-to-spectrum computed in the browser |
 | Add or subtract images from different times | Seasons, Deep sum and Difference modes |
 | Choose the field of view | 3 to 40 arcminutes |
@@ -44,57 +44,72 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 
 ## How it works
 
-1. **Find exposures.** The IRSA SIA2 service lists every SPHEREx level-2 exposure covering the position, across
-   all public releases.
-2. **Read only what is needed.** For each exposure the server reads the FITS header and a small block of pixels
-   around the target with HTTP range requests from the public NASA/IRSA bucket on AWS: a few hundred kilobytes
-   instead of a 60 MB file.
+Chronosphere has **no server**. The site is a set of static files; everything else is the visitor's browser
+talking directly to NASA's open data.
+
+1. **Sky index.** `web/index/` is a compact index of every public SPHEREx exposure (about 1.6 million): where
+   each one was pointed, when, with which detector, and where its file lives. A scheduled workflow rebuilds it
+   from the NASA/IPAC archive, so new data releases appear without touching the code.
+2. **Read only what is needed.** For each exposure near the chosen position, the browser reads the FITS header
+   and a small block of pixels around the target with HTTP range requests from the public `nasa-irsa-spherex`
+   bucket: a few hundred kilobytes instead of a 60 MB file.
 3. **Align.** Each block is resampled onto one common north-up grid using the exposure's own astrometry
    (TAN-SIP), and the local sky level is removed.
 4. **Wavelength.** SPHEREx has no filter wheel. A linear variable filter means every pixel of every exposure
    sees a slightly different wavelength; the per-pixel wavelength is read from the `WCS-WAVE` table in each
    file. That is why stepping through time also builds a spectrum.
-5. **The rest happens in the browser.** Aligned frames are streamed as raw numbers. Stretching, stacking,
-   differencing, colour compositing, photometry, spectra, band depths and brightness curves are computed on the
-   user's device, so every interaction is instant.
+5. **Compute on the device.** Stretching, stacking, differencing, colour compositing, photometry, spectra, band
+   depths and brightness curves are all computed in the browser, so every control answers instantly.
 6. **Identify with today's positions.** Catalogues store where a star was in the year 2000. Nearby stars have
    moved since (Barnard's Star by 270 arcseconds), so a plain coordinate search misses them. Chronosphere also
    fetches fast movers in a wider area and moves every candidate to today's date before matching.
+7. **Offline.** A service worker keeps the page, the five showcase objects, every sky-map tile already seen
+   and every position already opened on the device. The guided tour works without a connection.
 
-The five test objects are pre-built into static files (`web/data/`) so they open instantly and keep working
-even if the archive is slow. Every other position goes through the live API.
+The browser reader (`web/js/archive.js`) was checked against an independent Python implementation built on
+Astropy (`backend/spherex.py`): same pixel positions, wavelengths and sky levels, and images that agree to a
+small fraction of the noise.
 
 ## Run it
+
+Any static file server will do:
+
+```
+cd web
+python -m http.server 8000
+```
+
+Open http://localhost:8000.
+
+### Maintenance scripts (Python)
 
 ```
 python -m venv .venv
 .venv/Scripts/pip install -r requirements.txt        # Windows; use .venv/bin/pip elsewhere
-.venv/Scripts/python -m uvicorn server:app --app-dir backend --port 8000
+.venv/Scripts/python scripts/build_index.py          # rebuild the sky index from the archive
+.venv/Scripts/python scripts/prebuild.py             # rebuild the five showcase objects
 ```
 
-Open http://localhost:8000. To rebuild the five showcase objects with the newest data:
-
-```
-.venv/Scripts/python scripts/prebuild.py
-```
-
-A `Dockerfile` is included for hosting the API and the page as one service. The page alone (`web/`) can be
-served from any static host; set `window.CHRONO_API` in `web/config.js` to the address of the API.
+The `backend/` folder also contains an optional FastAPI service with the same pipeline in Python
+(`python -m uvicorn server:app --app-dir backend`); the site does not need it.
 
 ## Layout
 
 ```
-backend/spherex.py    archive search, range-request reader, alignment, wavelength
-backend/pipeline.py   stream format shared by the live API and the pre-built objects
-backend/catalogs.py   name resolution, Gaia DR3 and CatWISE2020 overlays
-backend/server.py     FastAPI app
-scripts/prebuild.py   builds the five showcase objects
-web/js/app.js         viewer, plots, search, tour wiring
+web/js/archive.js     sky index lookup, FITS range reader, TAN-SIP astrometry, resampling, wavelength
+web/js/app.js         viewer, plots, search, tour wiring, offline store
 web/js/core.js        decoding, sky geometry, stacking, photometry, band depths
 web/js/sky.js         the explorable sky map (Aladin Lite + IRSA sky maps)
 web/js/info.js        identification (SIMBAD), Wikipedia card, links to other tools
 web/js/tour.js        guided tour text
+web/js/pages.js       the "What is SPHEREx?", "How it works" and "About" pages
+web/sw.js             service worker: offline cache
+web/index/            the sky index (generated)
+web/data/             the five showcase objects (generated)
 web/vendor/aladin.js  Aladin Lite 3.8.2 (CDS, LGPL-3.0-or-later), unmodified
+web/fonts/            IBM Plex and Instrument Serif (SIL Open Font License)
+scripts/              build_index.py, prebuild.py
+backend/              Python reference pipeline and optional API
 ```
 
 No build step: plain HTML, CSS and JavaScript modules.

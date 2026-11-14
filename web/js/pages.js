@@ -53,13 +53,15 @@ export const SHEETS = {
     <h1>How it works</h1>
     <p class="lead">You click a point of the sky. A few seconds later you are watching every picture SPHEREx has taken of it, lined up, with a spectrum underneath. Here is what happens in between.</p>
     <ol>
-      <li><b>Ask the archive.</b> NASA's infrared archive (IRSA) is asked for every SPHEREx exposure that covers the spot, across every public data release. Nothing about releases is written into the code, so a new release simply shows up.</li>
-      <li><b>Read only the pixels that matter.</b> A full exposure is a 60-megabyte file. Chronosphere reads its header and just the small block of pixels around your spot, a few hundred kilobytes, straight from NASA's open data on the cloud.</li>
+      <li><b>Look it up in the sky index.</b> A compact index of every public SPHEREx exposure, about 1.6 million of them, says which ones were pointed near your spot. The index is rebuilt from NASA's archive on a schedule, so new data releases appear without anyone touching the code.</li>
+      <li><b>Read only the pixels that matter.</b> A full exposure is a 60-megabyte file. Your browser reads its header and just the small block of pixels around your spot, a few hundred kilobytes, straight from NASA's open data on the cloud.</li>
       <li><b>Line the images up.</b> Each exposure was taken at a different angle. Every block is redrawn on one common grid, north up, using the position information stored in the file, and the glow of the sky background is removed.</li>
       <li><b>Find the colour of each pixel.</b> Each exposure records your spot at a different wavelength. That wavelength is read from a table inside every file.</li>
-      <li><b>Compute on your device.</b> The aligned images travel to your browser as raw numbers. Brightness, stacking, subtracting, colour pictures, measurements and plots are all computed there, which is why every control answers instantly.</li>
+      <li><b>Compute on your device.</b> Brightness, stacking, subtracting, colour pictures, measurements and plots are all computed in your browser, which is why every control answers instantly.</li>
       <li><b>Say what it is.</b> The SIMBAD catalogue is asked what lies at that position. Catalogues store where a star was in the year 2000, so nearby stars that have drifted since are moved to today's date before matching.</li>
     </ol>
+    <h2>No server, and it works offline</h2>
+    <p>Chronosphere has no server of its own. The page is a set of static files; everything else is your browser talking directly to NASA's open data. That means there is nothing to keep running and nothing that can go down on our side. Whatever you have opened once, including the whole guided tour, is saved on your device and keeps working without a connection.</p>
     <h2>How to read what you see</h2>
     <ul>
       <li><b>Seasons.</b> SPHEREx visits each spot for about two weeks, twice a year. One stacked image per visit, shown in turn, makes a small shift easy to see.</li>
@@ -92,7 +94,7 @@ export const SHEETS = {
       <li><b>Encyclopedia cards:</b> Wikipedia, shown with a link to the article.</li>
     </ul>
     <h2>Open source</h2>
-    <p>The code is public: <a href="${TEAM.repo}" target="_blank" rel="noopener">${TEAM.repo.replace('https://', '')}</a>. It has no build step and the page can be hosted anywhere.</p>
+    <p>The code is public: <a href="${TEAM.repo}" target="_blank" rel="noopener">${TEAM.repo.replace('https://', '')}</a>. It has no build step and no server: the page can be hosted anywhere that serves files.</p>
     <h2>Use of AI</h2>
     <p>The software was written with an AI coding assistant during the event. The team chose the approach, checked the results against catalogue values and independent tools, and is responsible for the content. No AI-generated images, audio or video are used: every image shown is telescope data.</p>`,
 };

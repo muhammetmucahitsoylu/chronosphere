@@ -55,7 +55,58 @@
    "mode": "epochs"
   },
   "look": "Press Play. The star hops north by roughly a pixel each season, following the dotted line. Its core is bright enough to saturate the shorter-wavelength detectors, so D5 gives the cleanest view. The table compares the shift measured from these images with the catalogue prediction.",
-  "wiki": "Barnard's Star"
+  "wiki": "Barnard's Star",
+  "info": {
+   "oid": 2669393,
+   "mainId": "NAME Barnard's star",
+   "name": "Barnard's star",
+   "otype": "BY*",
+   "type": "BY Dra Variable",
+   "ra2000": 269.4520769586187,
+   "dec2000": 4.693364966576667,
+   "pmra": -801.551,
+   "pmdec": 10362.394,
+   "plx": 546.9759,
+   "sptype": "M4V",
+   "redshift": -0.00036721999996314203,
+   "mags": {
+    "V": 9.511,
+    "J": 5.244,
+    "K": 4.524
+   },
+   "ra": 269.446074,
+   "dec": 4.770706,
+   "dist": 0,
+   "others": [
+    {
+     "name": "Barnard's Star c",
+     "type": "Extra-solar Planet",
+     "dist": 0
+    },
+    {
+     "name": "Barnard's Star e",
+     "type": "Extra-solar Planet",
+     "dist": 0
+    },
+    {
+     "name": "Barnard's Star b",
+     "type": "Extra-solar Planet",
+     "dist": 0
+    },
+    {
+     "name": "Barnard's Star d",
+     "type": "Extra-solar Planet",
+     "dist": 0
+    }
+   ]
+  },
+  "wikiCard": {
+   "title": "Barnard's Star",
+   "extract": "Barnard's Star is a small red dwarf star in the constellation of Ophiuchus. At a distance of 5.96 light-years (1.83\u00a0pc) from Earth, it is the fourth-nearest-known individual star to the Sun after the three components of the Alpha Centauri system, and is the closest star in the northern celestial hemisphere. Its stellar mass is about 16% of the Sun's, and it has 19% of the Sun's diameter. Despite its proximity, the star has a dim apparent visual magnitude of +9.5 and is invisible to the unaided eye; it is much brighter in the infrared than in visible light.",
+   "description": "Red dwarf star in the constellation Ophiuchus",
+   "url": "https://en.wikipedia.org/wiki/Barnard's_Star",
+   "thumb": "data/barnard/thumb.jpg"
+  }
  },
  {
   "slug": "epsindib",
@@ -117,7 +168,37 @@
    "mode": "epochs"
   },
   "look": "Press Play and watch it slide to the south-east. Then look at the spectrum: the deep dips near 1.4, 1.9 and 2.7 microns are water vapour and the one near 3.3 microns is methane, in the atmosphere of a brown dwarf.",
-  "wiki": "Epsilon Indi"
+  "wiki": "Epsilon Indi",
+  "info": {
+   "oid": 3387843,
+   "mainId": "* eps Ind B",
+   "name": "eps Ind B",
+   "otype": "BD*",
+   "type": "Brown Dwarf",
+   "ra2000": 331.04414658852124,
+   "dec2000": -56.782844195116105,
+   "pmra": 3981.977,
+   "pmdec": -2466.832,
+   "plx": 270.658,
+   "sptype": "T1V+T6V",
+   "redshift": null,
+   "mags": {
+    "V": 24.12,
+    "J": 11.908,
+    "K": 11.208
+   },
+   "ra": 331.098399,
+   "dec": -56.801256,
+   "dist": 0,
+   "others": []
+  },
+  "wikiCard": {
+   "title": "Epsilon Indi",
+   "extract": "Epsilon Indi, Latinized from \u03b5 Indi, is a star system located at a distance of approximately 12 light-years from Earth in the southern constellation of Indus. The star has an orange hue and is faintly visible to the naked eye with an apparent visual magnitude of 4.674. It consists of a K-type main-sequence star, \u03b5 Indi A, and two brown dwarfs, \u03b5 Indi Ba and \u03b5 Indi Bb, in a wide orbit around it. The brown dwarfs were discovered in 2003. \u03b5 Indi Ba is an early T dwarf (T1) and \u03b5 Indi Bb a late T dwarf (T6) separated by 0.6 arcseconds, with a projected distance of 1460 AU from their primary star.",
+   "description": "Star system in the constellation of Indus",
+   "url": "https://en.wikipedia.org/wiki/Epsilon_Indi",
+   "thumb": "data/epsindib/thumb.jpg"
+  }
  },
  {
   "slug": "wise0855",
@@ -174,7 +255,37 @@
    "mode": "bands"
   },
   "look": "Step through the wavelengths. Below 4 microns the circle holds only the edge of an ordinary star just to its west. In the two longest-wavelength detectors a second source appears that is not in the Gaia catalogue: that is WISE 0855. In the colour picture it is the red dot. Switch to Seasons in D6 to see it move.",
-  "wiki": "WISE 0855\u22120714"
+  "wiki": "WISE 0855\u22120714",
+  "info": {
+   "oid": 8596164,
+   "mainId": "WISEA J085510.74-071442.5",
+   "name": "WISEA J085510.74-071442.5",
+   "otype": "BD*",
+   "type": "Brown Dwarf",
+   "ra2000": 133.81890825,
+   "dec2000": -7.247048000000001,
+   "pmra": -8123.7,
+   "pmdec": 673.2,
+   "plx": 439,
+   "sptype": "Y2",
+   "redshift": null,
+   "mags": {
+    "V": null,
+    "J": 25,
+    "K": null
+   },
+   "ra": 133.757787,
+   "dec": -7.242023,
+   "dist": 0,
+   "others": []
+  },
+  "wikiCard": {
+   "title": "WISE 0855\u22120714",
+   "extract": "WISE 0855\u22120714 is a brown dwarf of spectral class Y4, located 7.4 light-years from the Sun in the constellation Hydra. It is the fourth-closest stellar or substellar system to the Sun and was discovered by Kevin Luhman in 2013 using data from the Wide-field Infrared Survey Explorer (WISE). It is the coldest brown dwarf found yet, having a temperature of about 276\u00a0K. It has an estimated mass between 3 and 10 Jupiter masses, which makes it a planetary-mass object below the 13-Jupiter-mass rough limit for deuterium fusion.",
+   "description": "Brown dwarf in the constellation Hydra",
+   "url": "https://en.wikipedia.org/wiki/WISE_0855%E2%88%920714",
+   "thumb": "data/wise0855/thumb.jpg"
+  }
  },
  {
   "slug": "rwaur",
@@ -232,7 +343,48 @@
    "mode": "epochs"
   },
   "look": "Look at the spectrum: the colours are the observing seasons, and beyond 3 microns they pull apart, because the star was clearly fainter in the latest season than a year earlier. Its position stays put, which shows how well the images line up.",
-  "wiki": "RW Aurigae"
+  "wiki": "RW Aurigae",
+  "info": {
+   "oid": 756681,
+   "mainId": "V* RW Aur",
+   "name": "RW Aur",
+   "otype": "TT*",
+   "type": "T Tauri Star",
+   "ra2000": 76.95652603458333,
+   "dec2000": 30.401438173888888,
+   "pmra": 7.23,
+   "pmdec": -20.33,
+   "plx": 15.42,
+   "sptype": "K1/5e+K5e",
+   "redshift": 5.0035866073772084e-05,
+   "mags": {
+    "V": 9.6,
+    "J": 8.378,
+    "K": 7.02
+   },
+   "ra": 76.956589,
+   "dec": 30.401286,
+   "dist": 0,
+   "others": [
+    {
+     "name": "RW Aur A",
+     "type": "Orion Variable",
+     "dist": 0
+    },
+    {
+     "name": "RW Aur B",
+     "type": "Orion Variable",
+     "dist": 0
+    }
+   ]
+  },
+  "wikiCard": {
+   "title": "RW Aurigae",
+   "extract": "RW Aurigae is a young binary system in the constellation of Auriga about 530\u00a0light years away, belonging to the Taurus-Auriga association of the \nTaurus Molecular Cloud. RW Aurigae B was discovered in 1944.",
+   "description": "Young binary star system in the constellation Auriga",
+   "url": "https://en.wikipedia.org/wiki/RW_Aurigae",
+   "thumb": "data/rwaur/thumb.jpg"
+  }
  },
  {
   "slug": "rdra",
@@ -288,6 +440,29 @@
    "mode": "epochs"
   },
   "look": "Press Play: each image covers about a month. This star is so bright that its core saturates every detector, so the tool measures its outer halo instead. The brightness curve shows it fading and brightening again.",
-  "wiki": "R Draconis"
+  "wiki": "R Draconis",
+  "info": {
+   "oid": 376084,
+   "mainId": "V* R Dra",
+   "name": "R Dra",
+   "otype": "Mi*",
+   "type": "Mira Variable",
+   "ra2000": 248.16761083295,
+   "dec2000": 66.75497941722,
+   "pmra": -20.643,
+   "pmdec": 6.149,
+   "plx": 1.2509,
+   "sptype": "M4.5-6+e",
+   "redshift": -0.00044287504927820187,
+   "mags": {
+    "V": 9.03,
+    "J": 3.71,
+    "K": 2.23
+   },
+   "ra": 248.16722,
+   "dec": 66.755025,
+   "dist": 0,
+   "others": []
+  }
  }
 ]

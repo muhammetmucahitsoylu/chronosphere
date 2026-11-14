@@ -1,4 +1,3 @@
-// Where the live archive API lives. Empty = same origin as this page (the API serves the page too).
-// The static copy on GitHub Pages talks to the hosted API instead.
-window.CHRONO_API = window.CHRONO_API
-  || (location.hostname.endsWith('github.io') ? 'https://oxygen-striking-xhtml-enabling.trycloudflare.com' : '');
+// Optional. Chronosphere needs no server: positions are read in the browser from NASA's open data.
+// If you run the bundled Python API (see README), put its address here and it is used as a fallback.
+window.CHRONO_API = window.CHRONO_API || '';

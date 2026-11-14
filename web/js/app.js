@@ -4,6 +4,7 @@ import * as Sky from './sky.js';
 import * as Info from './info.js';
 import { buildTour } from './tour.js';
 import { SHEETS } from './pages.js';
+import * as Archive from './archive.js';
 
 const API = (window.CHRONO_API || '').replace(/\/$/, '');
 const $ = id => document.getElementById(id);
@@ -33,10 +34,31 @@ const specPlot = new Plot($('spec'), $('spec').nextElementSibling);
 const lcPlot = new Plot($('lc'), $('lc').nextElementSibling);
 
 // ------------------------------------------------------------ loading
-function streamUrl(det) {
-  if (S.target && S.size === S.target.size) return `data/${S.target.slug}/d${det}.ndjson`;
-  return `${API}/api/stream?ra=${S.ra.toFixed(6)}&dec=${S.dec.toFixed(6)}&size=${S.size}&det=${det}`;
-}
+const isPreset = () => !!(S.target && S.size === S.target.size);
+
+// Finished live queries are kept on this device, so a repeat visit is instant and works offline.
+const Store = {
+  name: 'chrono-live-v1', max: 48,
+  async get(key) {
+    try {
+      const c = await caches.open(this.name), r = await c.match(`./__live/${key}`);
+      return r ? (await r.text()).split('\n').filter(Boolean).map(l => JSON.parse(l)) : null;
+    } catch { return null; }
+  },
+  async put(key, lines) {
+    try {
+      const text = lines.filter(l => l.t !== 'skip').map(l => {
+        if (l.t !== 'frame') return JSON.stringify(l);
+        const { data, ...rest } = l;
+        return JSON.stringify({ ...rest, b64: C.encodeF16(data) });
+      }).join('\n');
+      const c = await caches.open(this.name);
+      await c.put(`./__live/${key}`, new Response(text, { headers: { 'content-type': 'application/x-ndjson' } }));
+      const keys = await c.keys();
+      for (const k of keys.slice(0, Math.max(0, keys.length - this.max))) await c.delete(k);
+    } catch { /* storage full or unavailable: nothing to do */ }
+  },
+};
 
 async function go({ ra, dec, size, target = null, track = null, det, mode, info = null, fly = true }) {
   S.abort?.abort(); S.abort = new AbortController();
@@ -44,7 +66,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   stop();
   Object.assign(S, { ra, dec, size: size || 5, target, track: track || (target && target.resolved) || null,
     head: null, grid: null, dets: {}, seq: [], idx: 0, sel: null, gaia: null, catwise: null, deep: null, off: new Set(), stacks: null, epochs: null, pts: [], bandCache: {}, haloDets: [] });
-  S.info = info; S.infoState = info ? 'done' : 'loading'; S.wiki = null;
+  S.info = info; S.infoState = info ? 'done' : 'loading'; S.wiki = null; S.found = null;
   if (det) S.det = det;
   if (mode && MODES[mode]) S.mode = mode;
   openPanel();
@@ -69,7 +91,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
     if (e.name === 'AbortError' || gen !== S.gen) return;
     console.error(e);
     setStatus(S.target ? `Could not load data: ${e.message}` :
-      'Images for this position need the live archive service, which is not reachable right now. The objects in the guided tour still work.');
+      'NASA\'s archive could not be reached just now. Check the connection and try again; objects you have already opened still work offline.');
   }
 }
 
@@ -77,7 +99,7 @@ async function loadDet(det, gen) {
   const D = S.dets[det] = { frames: [], total: 0, done: false, loading: true };
   renderDets();
   let last = 0;
-  await C.loadStream(streamUrl(det), line => {
+  const handle = line => {
     if (gen !== S.gen) return;
     if (line.t === 'head') {
       D.found = line.found; D.total = line.use ?? Math.min(line.found ?? line.total, 160);   // exposures coming for this detector
@@ -93,14 +115,35 @@ async function loadDet(det, gen) {
       }
       renderDets();
     } else if (line.t === 'frame') {
-      line.data = C.decodeF16(line.b64); delete line.b64;
+      if (line.b64) { line.data = C.decodeF16(line.b64); delete line.b64; }
       D.frames.push(line);
       const now = performance.now();
       if (now - last > 600) { last = now; onData(det); }
+    } else if (line.t === 'skip') {
+      D.total = Math.max(D.frames.length, D.total - 1);     // an exposure that turned out not to cover the spot
     } else if (line.t === 'done') {
       D.done = true; D.loading = false; onData(det);
     }
-  }, S.abort.signal);
+  };
+  if (isPreset()) {
+    await C.loadStream(`data/${S.target.slug}/d${det}.ndjson`, handle, S.abort.signal);
+  } else {
+    const key = `${S.ra.toFixed(5)}_${S.dec.toFixed(5)}_${S.size}_${det}`;
+    const cached = await Store.get(key);
+    if (cached) cached.forEach(handle);
+    else {
+      try {
+        // Straight from NASA's open data, in this browser: no server of ours is involved.
+        S.found ??= Archive.findFrames(S.ra, S.dec, S.abort.signal);
+        const lines = [];
+        await Archive.stream(S.ra, S.dec, S.size, det, line => { lines.push(line); handle(line); }, S.abort.signal, await S.found);
+        if (gen === S.gen) Store.put(key, lines);
+      } catch (e) {
+        if (e.name === 'AbortError' || !API) throw e;
+        await C.loadStream(`${API}/api/stream?ra=${S.ra.toFixed(6)}&dec=${S.dec.toFixed(6)}&size=${S.size}&det=${det}`, handle, S.abort.signal);
+      }
+    }
+  }
   D.loading = false; D.frames.sort((a, b) => a.mjd - b.mjd);
   // Empty detector: fall forward to one that has data.
   if (gen === S.gen && det === S.det && !D.frames.length && S.head) {
@@ -126,19 +169,19 @@ function onData(det) {
 
 async function loadCatalog(gen) {
   try {
-    const url = S.target && S.size === S.target.size ? `data/${S.target.slug}/gaia.json`
-      : `${API}/api/catalog?ra=${S.ra.toFixed(5)}&dec=${S.dec.toFixed(5)}&size=${S.size}&cat=gaia`;
-    const r = await fetch(url, { signal: S.abort.signal });
-    if (!r.ok) return;
-    const js = await r.json();
-    if (gen === S.gen) { S.gaia = js; paint(); }
+    let js;
+    if (isPreset()) js = await (await fetch(`data/${S.target.slug}/gaia.json`, { signal: S.abort.signal })).json();
+    else if (API) js = await (await fetch(`${API}/api/catalog?ra=${S.ra.toFixed(5)}&dec=${S.dec.toFixed(5)}&size=${S.size}&cat=gaia`, { signal: S.abort.signal })).json();
+    else js = await Info.fieldStars(S.ra, S.dec, S.size * 0.75 + 0.5);      // catalogued stars with known motion, from SIMBAD
+    if (gen === S.gen && js) { S.gaia = js; paint(); }
   } catch { /* overlay is optional */ }
 }
 async function loadCatwise() {
   if (S.catwise || !S.grid) return;
   const gen = S.gen;
   try {
-    const url = S.target && S.size === S.target.size ? `data/${S.target.slug}/catwise.json`
+    if (!isPreset() && !API) { setStatus('The WISE overlay is available for the tour objects.'); return; }
+    const url = isPreset() ? `data/${S.target.slug}/catwise.json`
       : `${API}/api/catalog?ra=${S.ra.toFixed(5)}&dec=${S.dec.toFixed(5)}&size=${S.size}&cat=catwise`;
     setStatus('Loading CatWISE sources…');
     const js = await (await fetch(url, { signal: S.abort.signal })).json();
@@ -502,7 +545,7 @@ function renderMolecules(pts) {
     return `<tr><td>${m.name} <span class="none">${m.f}</span></td><td>${m.band[0].toFixed(2)}–${m.band[1].toFixed(2)}</td><td class="${cls}">${txt}</td></tr>`;
   }).join('');
   if (rowsData.every(m => m.depth === null)) {
-    el.innerHTML = `<p class="hint">Molecule bands cannot be measured here: ${rowsData.some(m => m.why === 'star too bright to tell') ? 'the star is too bright for the detector' : 'the spot is too faint'}.</p>`;
+    el.innerHTML = `<p class="hint">Molecule bands cannot be measured here: ${rowsData.some(m => m.why === 'star too bright to tell') ? 'the star is too bright for the detector' : rowsData.some(m => m.why === 'too faint to tell') ? 'the spot is too faint' : 'there are not enough measurements yet'}.</p>`;
     return;
   }
   el.innerHTML = `<table class="t mol"><thead><tr><th>Molecule</th><th>Band, µm</th><th>Measured</th></tr></thead><tbody>${rows}</tbody></table>
@@ -532,7 +575,7 @@ function renderChips() {
   $('suggest').innerHTML = [...S.targets.map(t => t.label), 'Proxima Centauri', 'Betelgeuse', 'Vega', 'Sirius', 'Andromeda Galaxy', 'Orion Nebula', 'Pleiades']
     .map(n => `<option value="${n.replace(/"/g, '&quot;')}">`).join('');
 }
-const openTarget = t => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, ...(t.view || { mode: 'epochs' }) });
+const openTarget = t => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, info: t.info || null, ...(t.view || { mode: 'epochs' }) });
 
 function openPanel() {
   if ($('app').dataset.panel === 'open') return;
@@ -555,6 +598,7 @@ async function loadInfo(gen) {
       if (gen !== S.gen) return;
     }
     S.infoState = 'done'; renderAbout();
+    if (S.target?.wikiCard) { S.wiki = S.target.wikiCard; renderAbout(); return; }      // baked in: no look-up needed
     const titles = [];
     if (S.target?.wiki) titles.push(S.target.wiki);
     if (S.info) titles.push(...Info.wikiTitles([S.info.mainId, ...(await Info.aliases(S.info.oid))]));
@@ -584,7 +628,7 @@ function renderAbout() {
   if (i?.redshift > 0.002) fact('Redshift', i.redshift.toFixed(4));
   const mags = i ? ['V', 'J', 'K'].filter(b => i.mags[b] != null).map(b => `${b} ${(+i.mags[b]).toFixed(1)}`) : [];
   if (mags.length) fact('Brightness (magnitude)', mags.join(' · '));
-  if (S.head) fact('SPHEREx has', `${S.head.total} exposures<br><small>${S.head.epochs.length} time slice${S.head.epochs.length === 1 ? '' : 's'}, ${C.fmtMonth(S.head.epochs[0]?.[0] ?? 0)} to ${C.fmtMonth(S.head.epochs.at(-1)?.[1] ?? 0)}</small>`);
+  if (S.head) fact('SPHEREx has', `${S.head.estimated ? 'about ' : ''}${S.head.total} exposures<br><small>${S.head.epochs.length} time slice${S.head.epochs.length === 1 ? '' : 's'}, ${C.fmtMonth(S.head.epochs[0]?.[0] ?? 0)} to ${C.fmtMonth(S.head.epochs.at(-1)?.[1] ?? 0)}</small>`);
   const w = S.wiki;
   const wiki = w ? `<div class="wiki">${w.thumb ? `<img src="${w.thumb}" alt="${w.title}, image from Wikipedia" loading="lazy">` : ''}<div><p>${w.extract}</p><small><a href="${w.url}" target="_blank" rel="noopener">Wikipedia: ${w.title}</a></small></div></div>` : '';
   const links = Info.externalLinks(S.ra, S.dec, i).map(l => `<a href="${l.url}" target="_blank" rel="noopener" title="${l.title}">${l.label}</a>`).join('');
@@ -780,7 +824,7 @@ function note(text, ms) {
 
 function syncUrl() {
   const p = new URLSearchParams();
-  if (S.target && S.size === S.target.size) p.set('target', S.target.slug);
+  if (isPreset()) p.set('target', S.target.slug);
   else { p.set('ra', S.ra.toFixed(5)); p.set('dec', S.dec.toFixed(5)); p.set('fov', S.size); }
   p.set('det', S.det); p.set('mode', S.mode);
   if (document.body.classList.contains('embed')) p.set('embed', '1');
@@ -939,6 +983,29 @@ $('wave').oninput = e => { sweep(false); setWave(+e.target.value); };
 $('waveplay').onclick = () => sweep(!sweepTimer);
 $('layer').onchange = e => setLayer(e.target.value);
 
+// ------------------------------------------------------------ offline
+/** Save everything the guided tour needs on this device, quietly, one file at a time. */
+async function saveTourOffline() {
+  if (!('caches' in window) || navigator.connection?.saveData) return;
+  const files = [];
+  for (const t of S.targets) {
+    const d = t.view?.det || 2;
+    files.push(`data/${t.slug}/d${d}.ndjson`, `data/${t.slug}/gaia.json`);       // what each tour step shows first
+    if (t.wikiCard?.thumb) files.push(t.wikiCard.thumb);
+  }
+  for (const t of S.targets) for (let d = 1; d <= 6; d++) if (d !== (t.view?.det || 2)) files.push(`data/${t.slug}/d${d}.ndjson`);
+  let done = 0;
+  const el = $('offline');
+  for (const f of files) {
+    try { const r = await fetch(f, { priority: 'low' }); if (r.ok) await r.arrayBuffer(); } catch { /* try again next visit */ }
+    done++;
+    if (el) el.textContent = done < files.length ? `Saving the tour for offline use: ${Math.round(done / files.length * 100)}%` : 'The guided tour is saved on this device and works offline.';
+  }
+}
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(() => setTimeout(saveTourOffline, 2500)).catch(() => {});
+}
+
 // ------------------------------------------------------------ start
 (async function init() {
   const q = new URLSearchParams(location.search);
@@ -960,7 +1027,7 @@ $('layer').onchange = e => setLayer(e.target.value);
   }
   const det = +q.get('det') || undefined, mode = q.get('mode') || undefined;
   const t = S.targets.find(x => x.slug === q.get('target'));
-  if (t) return go({ ra: t.ra, dec: t.dec, size: t.size, target: t, ...(t.view || {}), ...(det ? { det } : {}), ...(mode ? { mode } : {}) });
+  if (t) return go({ ra: t.ra, dec: t.dec, size: t.size, target: t, info: t.info || null, ...(t.view || {}), ...(det ? { det } : {}), ...(mode ? { mode } : {}) });
   if (q.has('ra') && q.has('dec')) return go({ ra: +q.get('ra'), dec: +q.get('dec'), size: +(q.get('fov') || q.get('size') || 5), det, mode });
   if (q.has('tour')) tourGo(0);
   if (SHEETS[location.hash.slice(1)]) openSheet(location.hash.slice(1));
