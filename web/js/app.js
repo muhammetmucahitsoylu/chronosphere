@@ -18,7 +18,7 @@ const MODES = {
   epochs: 'One stacked image per SPHEREx visit to this spot, played in a loop. Anything that moved between visits jumps.',
   frames: 'Every single exposure in time order. Each one sees the sky at a slightly different wavelength, so stars flicker naturally.',
   color: 'Time shown as colour: first visit in red, last in blue. Stars that stayed put look white; anything that moved or changed splits into colours.',
-  diff: 'A later visit minus an earlier one. Steady stars cancel; a moving object leaves a dark-and-bright pair.',
+  diff: 'A later visit minus an earlier one. Steady stars mostly cancel, leaving at most a faint smudge; a moving object leaves a strong dark-and-bright pair.',
   deep: 'All exposures of this detector added together: the deepest, cleanest image.',
   bands: 'The same patch of sky in each of the six detectors, from 0.75 to 5 microns, then all six as one colour picture (short wavelengths blue, long red). Cold objects only appear at the long end.',
 };
@@ -28,7 +28,7 @@ const S = {
   head: null, grid: null, det: 2, dets: {}, mode: 'epochs',
   seq: [], idx: 0, playing: false, fps: 2, timer: null,
   sel: null, view: { z: 1, cx: 0, cy: 0 }, white: 0, invert: false, smooth: false, mask: false,
-  showGaia: true, gaia: null, off: new Set(), abort: null, deep: null, hi: 1, gen: 0,
+  showGaia: true, marks: true, gaia: null, off: new Set(), abort: null, deep: null, hi: 1, gen: 0,
   info: null, infoState: 'idle', wiki: null, openTok: 0, showBands: true, embed: false,
 };
 
@@ -75,7 +75,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   if (det) S.det = det;
   if (mode && MODES[mode]) S.mode = mode;
   openPanel();
-  if (Sky.isReady()) { Sky.mark(ra, dec, S.size, target ? target.label : info ? info.name : track?.name || ''); if (fly) Sky.flyTo(ra, dec, Math.max(3, S.size / 5)); }
+  if (Sky.isReady()) { Sky.mark(ra, dec, S.size, target ? target.label : info ? info.name : track?.name || ''); if (fly) { const f = Math.max(3, S.size / 5); Sky.flyTo(ra, dec, f); if (Sky.isSpherex()) warm(Sky.tiles({ ra, dec, fov: f })); } }      // fetch the destination's tiles while flying there
   loadInfo(gen);
   $('fov').value = String(S.size);
   $('notice').hidden = true;
@@ -298,7 +298,7 @@ function rebuild() {
   S.idx = clamp(idx, 0, Math.max(0, seq.length - 1));
   if (!S.sel) defaultSelection();
   $('seek').max = Math.max(0, seq.length - 1);
-  renderMotion();
+  renderMotion(); renderScan();
   show();
 }
 
@@ -389,55 +389,87 @@ function c2g(X, Y) {
 function overlays(it, W, H, s) {
   const g = S.grid, year = C.mjdToYear(it.mjd);
   ctx.lineWidth = 1.2; ctx.font = '12px system-ui, sans-serif';
-  // Gaia: circle at each star's catalogue position for this date; arrows for fast movers.
-  if (S.showGaia && S.gaia) {
-    for (const src of S.gaia.sources) {
-      if (src.g > (S.view.z < 2 ? 16.5 : S.view.z < 4 ? 18.5 : 99)) continue;
-      const [ra, dec] = C.propagate(src, S.gaia.epoch, year), [x, y] = C.skyToGrid(g, ra, dec);
-      const [X, Y] = g2c(x, y, W, H, s);
-      if (X < -20 || Y < -20 || X > W + 20 || Y > H + 20) continue;
-      const pm = Math.hypot(src.pmra || 0, src.pmdec || 0);
-      ctx.strokeStyle = pm > 150 ? '#ffd166' : '#4cc9f066';
-      ctx.beginPath(); ctx.arc(X, Y, Math.max(3.5, 4 / g.scale * s), 0, 7); ctx.stroke();
-      if (pm > 150) {   // arrow: motion over the next 5 years
-        const [ra2, dec2] = C.propagate(src, S.gaia.epoch, year + 5), [x2, y2] = C.skyToGrid(g, ra2, dec2), [X2, Y2] = g2c(x2, y2, W, H, s);
-        arrow(X, Y, X2, Y2, '#ffd166');
-        ctx.fillStyle = '#ffd166'; ctx.fillText(`${(pm / 1000).toFixed(1)}″/yr`, X2 + 6, Y2 - 6);
+  // The circled spot. Everything else is drawn so that the inside of this ring stays clear:
+  // a faint object must never be hidden by the marks that point at it.
+  const sel = S.marks ? selPos(it.mjd) : null;
+  const [PX, PY] = sel ? g2c(sel[0], sel[1], W, H, s) : [-1e6, -1e6], rAp = 9.2 / g.scale * s, clear = rAp + 3;
+  if (S.marks) {
+    // Gaia: circle at each star's catalogue position for this date; arrows for fast movers.
+    if (S.showGaia && S.gaia) {
+      for (const src of S.gaia.sources) {
+        if (src.g > (S.view.z < 2 ? 16.5 : S.view.z < 4 ? 18.5 : 99)) continue;
+        const [ra, dec] = C.propagate(src, S.gaia.epoch, year), [x, y] = C.skyToGrid(g, ra, dec);
+        const [X, Y] = g2c(x, y, W, H, s);
+        if (X < -20 || Y < -20 || X > W + 20 || Y > H + 20) continue;
+        const pm = Math.hypot(src.pmra || 0, src.pmdec || 0), own = Math.hypot(X - PX, Y - PY) < rAp * 0.7;
+        ctx.strokeStyle = pm > 150 ? '#ffd166' : '#4cc9f066';
+        if (!own) { ctx.beginPath(); ctx.arc(X, Y, Math.max(3.5, 4 / g.scale * s), 0, 7); ctx.stroke(); }
+        if (pm > 150) {   // arrow: motion over the next 5 years, starting outside the ring
+          const [ra2, dec2] = C.propagate(src, S.gaia.epoch, year + 5), [x2, y2] = C.skyToGrid(g, ra2, dec2), [X2, Y2] = g2c(x2, y2, W, H, s);
+          const len = Math.hypot(X2 - X, Y2 - Y), off = own ? clear : Math.max(3.5, 4 / g.scale * s) + 2;
+          if (len > off + 8) arrow(X + (X2 - X) * off / len, Y + (Y2 - Y) * off / len, X2, Y2, '#ffd166');
+          ctx.fillStyle = '#ffd166'; ctx.fillText(`${(pm / 1000).toFixed(1)}″/yr`, X2 + 6, Y2 - 6);
+        }
       }
     }
-  }
-  // CatWISE: squares, so they read differently from Gaia circles.
-  if (S.showWise && S.catwise) {
-    ctx.strokeStyle = '#ff9f1c99';
-    for (const src of S.catwise.sources) {
-      if (src.w2 > (S.view.z < 2 ? 15.5 : 99)) continue;
-      const [ra, dec] = C.propagate(src, S.catwise.epoch, year), [x, y] = C.skyToGrid(g, ra, dec), [X, Y] = g2c(x, y, W, H, s);
-      if (X < -20 || Y < -20 || X > W + 20 || Y > H + 20) continue;
-      const r = Math.max(4, 4.5 / g.scale * s);
-      ctx.strokeRect(X - r, Y - r, 2 * r, 2 * r);
+    // WISE: squares, so they read differently from Gaia circles.
+    if (S.showWise && S.catwise) {
+      ctx.strokeStyle = '#ff9f1c99';
+      for (const src of S.catwise.sources) {
+        if (src.w2 > (S.view.z < 2 ? 15.5 : 99)) continue;
+        const [ra, dec] = C.propagate(src, S.catwise.epoch, year), [x, y] = C.skyToGrid(g, ra, dec), [X, Y] = g2c(x, y, W, H, s);
+        if (X < -20 || Y < -20 || X > W + 20 || Y > H + 20) continue;
+        if (Math.hypot(X - PX, Y - PY) < rAp * 0.7) continue;                      // the ring already marks this one
+        const r = Math.max(4, 4.5 / g.scale * s);
+        ctx.strokeRect(X - r, Y - r, 2 * r, 2 * r);
+      }
     }
-  }
-  // Predicted path of the tracked target across the SPHEREx seasons.
-  if (S.track && S.head?.epochs?.length) {
-    const eps = S.head.epochs;
-    ctx.strokeStyle = '#ffffff66'; ctx.setLineDash([3, 3]); ctx.beginPath();
-    const a = trackPos(eps[0][0] - 200), b = trackPos(eps[eps.length - 1][1] + 200);
-    ctx.moveTo(...g2c(a[0], a[1], W, H, s)); ctx.lineTo(...g2c(b[0], b[1], W, H, s)); ctx.stroke(); ctx.setLineDash([]);
-    eps.forEach((e, i) => {
-      const p = trackPos((e[0] + e[1]) / 2), [X, Y] = g2c(p[0], p[1], W, H, s);
-      ctx.fillStyle = C.EPOCH_COLORS[i % C.EPOCH_COLORS.length];
-      ctx.beginPath(); ctx.arc(X, Y, 3, 0, 7); ctx.fill();
-    });
-  }
-  // Measurement aperture.
-  const p = selPos(it.mjd);
-  if (p) {
-    const [X, Y] = g2c(p[0], p[1], W, H, s), r = 9.2 / g.scale * s;
-    ctx.strokeStyle = '#06d6a0'; ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.arc(X, Y, r, 0, 7); ctx.stroke();
-    ctx.strokeStyle = '#06d6a055'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(X, Y, 18 / g.scale * s, 0, 7); ctx.stroke();
-    ctx.beginPath(); ctx.arc(X, Y, 30 / g.scale * s, 0, 7); ctx.stroke();
+    // Predicted path of the catalogued target: a dotted line with one tick per visit. The line stops
+    // short of the ring and the ticks sit beside the path, so the object itself stays in view.
+    if (S.track && S.head?.epochs?.length) {
+      const eps = S.head.epochs;
+      const a = trackPos(eps[0][0] - 200), b = trackPos(eps[eps.length - 1][1] + 200);
+      const [AX, AY] = g2c(a[0], a[1], W, H, s), [BX, BY] = g2c(b[0], b[1], W, H, s), L = Math.hypot(BX - AX, BY - AY);
+      if (L > 10) {
+        const ux = (BX - AX) / L, uy = (BY - AY) / L, nx = -uy, ny = ux;
+        const t0 = (PX - AX) * ux + (PY - AY) * uy, perp = Math.abs((PX - AX) * nx + (PY - AY) * ny);
+        const gap = perp < clear ? Math.sqrt(clear * clear - perp * perp) : 0;
+        ctx.strokeStyle = '#ffffff66'; ctx.setLineDash([3, 3]); ctx.beginPath();
+        if (gap > 0) {
+          if (t0 - gap > 0) { ctx.moveTo(AX, AY); ctx.lineTo(AX + ux * (t0 - gap), AY + uy * (t0 - gap)); }
+          if (t0 + gap < L) { ctx.moveTo(AX + ux * (t0 + gap), AY + uy * (t0 + gap)); ctx.lineTo(BX, BY); }
+        } else { ctx.moveTo(AX, AY); ctx.lineTo(BX, BY); }
+        ctx.stroke(); ctx.setLineDash([]);
+        ctx.lineWidth = 2;
+        eps.forEach((e, i) => {
+          const q = trackPos((e[0] + e[1]) / 2), [QX, QY] = g2c(q[0], q[1], W, H, s);
+          ctx.strokeStyle = C.EPOCH_COLORS[i % C.EPOCH_COLORS.length];
+          for (const sgn of [-1, 1]) {
+            ctx.beginPath(); ctx.moveTo(QX + nx * sgn * (clear + 1), QY + ny * sgn * (clear + 1));
+            ctx.lineTo(QX + nx * sgn * (clear + 7), QY + ny * sgn * (clear + 7)); ctx.stroke();
+          }
+        });
+        ctx.lineWidth = 1.2;
+      }
+    }
+    // Stars that the field check flagged: a diamond, wide enough to leave the star in view.
+    if (scanResult?.flags?.length && scanKey.startsWith(`${S.gen}:${S.det}:`)) {
+      ctx.strokeStyle = '#f2c14e'; ctx.lineWidth = 1.4;
+      for (const f of scanResult.flags) {
+        if (f.own) continue;
+        const [X, Y] = g2c(f.s.x, f.s.y, W, H, s), r = rAp + 5;
+        if (Math.hypot(X - PX, Y - PY) < rAp) continue;
+        ctx.beginPath(); ctx.moveTo(X, Y - r); ctx.lineTo(X + r, Y); ctx.lineTo(X, Y + r); ctx.lineTo(X - r, Y); ctx.closePath(); ctx.stroke();
+      }
+    }
+    // Measurement aperture.
+    if (sel) {
+      ctx.strokeStyle = '#06d6a0'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(PX, PY, rAp, 0, 7); ctx.stroke();
+      ctx.strokeStyle = '#06d6a055'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(PX, PY, 18 / g.scale * s, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.arc(PX, PY, 30 / g.scale * s, 0, 7); ctx.stroke();
+    }
   }
   // Compass and scale bar.
   const bar = niceBar(W * 0.25 * g.scale / s), bl = bar / g.scale * s, by = H - 34;
@@ -445,7 +477,7 @@ function overlays(it, W, H, s) {
   ctx.beginPath(); ctx.moveTo(W - 14 - bl, by); ctx.lineTo(W - 14, by); ctx.stroke();
   ctx.textAlign = 'right'; ctx.fillText(bar >= 60 ? `${bar / 60}′` : `${bar}″`, W - 14, by - 6);
   ctx.lineWidth = 1.2; ctx.textAlign = 'center';
-  const ox = W - 16, oy = 44;
+  const ox = W - 16, oy = H - 62;                 // with the scale bar, out of the caption's way
   arrow(ox, oy, ox, oy - 20, '#fff'); ctx.fillText('N', ox, oy - 24);
   arrow(ox, oy, ox - 20, oy, '#fff'); ctx.fillText('E', ox - 27, oy + 4);
   ctx.textAlign = 'left';
@@ -715,6 +747,111 @@ function realityCheck(lc) {
   return { steady: sn >= 5 ? steady : null, comps: comps.length, word };
 }
 
+// ------------------------------------------------------------ every star in the field
+/**
+ * Check every measurable star of the field, in the selected detector, for the two things this
+ * tool is about: did it move, and did its brightness change between visits? The yardstick is the
+ * field itself: most stars do neither, so the typical star tells how well positions and
+ * brightnesses repeat here. Flags are prompts to look, never findings.
+ */
+function scanField() {
+  const g = S.grid, n = g.n, c = (n - 1) / 2, img = S.deep, frames = usable(S.det), stacks = S.stacks || [];
+  if (!img || frames.length < 8 || stacks.length < 2) return null;
+  const med = v => { const s = [...v].sort((a, b) => a - b); return s[s.length >> 1]; };
+  const noise = pct(frames.map(f => f.sig), 0.5), edge = Math.ceil(34 / g.scale);
+  // every clear, unsaturated star
+  const stars = [], sat = [];
+  for (let j = 2; j < n - 2; j++) for (let i = 2; i < n - 2; i++) {
+    const v = img[j * n + i];
+    if (v !== v) { if ([img[j * n + i - 1], img[j * n + i + 1], img[(j - 1) * n + i], img[(j + 1) * n + i]].some(u => u > 40 * S.deepSig)) sat.push([i, j]); continue; }
+    if (!(v > 0) || i < edge || j < edge || i >= n - edge || j >= n - edge) continue;
+    let top = true;
+    for (let dj = -2; dj <= 2 && top; dj++) for (let di = -2; di <= 2; di++) { const u = img[(j + dj) * n + i + di]; if (u !== u || u > v) { top = false; break; } }
+    if (!top) continue;
+    const a = C.aperture(img, n, g.scale, i, j, noise);
+    if (a && a.flux > 6.5 * a.err) stars.push({ x: i, y: j, flux: a.flux });
+  }
+  const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y) * g.scale;
+  const usableStars = stars.filter(s =>
+    !sat.some(([i, j]) => Math.hypot(i - s.x, j - s.y) * g.scale < 90)                                   // in the glow of a saturated star
+    && !stars.some(b => b !== s && b.flux > s.flux && s.flux < b.flux * 0.006 * Math.pow(40 / Math.max(40, dist(s, b)), 2.2))   // in the glow of a brighter one
+    && !stars.some(b => b !== s && b.flux > 0.3 * s.flux && dist(s, b) < 13));                           // blended with a neighbour
+  if (usableStars.length < 4) return { checked: usableStars.length, flags: [] };
+  const eps = S.head.epochs;
+  for (const s of usableStars) {
+    const cen = C.centroid(img, n, s.x, s.y, 2); if (cen) { s.x = cen.x; s.y = cen.y; }
+    // position in every visit, following it from visit to visit
+    let last = [s.x, s.y]; s.pos = [];
+    for (const st of stacks) {
+      let m = C.locate(st.img, n, last[0], last[1], 3);
+      if (m && !(m.peak > 4 * st.sig)) m = null;
+      if (m) last = [m.x, m.y];
+      s.pos.push(m ? { x: m.x, y: m.y, mjd: st.mjd, sn: m.peak / st.sig } : null);
+    }
+    const seen = s.pos.filter(Boolean);
+    if (seen.length >= 2) {
+      const a = seen[0], b = seen[seen.length - 1];
+      s.dE = -(b.x - a.x) * g.scale; s.dN = (b.y - a.y) * g.scale; s.shift = Math.hypot(s.dE, s.dN);
+      s.fuzz = Math.hypot(8 / Math.max(4, a.sn), 8 / Math.max(4, b.sn)); s.years = Math.max((b.mjd - a.mjd) / 365.25, 0.05);
+    }
+    // brightness in every visit, relative to the star's own spectrum
+    const pts = [];
+    for (const f of frames) {
+      const a = C.aperture(f.data, n, g.scale, s.x, s.y, f.sig);
+      if (a && a.flux > 0) pts.push({ lam: f.lam + f.lgx * (s.x - c) + f.lgy * (s.y - c), flux: a.flux, err: a.err, mjd: f.mjd });
+    }
+    if (pts.length >= 0.6 * frames.length) {
+      const ref = C.referenceSpectrum(pts), by = new Map();
+      for (const p of pts) { const r = ref(p.lam); if (!(r > 0)) continue; const k = gEpoch(p.mjd); if (!by.has(k)) by.set(k, []); by.get(k).push(p.flux / r); }
+      const vis = [...by.keys()].filter(k => by.get(k).length >= 5).sort((a, b) => a - b).map(k => { const v = by.get(k), m = med(v); return { k, m, e: 1.4826 * med(v.map(x => Math.abs(x - m))) / Math.sqrt(v.length) }; });
+      if (vis.length >= 2) {
+        let best = null;
+        for (let i = 0; i < vis.length; i++) for (let j = i + 1; j < vis.length; j++) {
+          const ch = vis[j].m / vis[i].m - 1, sig = Math.abs(vis[j].m - vis[i].m) / Math.max(Math.hypot(vis[i].e, vis[j].e), 1e-4);
+          if (!best || Math.abs(ch) > Math.abs(best.ch)) best = { ch, sig, from: vis[i].k, to: vis[j].k };
+        }
+        s.change = best;
+      }
+    }
+  }
+  // the field's own yardsticks: how the typical star behaves
+  const shifts = usableStars.filter(s => s.shift != null).map(s => s.shift), changes = usableStars.filter(s => s.change).map(s => Math.abs(s.change.ch));
+  const align = shifts.length >= 3 ? Math.max(0.3, 1.5 * med(shifts)) : 0.8, steady = changes.length >= 3 ? Math.max(0.01, 1.5 * med(changes)) : 0.05;
+  const flags = [];
+  for (const s of usableStars) {
+    const own = S.track && eps.some(e => { const t = trackPos((e[0] + e[1]) / 2); return Math.hypot(t[0] - s.x, t[1] - s.y) < 4; });
+    if (s.shift != null && s.shift > Math.max(3.5 * Math.hypot(align, s.fuzz), 2)) {
+      flags.push({ s, own, kind: 'moved', text: `Moved ${s.shift.toFixed(1)}″ ${compass(s.dE, s.dN)}`, note: `about ${(s.shift / s.years).toFixed(1)}″ per year` });
+    } else if (s.change && Math.abs(s.change.ch) >= Math.max(0.15, 5 * steady) && s.change.sig >= 6) {
+      const mon = k => C.fmtMonth((eps[k][0] + eps[k][1]) / 2);
+      flags.push({ s, own, kind: 'changed', text: `${s.change.ch > 0 ? 'Brightened' : 'Faded'} by ${Math.round(Math.abs(s.change.ch) * 100)}%`, note: `between ${mon(s.change.from)} and ${mon(s.change.to)}` });
+    }
+  }
+  return { checked: usableStars.length, flags, align, steady };
+}
+let scanKey = '', scanResult = null;
+function renderScan() {
+  const el = $('scan');
+  if (!el) return;
+  const D = S.dets[S.det];
+  if (!S.grid || !D?.done || !S.stacks || S.stacks.length < 2) { el.innerHTML = ''; scanResult = null; scanKey = ''; return; }
+  const key = `${S.gen}:${S.det}:${D.frames.length}:${[...S.off].join()}`;
+  if (key !== scanKey) { scanKey = key; try { scanResult = scanField(); } catch (e) { console.error(e); scanResult = null; } }
+  const r = scanResult;
+  if (!r || r.checked < 4) { el.innerHTML = r ? '<p class="hint">Too few clear stars in this field to check them against each other.</p>' : ''; return; }
+  const steadyN = r.checked - r.flags.length;
+  const head = `<p class="hint verdict"><b>Every clear star in this field, checked.</b> ${r.checked} stars in D${S.det}: ${r.flags.length ? `${steadyN} did not move or change, ${r.flags.length} stand${r.flags.length === 1 ? 's' : ''} out.` : 'none moved, none changed.'} Here, positions repeat to ${r.align.toFixed(1)}″ and brightness to ${Math.round(r.steady * 100)}%.</p>`;
+  const list = r.flags.length ? `<ul class="flags">${r.flags.map((f, i) => `<li><button type="button" data-flag="${i}">${f.text}</button><span>${f.note}${f.own ? ' · the catalogued object' : ''}</span></li>`).join('')}</ul>
+    <p class="hint">Press one to circle it. A flag is a reason to look, not a finding: check it in another detector and in the tools above.</p>` : '';
+  el.innerHTML = head + list;
+  el.querySelectorAll('[data-flag]').forEach(b => { b.onclick = () => {
+    const f = r.flags[+b.dataset.flag];
+    S.sel = f.own ? { follow: true } : { x: f.s.x, y: f.s.y };
+    paint(); renderMeta(); renderMotion(); refreshPlots();
+    $('sky').scrollIntoView({ block: 'nearest', behavior: calmMotion() ? 'auto' : 'smooth' });
+  }; });
+}
+
 // ------------------------------------------------------------ side panels
 function renderChips() {
   const el = $('examples'); el.innerHTML = '';
@@ -849,7 +986,7 @@ function renderMotion() {
   const rows = []; let last = tracked ? null : [S.sel.x, S.sel.y];
   for (const st of S.stacks) {
     const p = tracked ? trackPos(st.mjd) : last;
-    let m = C.centroid(st.img, n, p[0], p[1], 3);
+    let m = C.locate(st.img, n, p[0], p[1], 3);
     if (m && !(m.peak > 4 * st.sig)) m = null;                                       // not clearly above the noise
     if (m && C.coreMasked(st.img, n, g.scale, m.x, m.y, 6) > 0) m = null;              // a hole in the middle: saturated, no position
     if (m && !tracked) last = [m.x, m.y];
@@ -1076,6 +1213,7 @@ $('white').oninput = e => { S.white = +e.target.value; paint(); };
 $('invert').onchange = e => { S.invert = e.target.checked; paint(); };
 $('smooth').onchange = e => { S.smooth = e.target.checked; paint(); };
 $('gaia').onchange = e => { S.showGaia = e.target.checked; paint(); };
+$('marks').onchange = e => { S.marks = e.target.checked; paint(); };
 $('bandsOn').onchange = e => { S.showBands = e.target.checked; drawPlots(); };
 
 $('wise').onchange = e => { S.showWise = e.target.checked; if (S.showWise) loadCatwise(); paint(); };

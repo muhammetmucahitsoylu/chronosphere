@@ -22,10 +22,16 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   well ordinary stars in the same images repeat. A catalogued fast mover is also set against its predicted path.
 - **Did it change?** Brightness changes between visits are checked against ordinary stars in the same images:
   if they stayed steady and the spot did not, the change is in the sky and not in the camera.
+- **What else is going on here?** Every clear star in the field is tested the same way, without using any
+  catalogue, and the few that moved or changed are listed and marked. On the test fields this blind check
+  finds Barnard's Star (10.5 arcseconds north), Epsilon Indi B (6.1 arcseconds south-east) and the fading of
+  RW Aurigae, and nothing else.
 - **What is it made of?** Click a star to get its spectrum from 0.75 to 5 microns and a table of the dips
   found where water, methane, carbon monoxide and carbon dioxide absorb.
 - **Check it elsewhere.** One click opens the same coordinates in SIMBAD, WiseView (Backyard Worlds), ESASky,
   the Legacy Survey viewer and the VizieR photometry viewer.
+- **Take it with you.** Copy a link to the exact view, save the image or a video of the sequence, or download
+  every measurement as a CSV file.
 - **Take the guided tour.** Ten short steps, in plain language, from "what is SPHEREx" through the five test
   objects of the challenge. It is saved on the device and runs without a connection.
 
@@ -36,7 +42,7 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 | Public web tool | A static site with no server and no login; works on a phone and offline |
 | Enter RA and Dec | Decimal degrees, sexagesimal, or an object name; or just click the map |
 | Series of images like a little video | Starts playing by itself; pause, step, speed; zoom and pan |
-| Easy to spot moving objects | Visit stacks, time-as-colour, difference images; the shift of any clicked spot is measured and judged against ordinary stars; catalogued movers are compared with their prediction |
+| Easy to spot moving objects | Visit stacks, time-as-colour, difference images; every clear star in the field is checked for motion and flagged; the shift of any clicked spot is measured and judged against ordinary stars; catalogued movers are compared with their prediction |
 | Tested on Barnard's Star, Epsilon Indi B, WISE 0855, RW Aurigae, R Draconis | On the front page and in the guided tour, each with a note on what to look for |
 | Easy to update with new data releases | Nothing about releases is hard-coded: a scheduled job rebuilds the sky index from the archive, and each release can be switched on or off in the viewer |
 | Use the 102 bands, add detectors, spectra on the fly | Per-detector stacks; the 102-band all-sky map; click-to-spectrum computed in the browser |

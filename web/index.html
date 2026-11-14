@@ -51,7 +51,7 @@
       <div class="hero" id="welcome">
         <p class="eyebrow">NASA SPHEREx · 102 infrared colours · the whole sky, twice a year</p>
         <h1>The sky is not still.</h1>
-        <p class="lede">Stars drift. Some flicker. Cold worlds hide in colours our eyes cannot see. Click anywhere on this map to watch that spot change over time, and find out what it is.</p>
+        <p class="lede">Stars drift. Some flicker. Cold worlds hide in colours our eyes cannot see. Pick any point of this map to watch that spot change over time, and find out what it is.</p>
         <div class="herobtns">
           <button type="button" class="cta" id="tourbtn2">Take the two-minute tour</button>
           <button type="button" class="ghost" id="hidewelcome">Explore freely</button>
@@ -131,6 +131,7 @@
             <label>Field <select id="fov" title="Field of view. Larger fields take longer to load.">
               <option value="3">3′</option><option value="5" selected>5′</option><option value="10">10′</option><option value="20">20′</option><option value="40">40′</option>
             </select></label>
+            <label title="The ring around the measured spot, the predicted path and the catalogue marks"><input id="marks" type="checkbox" checked> Markings</label>
             <label><input id="invert" type="checkbox"> Negative</label>
             <label><input id="smooth" type="checkbox"> Smooth</label>
             <label title="Gaia DR3 stars at their position on the date shown (circles). Fast movers get an arrow."><input id="gaia" type="checkbox" checked> Gaia stars</label>
@@ -148,6 +149,7 @@
           <span id="exportnote" class="hint" role="status"></span>
         </div>
         <div id="motion"></div>
+        <div id="scan"></div>
       </section>
 
       <div class="stack">

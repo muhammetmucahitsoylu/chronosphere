@@ -19,7 +19,7 @@ export function buildTour(targets) {
     },
     {
       title: 'One sky, 102 different pictures',
-      text: 'Each colour shows something different: in some, stars dominate; in others, clouds of dust and gas light up. The map is now sweeping through all 102. How bright an object is in each colour tells us what it is made of.',
+      text: 'Each colour shows something different: in some, stars dominate; in others, clouds of dust and gas light up. The map is now stepping through them, from 0.75 to 5 microns. How bright an object is in each colour tells us what it is made of.',
       run: api => { api.closePanel(); api.sweep(true); },
     },
     {

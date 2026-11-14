@@ -167,7 +167,7 @@ details[open] > summary { margin-bottom: 10px; }
 .stage { position: relative; width: 100%; aspect-ratio: 1; background: #000; border-radius: 4px; overflow: hidden; outline: 1px solid var(--line); }
 #sky { width: 100%; height: 100%; display: block; touch-action: pan-y; cursor: crosshair; }
 #sky.zoomed { touch-action: none; }
-#caption { position: absolute; left: 12px; top: 10px; right: 58px; pointer-events: none; text-shadow: 0 1px 3px #000, 0 0 10px #000; }
+#caption { position: absolute; left: 12px; top: 10px; right: 12px; pointer-events: none; text-shadow: 0 1px 3px #000, 0 0 10px #000; }
 #caption b { font: 400 22px/1.1 var(--serif); display: block; }
 #caption span { font: 11.5px var(--mono); color: #d9d2c6; }
 #caption i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 2px; }
@@ -223,6 +223,13 @@ table.mol td:first-child { white-space: normal; }
 table.t td i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; }
 .dip { color: var(--mint); } .peak { color: var(--gold); } .none { color: var(--ink-3); }
 .verdict b { color: var(--ink); font-weight: 600; }
+#scan { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+#scan:empty { display: none; }
+#scan .hint { margin-top: 0; }
+.flags { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.flags li { display: flex; gap: 4px 10px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); }
+.flags button { border: 1px solid var(--gold); color: var(--gold); border-radius: 999px; padding: 3px 12px; font-size: 13px; min-height: 30px; white-space: nowrap; }
+.flags button:hover { background: #f2c14e22; }
 .plotwrap { position: relative; }
 .plotwrap canvas { width: 100%; height: 220px; display: block; cursor: pointer; touch-action: pan-y; }
 .tip { position: absolute; background: #0a0908f2; border: 1px solid var(--line-2); border-radius: 6px; padding: 3px 8px; font: 11.5px var(--mono); pointer-events: none; white-space: nowrap; z-index: 3; }

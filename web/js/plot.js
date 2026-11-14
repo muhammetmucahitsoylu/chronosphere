@@ -86,7 +86,7 @@ export class Plot {
     for (const p of pts) {
       p._x = X(p.x); p._y = Y(p.y);
       c.globalAlpha = p.dim ? 0.35 : 0.9; c.strokeStyle = c.fillStyle = p.color || '#4cc9f0';
-      if (p.err && o.errors !== false) { c.beginPath(); c.moveTo(p._x, Y(p.y - p.err)); c.lineTo(p._x, Y(p.y + p.err)); c.stroke(); }
+      if (p.err && o.errors !== false && !p.hollow) { c.beginPath(); c.moveTo(p._x, Y(p.y - p.err)); c.lineTo(p._x, Y(p.y + p.err)); c.stroke(); }
       c.beginPath(); c.arc(p._x, p._y, p.big ? 5 : 2.6, 0, 7);
       if (p.hollow && !p.big) { c.lineWidth = 1.2; c.stroke(); } else c.fill();      // hollow = approximate level
     }

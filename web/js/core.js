@@ -177,6 +177,18 @@ export function centroid(img, n, x, y, r = 3) {
   return { x: sx / sw, y: sy / sw, peak, flux: sw };
 }
 
+/** Centroid that re-centres its window on what it finds, so that a source which has moved most of
+ *  a window away from the starting point is still located without bias. */
+export function locate(img, n, x, y, r = 3) {
+  let m = centroid(img, n, x, y, r);
+  for (let i = 0; i < 3 && m; i++) {
+    const next = centroid(img, n, m.x, m.y, r);
+    if (!next || Math.hypot(next.x - m.x, next.y - m.y) < 0.02) break;
+    m = next;
+  }
+  return m;
+}
+
 /** Aperture photometry in mJy. Returns null when the aperture touches masked pixels. */
 export function aperture(img, n, scale, x, y, sigma, rApArcsec = 9.2, rIn = 18, rOut = 30) {
   const ra = rApArcsec / scale, ri = rIn / scale, ro = rOut / scale, R = Math.ceil(ro);

@@ -1,7 +1,7 @@
 // Offline support. After one visit the page, the tour objects and every sky-map tile already seen
 // are served from this device, so a poor connection does not stop a demonstration.
 
-const SHELL = 'chrono-shell-v6', DATA = 'chrono-data-v1', TILES = 'chrono-tiles-v1', LOOKUP = 'chrono-lookup-v1';
+const SHELL = 'chrono-shell-v7', DATA = 'chrono-data-v1', TILES = 'chrono-tiles-v1', LOOKUP = 'chrono-lookup-v1';
 const KEEP = new Set([SHELL, DATA, TILES, LOOKUP, 'chrono-live-v1']);
 const SHELL_FILES = ['./', 'index.html', 'css/style.css', 'css/fonts.css', 'config.js', 'vendor/aladin.js', 'data/targets.json',
   'js/app.js', 'js/core.js', 'js/plot.js', 'js/sky.js', 'js/info.js', 'js/tour.js', 'js/pages.js', 'js/archive.js', 'js/healpix.js',

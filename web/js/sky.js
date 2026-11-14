@@ -26,6 +26,7 @@ export const waves = () => WAVES;
 export const isReady = () => ready;
 export const currentSlice = () => slice;
 export const currentLayer = () => layerId;
+export const isSpherex = () => layerId === 'spherex';
 
 /** On a tall, narrow screen a very wide view would show the edge of the celestial sphere: narrow it. */
 export function fitFov(fov, w = host?.clientWidth, h = host?.clientHeight) {
