@@ -150,8 +150,8 @@ select option { background: var(--surface-2); color: var(--ink); }
 .ohead .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ohead .close { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-2); font-size: 18px; line-height: 1; flex: none; color: var(--ink-2); }
 .ohead .close:hover { color: var(--ink); border-color: var(--ink-2); }
-.facts { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 12px 0 0; }
-.facts div { min-width: 0; max-width: 178px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 20px; margin: 12px 0 0; }
+.facts div { min-width: 0; }
 .facts dt { font: 500 10.5px var(--mono); letter-spacing: 1px; text-transform: uppercase; color: var(--ink-3); }
 .facts dd { margin: 1px 0 0; font: 500 13px/1.35 var(--mono); color: var(--ink); overflow-wrap: anywhere; }
 .facts dd small { display: block; color: var(--ink-2); font-weight: 400; font-size: 11px; }
@@ -170,6 +170,21 @@ select option { background: var(--surface-2); color: var(--ink); }
 .look { border-left: 2px solid var(--ember); padding: 1px 0 1px 14px; margin: 0; font-size: 14.5px; line-height: 1.45; color: #e2dbcf; max-width: 70ch; }
 .look b { font: 500 11px var(--mono); letter-spacing: 1.2px; text-transform: uppercase; color: var(--ember); display: block; margin-bottom: 2px; }
 .block { min-width: 0; }
+/* the answer first: what the measurements below say, in a few words */
+.findings { border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface); padding: 11px 14px 12px; min-width: 0; }
+.findings h2 { margin: 0; font: 500 11px var(--mono); letter-spacing: 1.2px; text-transform: uppercase; color: var(--ember); }
+.findings ul { list-style: none; margin: 7px 0 0; padding: 0; display: grid; gap: 7px; }
+.findings li { position: relative; padding-left: 19px; font-size: 14.5px; line-height: 1.42; color: #dcd4c7; }
+.findings li::before { content: ""; position: absolute; left: 2px; top: .5em; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+.findings li.found::before { background: var(--mint); }
+.findings li.unsure::before { background: var(--gold); }
+.findings li b { color: var(--ink); font-weight: 600; }
+.findings button { display: block; width: 100%; padding: 0; text-align: left; font: inherit; color: inherit; line-height: inherit; }      /* the whole line leads to its details */
+.findings button:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
+#specnote .hint { margin-top: 8px; }
+#specnote details { margin-top: 4px; }
+#specnote summary { cursor: pointer; color: var(--ink-3); font-size: 12.5px; }
+#specnote summary:hover { color: var(--ink); }
 .blocktitle { margin: 0 0 8px; font: 400 24px/1.1 var(--serif); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .blocktitle small { font: 400 13px var(--sans); color: var(--ink-3); }
 .blocktitle .inline { margin-left: auto; font: 400 12.5px var(--sans); color: var(--ink-2); display: inline-flex; gap: 6px; align-items: center; }
@@ -304,6 +319,11 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
   .stage { max-width: max(260px, calc(100vh - 404px)); margin: 0 auto; }
   .ohead .gloss { margin-top: 3px; }
   .facts { margin-top: 10px; }
+  .plotwrap canvas { height: 178px; }
+  .findings { padding: 9px 13px 10px; }
+  .findings ul { gap: 5px; margin-top: 6px; }
+  .findings li { font-size: 14px; line-height: 1.38; }
+  .stack { gap: 16px; }
 }
 
 /* ---------- narrower desktops ---------- */

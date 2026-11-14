@@ -167,12 +167,14 @@
       </section>
 
       <div class="stack">
+        <section id="findings" class="findings" aria-live="polite" hidden></section>
+
         <section class="block">
-          <h2 class="blocktitle">Spectrum <small>of the circled spot</small>
+          <h2 class="blocktitle">Spectrum <small>its light by colour</small>
             <label class="inline" title="Mark the wavelengths where common molecules absorb light"><input id="bandsOn" type="checkbox" checked> molecule bands</label></h2>
           <div class="plotwrap"><canvas id="spec"></canvas><div class="tip" hidden></div></div>
           <div id="speclegend" class="legend"></div>
-          <p class="hint" id="specnote"></p>
+          <div id="specnote"></div>
           <div id="molecules"></div>
         </section>
 

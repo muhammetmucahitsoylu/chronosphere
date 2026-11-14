@@ -31,7 +31,7 @@ const S = {
   seq: [], idx: 0, playing: false, fps: 2, timer: null,
   sel: null, view: { z: 1, cx: 0, cy: 0 }, white: 0, invert: false, smooth: false, mask: false,
   showGaia: true, marks: true, busyUntil: 0, gaia: null, off: new Set(), abort: null, deep: null, hi: 1, gen: 0,
-  info: null, infoState: 'idle', wiki: null, openTok: 0, showBands: true, embed: false,
+  info: null, infoState: 'idle', wiki: null, openTok: 0, showBands: true, embed: false, find: {},
 };
 
 const cv = $('sky'), ctx = cv.getContext('2d');
@@ -74,7 +74,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   stop();
   Object.assign(S, { ra, dec, size: size || 5, target, track: track || (target && target.resolved) || null,
     head: null, grid: null, dets: {}, seq: [], idx: 0, sel: null, gaia: null, catwise: null, deep: null, off: new Set(), stacks: null, epochs: null, pts: [], bandCache: {}, stackCache: {}, haloDets: [] });
-  S.info = info; S.infoState = info ? 'done' : 'loading'; S.wiki = null; S.found = null; S.moved = null;
+  S.info = info; S.infoState = info ? 'done' : 'loading'; S.wiki = null; S.found = null; S.moved = null; S.find = {};
   S.detPicked = !!det; S.autoNote = '';
   S.wantPlay = !calmMotion();          // the sequence starts playing by itself once it has loaded
   S.busyUntil = performance.now() + 9000;
@@ -664,7 +664,9 @@ function drawPlots() {
   const haloNote = !S.haloDets?.length ? ''
     : relative ? `<b>Too bright for the camera in ${loadingMore ? 'the detectors loaded so far' : 'every detector'}.</b> The star's core is saturated, so it is measured from its faint outer glow instead (hollow points). The scale is relative${loadingMore ? ' until the other detectors arrive' : ''}; the changes over time are real. `
       : `<b>Too bright for the camera in ${S.haloDets.map(d => 'D' + d).join(', ')}.</b> There the star's core is saturated, so it is measured from its faint outer glow and each detector is scaled to join its neighbour (hollow points). The overall shape is right; the level and the fine detail are approximate. `;
-  $('specnote').innerHTML = !pts.length ? '' : `${haloNote}Every exposure sees the spot at a different wavelength, so stepping through time builds a spectrum (${pts.length} measurements so far). Click a point to jump to that exposure. Measured in a circle of 9″ radius, which reads roughly 10 to 15% low because some starlight falls outside it.`;
+  const hollow = !S.haloDets?.length ? '' : relative ? ' The star is too bright for the camera, so the scale is relative (hollow points).' : ` Hollow points (${S.haloDets.map(d => 'D' + d).join(', ')}): the star is too bright for the camera there, so they are approximate.`;
+  $('specnote').innerHTML = !pts.length ? '' : `<p class="hint">Each point is one exposure, coloured by visit: ${pts.length} so far. Click a point to see that exposure.${hollow}</p>
+    <details><summary>How this is measured</summary><p class="hint">${haloNote}Every exposure sees the spot at a different wavelength, so stepping through time builds a spectrum. Measured in a circle of 9″ radius, which reads roughly 10 to 15% low because some starlight falls outside it.</p></details>`;
 }
 /** Take out visit-to-visit brightness changes, detector by detector, so that a variable star's
  *  spectrum from different visits lines up before absorption bands are measured in it. */
@@ -683,8 +685,26 @@ function steadied(pts) {
 }
 function renderMolecules(pts) {
   const el = $('molecules');
-  if (!S.showBands || pts.length < 30) { el.innerHTML = ''; return; }
+  if (!S.showBands || pts.length < 30) { el.innerHTML = ''; S.find.bands = null; renderFindings(); return; }
   const rowsData = C.bandDepths(pts);
+  {
+    // The table below, said in one line. Only what is beyond doubt makes the headline: a band has to
+    // stand out by six times its uncertainty here, against four in the table. What passes the table's
+    // test but not this one is called possible.
+    const seen = m => m.depth !== null && Math.abs(m.depth) > 0.12 && Math.abs(m.depth) > 4 * m.err;
+    const sure = m => seen(m) && Math.abs(m.depth) > 0.15 && Math.abs(m.depth) > 6 * m.err;
+    const short = { 'Water vapour': 'water', 'Carbon monoxide, methane': 'carbon monoxide or methane', 'Methane, or water ice': 'methane or water ice', 'Carbon dioxide, gas or ice': 'carbon dioxide', 'Carbon monoxide': 'carbon monoxide' };
+    const and = a => (a.length > 1 ? `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}` : a[0]);
+    const names = rows => [...new Set(rows.map(m => short[m.name] || m.name.toLowerCase()))];
+    const dips = names(rowsData.filter(m => sure(m) && m.depth > 0)), maybe = names(rowsData.filter(m => seen(m) && !sure(m) && m.depth > 0)).filter(x => !dips.includes(x));
+    const glows = [...new Set(rowsData.filter(m => sure(m) && m.depth < 0).map(m => (m.glow || 'something').replace(/^./, c => c.toLowerCase())))];
+    const measured = rowsData.filter(m => m.depth !== null).length;
+    S.find.bands = dips.length || glows.length
+      ? { cls: 'found', html: `${dips.length ? `<b>Dips in its spectrum</b> where these absorb: ${dips.join('; ')}` : ''}${dips.length && glows.length ? '. ' : ''}${glows.length ? `<b>Glow</b> from ${and(glows)}` : ''}.` }
+      : maybe.length ? { cls: 'unsure', html: `<b>A possible dip</b> in its spectrum where ${maybe.join('; ')} absorb${maybe.length > 1 ? '' : 's'}.` }
+        : measured >= 4 && !rowsData.some(seen) ? { cls: 'none', html: '<b>Smooth spectrum:</b> no dips at the molecule bands checked.' } : null;
+    renderFindings();
+  }
   let glow = false;
   const rows = rowsData.map(m => {
     let cls = 'none', txt = m.why || 'not enough data';
@@ -717,6 +737,25 @@ function jumpTo(src) {
   if (i >= 0) { S.idx = i; show(); }
   syncUrl();
 }
+
+/**
+ * The answer first: what the sections below have measured, in a few words each. Every line is
+ * written by the function that makes the detailed section, from the same numbers, so the two
+ * cannot disagree. Shown once the detector on show has arrived in full.
+ */
+function renderFindings() {
+  const el = $('findings');
+  if (!el) return;
+  const f = S.find || {}, ready = !!S.dets[S.det]?.done;
+  const rows = ready ? [['motion', f.motion], ['lccheck', f.change], ['molecules', f.bands]].filter(r => r[1]) : [];
+  const html = rows.length ? `<h2>What the measurements say</h2><ul>${rows.map(([to, r]) => `<li class="${r.cls}"><button type="button" data-to="${to}" title="Show how this was measured">${r.html}</button></li>`).join('')}</ul>` : '';
+  if (el.dataset.was !== html) { el.dataset.was = html; el.innerHTML = html; }
+  el.hidden = !rows.length;
+}
+$('findings').addEventListener('click', e => {
+  const to = e.target.closest('button')?.dataset.to;
+  if (to) $(to)?.scrollIntoView({ behavior: calmMotion() ? 'auto' : 'smooth', block: 'center' });
+});
 
 // ------------------------------------------------------------ is the change real?
 /**
@@ -768,7 +807,7 @@ function realityCheck(lc) {
   };
   const tv = perVisit(lc.map(p => ({ mjd: p.x, ratio: p.y })));
   const visits = [...tv.keys()].filter(k => tv.get(k).length >= 5).sort((a, b) => a - b);
-  if (!S.grid || visits.length < 2) { el.innerHTML = ''; return null; }
+  if (!S.grid || visits.length < 2) { el.innerHTML = ''; S.find.change = null; renderFindings(); return null; }
   const base = med(tv.get(visits[0]));
   const target = visits.map(k => { const v = tv.get(k), m = med(v); return { k, n: v.length, rel: m / base, err: 1.4826 * med(v.map(x => Math.abs(x - m))) / Math.sqrt(v.length) / base }; });
   const mine = (S.pts || []).filter(p => p.det === S.det);
@@ -811,6 +850,13 @@ function realityCheck(lc) {
   const rows = visits.length <= 6 ? `<table class="t"><thead><tr><th>${S.head.split ? 'Month' : 'Visit'}</th><th>This spot</th><th>Ordinary stars</th></tr></thead><tbody>${target.map((t, i) =>
     `<tr><td><i style="background:${C.EPOCH_COLORS[t.k % C.EPOCH_COLORS.length]}"></i>${C.fmtMonth((eps[t.k][0] + eps[t.k][1]) / 2)}</td><td>${i ? `×${t.rel.toFixed(2)}` : 'reference'}</td><td>${i ? (steadyAt(i) == null ? '–' : `within ${pc(steadyAt(i))}`) : ''}</td></tr>`).join('')}</tbody></table>` : '';
   el.innerHTML = `${sn >= 5 ? rows : ''}<p class="hint verdict">${verdict}${steady != null && sn >= 5 ? ' The grey band in the plot is that steadiness.' : ''}</p>`;
+  const spread = Math.max(...target.map(t => t.rel)) - Math.min(...target.map(t => t.rel));      // from the faintest visit to the brightest
+  S.find.change = sn < 5 ? null
+    : word === 'real' ? { cls: 'found', html: `<b>${biggest.rel > 1 ? 'Brightened' : 'Faded'} by ${pc(change)}</b> between visits in D${S.det}, while ${stars} nearby stayed within ${pc(steady)}.` }
+    : word === 'maybe' ? { cls: 'unsure', html: `<b>Possibly changing:</b> ${pc(change)} between visits in D${S.det}, against ${pc(steady)} for the stars nearby.` }
+    : word === 'steady' ? { cls: 'none', html: `<b>Brightness steady:</b> within ${pc(change)} between visits in D${S.det}, like the stars nearby.` }
+    : spread >= 0.08 ? { cls: 'unsure', html: `<b>Varies by ${pc(spread)}</b> from visit to visit in D${S.det}; there are no ordinary stars here to check it against.` } : null;
+  renderFindings();
   return { steady: sn >= 5 ? steady : null, comps: comps.length, word };
 }
 
@@ -1146,7 +1192,8 @@ function motionEverywhere(tracked) {
 function renderMotion() {
   const el = $('motion');
   if (!el) return;
-  if (!S.grid || !S.sel || !S.stacks || S.stacks.length < 2) { el.innerHTML = ''; return; }
+  const sum = (cls, html) => { S.find.motion = cls ? { cls, html } : null; renderFindings(); };
+  if (!S.grid || !S.sel || !S.stacks || S.stacks.length < 2) { el.innerHTML = ''; sum(null); return; }
   const g = S.grid, n = g.n, as = v => (v * g.scale).toFixed(1);
   const tracked = !!(S.sel.follow && S.track && S.track.pmra != null);
   const catPm = tracked ? Math.hypot(S.track.pmra, S.track.pmdec) / 1000 : 0;          // arcseconds per year, from the catalogue
@@ -1160,6 +1207,8 @@ function renderMotion() {
     const elsewhere = every ? ` In ${list(every.dets)} it can be measured: ${every.rate.toFixed(1)}″ per year towards the ${compass(every.e, every.n)}${tracked && catPm >= 0.1 ? ` (catalogue: ${catPm.toFixed(1)}″ towards the ${compass(S.track.pmra, S.track.pmdec)})` : ''}.` : '';
     el.innerHTML = holes ? `<p class="hint">The star's core is saturated in D${S.det}, so its position cannot be measured here.${elsewhere}</p>`
       : tracked && catPm >= 0.1 ? `<p class="hint">The target is too faint in this detector to be located, so its motion cannot be measured here.${elsewhere || ' Try another detector.'}</p>` : '';
+    if (every) sum('found', `<b>Moving ${every.rate.toFixed(1)}″ a year</b> towards the ${compass(every.e, every.n)}, measured in ${list(every.dets)}.${tracked && catPm >= 0.1 ? ` The catalogue says ${catPm.toFixed(1)}″.` : ''}`);
+    else sum(null);
     return;
   }
   // How well do positions repeat from visit to visit? Ordinary stars in the same images are the yardstick.
@@ -1196,19 +1245,24 @@ function renderMotion() {
     const rate = every ? every.rate : d / years, dir = every ? compass(every.e, every.n) : compass(dE, dN);
     el.innerHTML = `<table class="t"><thead><tr><th>${S.head?.split ? 'Month' : 'Visit'}</th><th title="How far it has moved since the first visit, in these images">Moved</th><th title="How far the catalogue says it should have moved: proper motion and parallax">Predicted</th><th title="Distance between the measured and the predicted position, after taking out one offset common to all visits">Off by</th></tr></thead><tbody>${body}</tbody></table>
       <p class="hint verdict"><b>Measured: ${rate.toFixed(1)}″ per year towards the ${dir}</b>${agree}. The catalogue says ${catPm.toFixed(1)}″ per year towards the ${compass(S.track.pmra, S.track.pmdec)}. ${yard} One SPHEREx pixel is 6.15″.</p>`;
+    const catDir = compass(S.track.pmra, S.track.pmdec);
+    sum('found', `<b>Moving ${rate.toFixed(1)}″ a year</b> towards the ${dir}. The catalogue says ${catPm.toFixed(1)}″${catDir === dir ? '' : ` towards the ${catDir}`}.`);
     return;
   }
   if (d > Math.max(3 * sigma, 1.5) && !lightMoved(first.st, end.st, first.m, end.m)) {
     el.innerHTML = `<p class="hint verdict"><b>Probably two stars, not motion.</b> The measured position differs by ${d.toFixed(1)}″ between ${span} in D${S.det}, but the light did not leave the old spot or build up at the new one. That is what a close pair of stars looks like. ${yard}</p>`;
+    sum('none', '<b>Not motion:</b> the position shifts, but in the way a close pair of stars does.');
     return;
   }
   if (d > Math.max(3 * sigma, 1.5)) {
     const cat = S.info?.pmra != null && !tracked ? ` SIMBAD lists ${(Math.hypot(S.info.pmra, S.info.pmdec) / 1000).toFixed(2)}″ per year for the object catalogued here.` : ' Check the tools above: if no catalogue lists a fast mover here, it deserves a closer look.';
     const rate = every ? every.rate : d / years, dir = every ? compass(every.e, every.n) : compass(dE, dN);
     el.innerHTML = `<p class="hint verdict"><b>This spot moved.</b> ${d.toFixed(1)}″ towards the ${compass(dE, dN)} between ${span} in D${S.det}. That is about ${rate.toFixed(1)}″ per year towards the ${dir}${agree}. ${yard}${cat}</p>`;
+    sum('found', `<b>This spot moved</b> ${d.toFixed(1)}″ towards the ${compass(dE, dN)} between ${span}: about ${rate.toFixed(1)}″ a year.`);
     return;
   }
   el.innerHTML = `<p class="hint verdict"><b>No motion detected.</b> Between ${span} its position in D${S.det} is the same to within ${Math.max(d, 0.1).toFixed(1)}″. ${yard} Anything slower than about ${(Math.max(3 * sigma, 1.5) / years).toFixed(1)}″ per year would not show here (one SPHEREx pixel is 6.15″).</p>`;
+  sum('none', `<b>No motion:</b> the same place to within ${Math.max(d, 0.1).toFixed(1)}″ between ${span}.`);
 }
 function renderModes() {
   for (const b of $('modes').children) b.setAttribute('aria-pressed', b.dataset.mode === S.mode);
@@ -1851,6 +1905,9 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     try {
       await Sky.init('#map', { onClick: openAt, onFov: f => { $('fovlabel').textContent = f >= 10 ? `${Math.round(f)}°` : f >= 1 ? `${f.toFixed(1)}°` : `${Math.round(f * 60)}′`; } });
       setWave(25);
+      // On a slow connection the first picture takes a few seconds: say so, instead of an empty map.
+      const slow = setTimeout(() => { if ($('mapnote').hidden) note('Loading the sky map…'); }, 1800);
+      Sky.firstPicture().then(() => { clearTimeout(slow); if ($('mapnote').textContent === 'Loading the sky map…') note(''); });
     } catch (e) {
       console.error(e);
       $('welcome').innerHTML = '<h1>The sky map could not start here.</h1><p class="lede">It needs WebGL 2. Search still works, and so does the guided tour.</p>';

@@ -119,6 +119,8 @@ const BG = '#050505';
 let veil = null, pic = null, tags = null, veilUp = false, lifting = false, moved = false, gen = 0, jobs = [], fadeFor = 0;
 let level = '';                      // how the tiles that make up the picture being prepared are recognised (their level)
 let deadline = 0;                    // when, at the latest, the current change shows the map, complete or not
+let firstShown = () => {};
+const firstSeen = new Promise(r => { firstShown = r; });
 let underWay = Promise.resolve();          // resolves once the map, sent to a new place, has its first tiles
 
 function buildVeil() {
@@ -395,9 +397,9 @@ export async function init(selector, { onClick, onFov } = {}) {
       if (my !== gen) return;
       await settled({ max: 9000, expect: true });      // until then the map would be blank white, or white in patches
       if (my !== gen) return;
-      jobs = []; lift(800);
+      jobs = []; lift(800); firstShown();
     })();
-  } catch { hideVeil(); }
+  } catch { hideVeil(); firstShown(); }
   fetch(`${LAYERS[0].url}/properties`).then(r => r.text()).then(t => {
     const m = t.match(/data_cube_crval3_arr\s*=\s*(.+)/);
     if (m) { const w = m[1].trim().split(/\s+/).map(Number).filter(Number.isFinite); if (w.length > 50) WAVES = w; }
@@ -410,7 +412,7 @@ function firstFrame() {
     const t0 = Date.now();
     const kick = () => {
       if (al.getBaseImageLayer()?.cubeDepth) { rawSlice(slice); shown = slice; resolve(true); }
-      else if (Date.now() - t0 < 15000) setTimeout(kick, 100); else resolve(false);
+      else if (Date.now() - t0 < 15000) requestAnimationFrame(kick); else resolve(false);      // every frame: until then the library asks for tiles of the blank frame
     };
     kick();
   });
@@ -479,6 +481,8 @@ export function zoomBy(factor) {
   }, { fade: 300, patience: 2000 });
 }
 export const center = () => (al ? al.getRaDec() : [0, 0]);
+/** Resolves when the map shows its first picture. */
+export const firstPicture = () => firstSeen;
 /** Resolves when the map, sent somewhere by flyTo, has received its first tiles there (or at once if it is not travelling). */
 export const onItsWay = () => underWay;
 export function resize() { window.dispatchEvent(new Event('resize')); }
