@@ -21,7 +21,9 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 - **Click any object, or search by name or coordinates.** The map dives there. The object is identified
   through SIMBAD (type, spectral type, distance, proper motion), with a Wikipedia card when one exists. A
   click picks the brightest catalogued object within a few screen pixels, so the star you aimed at is the one
-  that opens, even in the most crowded parts of the Milky Way.
+  that opens, even in the most crowded parts of the Milky Way; a click anywhere on the glare of a bright star
+  opens that star, not a faint one drowned in it. The map then shows the object from close by (a view 37
+  arcminutes wide around the 5-arcminute field of the images), and stays closer if you had zoomed in further.
   Catalogue coordinates of a nearby star point at where it was in the year 2000: the tool notices, says
   how far the star has moved since, and takes you to where it is now.
 - **Get the answer first.** The panel opens with *What the measurements say*: a few plain sentences on
@@ -46,8 +48,10 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   every measurement as a CSV file.
 - **Take the guided tour.** Ten short steps, in plain language, from "what is SPHEREx" through the five test
   objects of the challenge. One step shows two real SPHEREx pictures of the same patch of sky, a year apart,
-  flipping the way Clyde Tombaugh flipped his photographs: one dot moves. The tour is saved on the device
-  and runs without a connection.
+  flipping the way Clyde Tombaugh flipped his photographs: one dot moves. At the first object, numbered
+  pointers lead from the tour's card to the parts of the panel: the images, what the measurements say, the
+  spectrum, the links to other tools. The tour is saved on the device and runs without a connection; the
+  four further objects its last step offers are read live from the archive, and one press keeps those too.
 
 ## How the challenge is covered
 
@@ -91,7 +95,9 @@ talking directly to NASA's open data.
    also fetches fast movers in a wider area and moves every candidate to today's date before matching.
 7. **Offline.** A service worker keeps the page, the five showcase objects, the sky-map tiles of the guided
    tour, every other tile already seen and every position already opened on the device. Each release of the
-   site is stored as one set, so a poor connection can never mix new files with old ones.
+   site is stored as one set, so a poor connection can never mix new files with old ones. A moving star's
+   place "today" is worked out for the middle of the current month, so that what is kept for a position is
+   found again all month (the price: under half an arcsecond for the fastest star in the sky).
 8. **No flashes.** The map library repaints from nothing when its picture changes: a new colour of the cube
    is blank white until its tiles arrive, and a new place starts as empty sky. So every such change is made
    behind a still copy of the map (`web/js/sky.js`). The copy starts moving with the click, towards the
@@ -150,6 +156,15 @@ talking directly to NASA's open data.
 - **Clicks.** Ten well-known stars were clicked dead on and a few arcseconds off, at the tolerance of a wide
   map and of a close view, in empty and in crowded fields: 40 of 40 clicks opened the star that was clicked.
   The earlier catalogue query, which did not ask for the nearest objects first, managed 32.
+  On a wide map a pixel is 20 to 25 arcseconds, so a click three or four pixels off a bright star is a minute
+  or more of arc away from it. A bright star's reach therefore grows with its brightness: such clicks open
+  the star in 30 of 30 tries on ten bright stars, Eta Carinae inside its cluster among them (18 of 30
+  before).
+  In the SPHEREx pictures a bright star is a disc of glare, about an arcminute across for Antares: at any
+  zoom, a click inside it opens the star (6 of 6 at 30 arcseconds from the centre), a click 110 arcseconds
+  away does not (12 of 12), and typed coordinates inside the glare are never renamed to the star (6 of 6).
+  The catalogue is asked for the bright objects within reach without sorting them: sorted, the same question
+  takes it a quarter of a minute in a crowded field.
 - **Catalogue facts** shown for the five test objects are curated with their sources: Gaia DR3 parallaxes
   and proper motions, and Kirkpatrick et al. 2021 for WISE 0855. A distance is only shown when the parallax
   is measured to better than 20 per cent.

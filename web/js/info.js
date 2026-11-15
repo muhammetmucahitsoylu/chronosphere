@@ -1,7 +1,7 @@
 // Who is that? Object identification (SIMBAD), encyclopedia card (Wikipedia) and
 // one-click links that open the same coordinates in independent tools.
 
-import { propagate } from './core.js';
+import { propagate, epochNow } from './core.js';
 
 const SIMBAD_TAP = [
   'https://simbad.cds.unistra.fr/simbad/sim-tap/sync',
@@ -27,7 +27,7 @@ async function adql(query) {
 }
 export const simbadHost = () => (simbadBase || SIMBAD_TAP[0]).replace(/\/simbad\/.*/, '');
 
-const yearNow = () => 1970 + Date.now() / 31557600000;
+const yearNow = epochNow;
 const sep = (ra1, dec1, ra2, dec2) => Math.hypot((ra1 - ra2) * Math.cos(dec1 * Math.PI / 180), dec1 - dec2) * 3600;
 export const cleanName = id => (id || '').replace(/^(NAME|V\*|\*\*|\*|EM\*|PN|Cl\*?)\s+/, '').replace(/\s+/g, ' ').trim();
 
@@ -54,21 +54,40 @@ function shape(row, ra, dec) {
  * `aimArcsec` is how precisely the position was pointed at (a click on a wide map is only good to
  * a few screen pixels): within that distance the brightest object wins, not the nearest.
  */
-export const identify = (ra, dec, radiusArcsec = 12, aimArcsec = 0) => identifyFull(ra, dec, radiusArcsec, aimArcsec).then(x => x.best);
+// How far from a star a click can still mean that star. A faint star can only be told apart from
+// close to, so its reach ends at 40 arcseconds however coarse the map. A bright star is what the eye
+// sees and clicks from far out, where a few pixels of the map are a minute or two of arc: its reach
+// grows with its brightness, up to the pointing tolerance itself.
+const pointOf = (m, aim) => Math.min(aim, m == null ? 40 : Math.min(200, Math.max(40, 40 + (8 - m) * 20)));
+// And at any zoom, a bright star is a disc of glare in the SPHEREx pictures, not a point: about an
+// arcminute across for Antares, nothing for a star of the eighth magnitude. A click inside that disc
+// is a click on the star (whatever else catalogues list there is drowned in its light). This holds for
+// a position pointed at by hand only (`glare`), never for coordinates that were typed.
+const GLARE_MAX = 75;
+const glareOf = m => (m == null ? 0 : Math.min(GLARE_MAX, Math.max(0, 10 + (6 - m) * 6)));
+const reachOf = (m, aim, glare = false) => Math.max(pointOf(m, aim), glare ? glareOf(m) : 0);
+const magOf = c => c.mags.K ?? c.mags.J ?? c.mags.V ?? null;
+export const identify = (ra, dec, radiusArcsec = 12, aimArcsec = 0, glare = false) => identifyFull(ra, dec, radiusArcsec, aimArcsec, glare).then(x => x.best);
 
 /**
  * Like identify, and also: `moved`, a star that catalogues list at this spot (where it was in
  * 2000) but that has since moved away. Typing a nearby star's catalogue coordinates lands here.
  */
-export async function identifyFull(ra, dec, radiusArcsec = 12, aimArcsec = 0) {
-  const r = Math.max(radiusArcsec, 4), aim = Math.min(aimArcsec, r);
+export async function identifyFull(ra, dec, radiusArcsec = 12, aimArcsec = 0, glare = false) {
+  const r = Math.max(radiusArcsec, 4), aim = Math.min(aimArcsec, 200);
   const here = `POINT('ICRS', ${ra.toFixed(6)}, ${dec.toFixed(6)})`, away = `DISTANCE(POINT('ICRS', b.ra, b.dec), ${here})`;
   // The sky is crowded: a minute of arc around the centre of the Milky Way holds three thousand
-  // catalogued objects. So the catalogue is asked for the nearest ones, and for the brightest ones
+  // catalogued objects. So the catalogue is asked for the nearest ones, and for the bright ones
   // within the pointing tolerance, never for "any".
   const [near, bright, movers] = await Promise.all([
     adql(`SELECT TOP 30 ${COLS}, ${away} AS d ${FROM} WHERE ${cone(ra, dec, (r + 6) / 3600)} ORDER BY d`),
-    aim > 4 ? adql(`SELECT TOP 8 ${COLS} ${FROM} WHERE ${cone(ra, dec, (aim + 6) / 3600)} AND f.K IS NOT NULL ORDER BY f.K`).catch(() => []) : [],
+    // Bright objects within reach, without asking the catalogue to sort them: sorted, the same question
+    // takes it a quarter of a minute in a crowded field (and "ORDER BY f.K" it does not accept at all).
+    aim > 4 || glare ? Promise.all([
+      adql(`SELECT TOP 40 ${COLS} ${FROM} WHERE ${cone(ra, dec, (Math.max(aim, glare ? GLARE_MAX : 0) + 6) / 3600)} AND f.K < 3`).catch(() => []),
+      adql(`SELECT TOP 60 ${COLS} ${FROM} WHERE ${cone(ra, dec, (Math.max(aim, glare ? 30 : 0) + 6) / 3600)} AND f.K < 8`).catch(() => []),
+      adql(`SELECT TOP 60 ${COLS} ${FROM} WHERE ${cone(ra, dec, (Math.min(aim, 40) + 6) / 3600)} AND f.K < 12.5`).catch(() => []),
+    ]).then(a => a.flat()) : [],
     adql(`SELECT TOP 40 ${COLS} ${FROM} WHERE ${cone(ra, dec, 0.13)} AND (b.pmra*b.pmra + b.pmdec*b.pmdec) > 40000`).catch(() => []),
   ]);
   // Planets and sub-components share their host's coordinates: prefer the host.
@@ -78,20 +97,22 @@ export async function identifyFull(ra, dec, radiusArcsec = 12, aimArcsec = 0) {
     if (row.ra == null || seen.has(row.oid)) continue;
     seen.add(row.oid);
     const c = shape(row, ra, dec);
-    if (c.dist <= r) cands.push(c);
+    if (c.dist <= Math.max(r, reachOf(magOf(c), aim, glare))) cands.push(c);
     else if (c.dist > 15 && sep(ra, dec, row.ra, row.dec) <= r + 3 && Math.hypot(row.pmra || 0, row.pmdec || 0) >= 100) gone.push(c);
   }
   gone.sort((a, b) => minor(a) - minor(b) || Math.hypot(b.pmra, b.pmdec) - Math.hypot(a.pmra, a.pmdec) || (a.mags.K ?? 99) - (b.mags.K ?? 99));
   const moved = gone[0] || null;
   if (!cands.length) return { best: null, moved };
-  const mag = c => c.mags.K ?? c.mags.J ?? c.mags.V ?? null;
+  const mag = magOf;
   cands.sort((a, b) => minor(a) - minor(b) || a.dist - b.dist || (mag(a) ?? 99) - (mag(b) ?? 99));
   let best = cands[0];
   // Pointed at by hand: the brightest thing within reach of the pointer is what was meant. Distance
   // still counts (a full tolerance away costs as much as 2.5 magnitudes), so that the fainter of two
   // stars can be picked by clicking right on it.
-  const reach = cands.filter(c => c.dist <= aim && !minor(c) && mag(c) !== null);
-  if (reach.length) best = reach.sort((a, b) => (mag(a) + 2.5 * a.dist / aim) - (mag(b) + 2.5 * b.dist / aim))[0];
+  const cost = c => mag(c) + 2.5 * c.dist / reachOf(mag(c), aim, glare);
+  const reach = cands.filter(c => !minor(c) && mag(c) !== null && c.dist <= reachOf(mag(c), aim, glare));
+  if (reach.length) best = reach.sort((a, b) => cost(a) - cost(b))[0];
+  else if (best.dist > r) best = cands.find(c => c.dist <= r) || best;      // a bright star out of its reach does not stand in for what is here
   best.others = cands.filter(c => c !== best).slice(0, 4).map(c => ({ name: c.name, type: c.type, dist: c.dist }));
   return { best, moved: null };
 }

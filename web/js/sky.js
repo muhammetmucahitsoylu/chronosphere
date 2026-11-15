@@ -625,6 +625,12 @@ export function setLayer(id) {
 }
 
 export const fov = () => (al ? al.getFov()[0] : 60);
+/**
+ * How wide the map is, in degrees, when it shows a selected object: eight times the field of the
+ * images beside it (5 arcminutes: a view 37 arcminutes wide). The object's ring and the square of
+ * that field are then large enough to see what is in them, with the neighbourhood around.
+ */
+export const objectFov = sizeArcmin => Math.max(0.5, sizeArcmin / 8);
 /** Zoom in (factor below 1) or out (above 1) around the centre of the view. */
 export function zoomBy(factor) {
   if (!al) return Promise.resolve(false);

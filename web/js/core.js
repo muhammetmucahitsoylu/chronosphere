@@ -91,6 +91,12 @@ export function gridToSky(g, x, y) {
   return [((ra / rad) % 360 + 360) % 360, dec / rad];
 }
 /** Position of a catalogue source at a given year (linear proper motion, mas/yr). */
+/**
+ * "Today", for working out where a moving star is now: the middle of the current month. A position,
+ * and with it everything kept on the device for that position, then stays the same all month. The
+ * price is under half an arcsecond for the fastest star in the sky, a twelfth of a SPHEREx pixel.
+ */
+export const epochNow = () => { const d = new Date(); return d.getUTCFullYear() + (d.getUTCMonth() + 0.5) / 12; };
 export function propagate(src, epoch0, year) {
   const dt = year - epoch0;
   return [src.ra + (src.pmra || 0) * dt / 3.6e6 / Math.max(Math.cos(src.dec * rad), 1e-6), src.dec + (src.pmdec || 0) * dt / 3.6e6];

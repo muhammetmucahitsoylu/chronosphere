@@ -90,6 +90,7 @@ select option { background: var(--surface-2); color: var(--ink); }
 .blink figcaption { margin-top: 9px; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
 .blink figcaption b { display: block; font: 400 20px/1.15 var(--serif); color: var(--ink); margin-bottom: 2px; }
 @container stage (max-height: 340px) { .blink figcaption span { display: none; } .blink { width: min(250px, 64cqw, calc(100cqh - 84px)); } }      /* a short map: the dates on the pictures say enough */
+@container stage (max-height: 320px) { #map .aladin-logo-container { right: auto !important; left: 14px !important; } }      /* a short map: the zoom buttons reach down to where the badge would sit */
 @container stage (max-height: 215px) { .zoom { display: none; } }      /* a very short map (small phone, object open): no room above the colour bar; pinch still zooms */
 
 /* wavelength ruler under the map */
@@ -131,6 +132,15 @@ select option { background: var(--surface-2); color: var(--ink); }
 .tourstep button:hover { color: var(--ink); background: var(--surface-2); }
 .tour h2 { margin: 2px 0 0; font: 400 30px/1.05 var(--serif); }
 .tour p { margin: 8px 0 0; font-size: 15.5px; line-height: 1.5; color: #e2dbcf; max-width: 64ch; }
+/* numbered pointers: the card says what each number is, the same number sits on that part of the panel, its tip on the part's corner */
+.guide { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50% 50% 3px 50%; background: var(--ember); color: #1a0f08; font: 600 12px/1 var(--mono); font-style: normal; }
+.tourpoints { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 7px; font-size: 14.5px; line-height: 1.4; color: #e2dbcf; max-width: 64ch; }
+.tourpoints li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; }
+.tourpoints b { font-weight: 600; color: var(--ink); }
+.tourpoints b::after { content: ':'; }
+.guides { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 6; pointer-events: none; }
+.guides .guide { position: absolute; transform: translate(-78%, -78%); box-shadow: 0 0 0 3px #0a0908, 0 2px 10px #000c; animation: guidepulse 1.5s ease-out 3; }
+@keyframes guidepulse { 0% { box-shadow: 0 0 0 3px #0a0908, 0 0 0 3px var(--ember); } 100% { box-shadow: 0 0 0 3px #0a0908, 0 0 0 18px transparent; } }
 .tourlinks { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; font-size: 14px !important; color: var(--ink-2) !important; }
 .tourlinks button { border: 1px solid var(--line-2); border-radius: 999px; padding: 4px 12px; font-size: 13.5px; color: var(--ink); min-height: 32px; white-space: nowrap; }
 .tourlinks button:hover { border-color: var(--ember); color: var(--ember); }
@@ -142,7 +152,7 @@ select option { background: var(--surface-2); color: var(--ink); }
 .app[data-panel=closed] .tour p { font-size: 16px; line-height: 1.55; }
 
 /* ---------- object panel ---------- */
-.panel { min-width: 0; overflow-y: auto; overflow-x: hidden; border-left: 1px solid var(--line); background: var(--bg); padding: 16px 24px 20px; container-type: inline-size; scrollbar-color: var(--line-2) transparent; }
+.panel { position: relative; min-width: 0; overflow-y: auto; overflow-x: hidden; border-left: 1px solid var(--line); background: var(--bg); padding: 16px 24px 20px; container-type: inline-size; scrollbar-color: var(--line-2) transparent; }
 .app[data-panel=closed] .panel { display: none; }
 .ohead { padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
 .ohead .toprow { display: flex; gap: 14px; align-items: flex-start; }
@@ -402,6 +412,7 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
   .tourbtns .cta, .tourbtns .ghost { min-height: 44px; padding: 8px 20px; }
 
   .panel { border-left: 0; overflow: visible; padding: 16px 14px 24px; }
+  .guides .guide { transform: translate(-10%, -96%); border-radius: 50% 50% 50% 3px; }          /* the panel's margin is narrow here: the pointer sits above its part, tip down */
   .ohead .thumb { width: 56px; height: 56px; }
   .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
   .facts div { max-width: none; }

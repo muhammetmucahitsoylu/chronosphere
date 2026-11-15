@@ -3,11 +3,22 @@
 
 // What the presenter says while each test object is on screen. Kept short: the panel shows the rest.
 const STORY = {
-  barnard: 'The dot that moved in the two photographs: the fastest-moving star in the whole sky. Three SPHEREx visits play in a loop, and the star hops north by about one pixel each time, along the dotted line that catalogues predict. The table under the images compares the measured hop with the prediction.',
+  barnard: 'The dot that moved in the two photographs: the fastest-moving star in the whole sky. The numbers show what the tool makes of it.',
   epsindib: 'Two brown dwarfs, objects too small to shine like stars, orbiting a star 12 light-years away. SPHEREx sees the pair as one dot sliding south-east. Its spectrum has deep gaps near 1.4, 1.9 and 2.7 microns, where water vapour absorbs the light, and near 3.3 microns, where methane does.',
   wise0855: 'The coldest brown dwarf known, only 7 light-years away and too cold to shine in visible light. The images step through the wavelengths: at first the circle holds only the glow of a neighbouring star. Beyond 4 microns a new dot appears that is not in the Gaia star catalogue. In the colour picture it is the red one.',
   rwaur: 'A newborn star still wrapped in dust. It does not move, and the images stay steady. But look at the spectrum, where each colour is one visit: within a year the star grew brighter below 1.6 microns and lost almost half its brightness beyond 4 microns, while the stars around it did not change.',
   rdra: 'A red giant near the end of its life, swelling and shrinking every 245 days. Each image covers about one month. The star is so bright that it overloads the detectors, so the tool measures its outer glow instead. The brightness curve rises and falls with the pulse.',
+};
+
+// The first object is where the audience meets the panel: numbered pointers lead from the card to its
+// parts. `at` names the part (a CSS selector), `label` and `text` are what the card says about it; `dx` and `dy` move a pointer a little.
+const POINTS = {
+  barnard: [
+    { at: '.viewer .blocktitle', label: 'Images', text: 'three visits in a loop. The star hops north, along the dotted line that catalogues predict.' },
+    { at: '#findings', label: 'What the measurements say', text: 'the hop measured in these images, beside the catalogue’s value.' },
+    { at: '.stack .blocktitle', label: 'Spectrum', text: 'the star’s light in 102 colours, one point for each exposure.' },
+    { at: '#about .links', dx: -9, dy: 10, label: 'Check it in', text: 'the same spot in other observatories’ tools.' },
+  ],
 };
 
 export function buildTour(targets) {
@@ -38,16 +49,24 @@ export function buildTour(targets) {
   ];
   for (const t of targets) {
     steps.push({
-      title: t.label, text: STORY[t.slug] || `${t.blurb} ${t.look || ''}`,
-      prep: api => { api.warm(t.ra, t.dec, Math.max(3, t.size / 5)); api.preload(t); },      // made ready while the previous step is on screen
+      title: t.label, text: STORY[t.slug] || `${t.blurb} ${t.look || ''}`, points: POINTS[t.slug] || null,
+      prep: api => { api.warm(t.ra, t.dec, api.viewFov(t.size)); api.preload(t); },      // made ready while the previous step is on screen
       run: api => { api.sweep(false); api.open(t); },
     });
   }
   steps.push({
     title: 'Now it is your turn',
     text: 'Every point of the sky works the same way: search a name, type coordinates, or just click. Each object links to independent tools so anyone can check what they see. Nothing here claims a discovery. It helps more people look.',
-    // Objects outside the test list on which the tool has been checked: each is read live from NASA's archive.
-    tryNext: ['Proxima Centauri', 'Luhman 16', "Teegarden's Star", 'NGC 7027'],
+    // Objects outside the test list on which the tool has been checked: each is read live from NASA's archive,
+    // and kept on the device once read. Their year-2000 positions and yearly motions (milliarcseconds) come
+    // with the tour, from SIMBAD (Gaia DR3; Luhman 16: Lazorenko & Sahlmann 2018; NGC 7027: UCAC4), so that
+    // opening one needs no name service.
+    tryNext: [
+      { name: 'Proxima Centauri', ra2000: 217.42894222, dec2000: -62.67949019, pmra: -3781.741, pmdec: 769.465, plx: 768.0665 },
+      { name: 'Luhman 16', ra2000: 162.328814, dec2000: -53.319466, pmra: -2767.502, pmdec: 356.856, plx: 501.557 },
+      { name: "Teegarden's Star", ra2000: 43.25371581, dec2000: 16.88128672, pmra: 3429.083, pmdec: -3805.541, plx: 260.9884 },
+      { name: 'NGC 7027', ra2000: 316.7565498, dec2000: 42.236242, pmra: -22.7, pmdec: -4.4, plx: null },
+    ],
     prep: api => api.warm(83.82, -5.39, 60, 'wide'),
     run: api => { api.closePanel(); api.fly(83.82, -5.39, 60); },
   });

@@ -12,7 +12,7 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const isNarrow = () => window.matchMedia('(max-width: 900px)').matches;
 const calmMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const yearNow = () => 1970 + Date.now() / 31557600000;
+const yearNow = C.epochNow;
 const NUM = new Intl.NumberFormat('en'), NUM2 = new Intl.NumberFormat('en', { maximumFractionDigits: 2 });      // made once: making one per number is slow
 const nExp = n => `${NUM.format(+n)} exposure${+n === 1 ? '' : 's'}`;
 
@@ -45,8 +45,10 @@ const isPreset = () => !!(S.target && S.size === S.target.size);
 const dataUrl = (t, file) => `data/${t.slug}/${file}?v=${encodeURIComponent(t.built || '')}`;
 
 // Finished live queries are kept on this device, so a repeat visit is instant and works offline.
+const liveKey = (ra, dec, size, det) => `${ra.toFixed(5)}_${dec.toFixed(5)}_${size}_${det}`;
 const Store = {
-  name: 'chrono-live-v1', max: 48,
+  name: 'chrono-live-v1', max: 120,
+  async has(key) { try { return !!(await (await caches.open(this.name)).match(`./__live/${key}`)); } catch { return false; } },
   async get(key) {
     try {
       const c = await caches.open(this.name), r = await c.match(`./__live/${key}`);
@@ -68,7 +70,7 @@ const Store = {
   },
 };
 
-async function go({ ra, dec, size, target = null, track = null, det, mode, info = null, fly = true }) {
+async function go({ ra, dec, size, target = null, track = null, det, mode, info = null, fly = true, keepZoom = false }) {
   S.abort?.abort(); S.abort = new AbortController();
   const gen = ++S.gen;
   stop();
@@ -83,7 +85,9 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   if (Sky.isReady()) {
     // The panel opens (which changes the size of the map) and the map goes to the object, as one move.
     const opening = $('app').dataset.panel !== 'open';
-    if (fly) Sky.flyTo(ra, dec, Math.max(3, S.size / 5), { layout: opening ? openPanel : null });
+    // A visitor who has zoomed in closer than the usual view of an object and clicks a star stays that close.
+    const wide = Sky.objectFov(S.size), width = keepZoom ? clamp(Sky.fov(), 0.12, wide) : wide;
+    if (fly) Sky.flyTo(ra, dec, width, { layout: opening ? openPanel : null });
     else if (opening) Sky.reshape(openPanel);
     Sky.mark(ra, dec, S.size, target ? target.label : info ? info.name : track?.name || '');
   }
@@ -157,7 +161,7 @@ async function loadDet(det, gen) {
   if (isPreset()) {
     await C.loadStream(dataUrl(S.target, `d${det}.ndjson`), handle, S.abort.signal);
   } else {
-    const key = `${S.ra.toFixed(5)}_${S.dec.toFixed(5)}_${S.size}_${det}`;
+    const key = liveKey(S.ra, S.dec, S.size, det);
     const cached = await Store.get(key);
     if (cached) cached.forEach(handle);
     else {
@@ -1097,7 +1101,7 @@ function renderAbout() {
  * constellation map or a plot; shrunk into the header those read as a blank white square, so the
  * header shows photographs only. The article's card further down shows either kind, uncropped.
  */
-const photos = new Map();          // picture address -> true (photograph) | false (chart, or it did not load)
+const photos = new Map();          // picture address -> true (photograph) | false (chart) | null (it did not load)
 function isPhoto(url) {
   return new Promise(done => {
     const im = new Image(), say = v => { photos.set(url, v); done(v); };
@@ -1111,7 +1115,7 @@ function isPhoto(url) {
         say(paper < 0.4 * 256);
       } catch { say(false); }
     };
-    im.onerror = () => say(false);
+    im.onerror = () => say(null);          // not to be had (no connection): no picture at all
     im.src = url;
   });
 }
@@ -1127,7 +1131,7 @@ function renderWiki() {
   const others = (mags.length > 1 ? `<p class="others" title="V is visible light; J (1.2 µm) and K (2.2 µm) are near-infrared">Catalogued brightness (SIMBAD): magnitude ${mags.join(', ')}. Lower numbers are brighter.</p>` : '')
     + (i?.others?.length ? `<p class="others">Also catalogued at this position: ${i.others.map(o => `${esc(o.name)} (${esc(o.type)})`).join(', ')}</p>` : '');
   el.hidden = !w && !others;
-  el.innerHTML = `${w ? `<h2>From Wikipedia</h2><div class="wiki">${w.thumb ? `<img src="${esc(w.thumb)}"${photos.get(w.thumb) === false ? ' class="chart"' : ''} alt="" loading="lazy">` : ''}<div><p>${esc(w.extract)}</p><small><a href="${esc(w.url)}" target="_blank" rel="noopener">Read the article: ${esc(w.title)}</a></small></div></div>` : ''}${others}`;
+  el.innerHTML = `${w ? `<h2>From Wikipedia</h2><div class="wiki">${w.thumb && photos.get(w.thumb) !== null ? `<img src="${esc(w.thumb)}"${photos.get(w.thumb) === false ? ' class="chart"' : ''} alt="" loading="lazy">` : ''}<div><p>${esc(w.extract)}</p><small><a href="${esc(w.url)}" target="_blank" rel="noopener">Read the article: ${esc(w.title)}</a></small></div></div>` : ''}${others}`;
 }
 /**
  * Real motion moves the light: in the first visit it sits at the old spot, in the last visit at
@@ -1365,7 +1369,7 @@ async function resolveName(name) {
     const pm = xml.match(/<pm>([\s\S]*?)<\/pm>/), plx = xml.match(/<plx>([\s\S]*?)<\/plx>/), on = xml.match(/<oname>(.*?)<\/oname>/);
     const r = { name: on ? on[1].replace(/^(NAME|V\*|\*)\s+/, '') : name, ra2000: ra, dec2000: dec,
       pmra: pm ? num(pm[1], 'pmRA') : null, pmdec: pm ? num(pm[1], 'pmDE') : null, plx: plx ? num(plx[1], 'v') : null };
-    const year = 1970 + Date.now() / 31557600000;
+    const year = C.epochNow();
     [r.ra, r.dec] = C.propagate({ ra, dec, pmra: r.pmra, pmdec: r.pmdec }, 2000, year);
     return r;
   };
@@ -1439,15 +1443,15 @@ async function openAt(ra, dec, mapFov) {
   }
   // How well can a click be aimed? A few pixels of the map, whatever that is on the sky at this zoom.
   const pixel = mapFov * 3600 / Math.max(200, $('map').clientWidth);
-  const tok = ++S.openTok, r = clamp(12 * pixel, 8, 90), aim = clamp(5 * pixel, 5, 40), size = +$('fov').value;
-  const preset = S.targets.find(t => sepArcsec(ra, dec, t.ra, t.dec) < Math.max(20, aim));
+  const tok = ++S.openTok, r = clamp(12 * pixel, 8, 90), aim = clamp(5 * pixel, 5, 200), size = +$('fov').value;
+  const preset = S.targets.find(t => sepArcsec(ra, dec, t.ra, t.dec) < Math.max(20, Math.min(aim, 60)));
   if (preset && size === preset.size) return openTarget(preset);
   note('Looking up what is here…');
-  const info = await Info.identify(ra, dec, r, aim).catch(() => null);
+  const info = await Info.identify(ra, dec, r, aim, true).catch(() => null);          // by hand: a click inside a bright star's glare means the star
   if (tok !== S.openTok) return;
   note('');
-  if (info) go({ ra: info.ra, dec: info.dec, size, track: info, info });
-  else go({ ra, dec, size });
+  if (info) go({ ra: info.ra, dec: info.dec, size, track: info, info, keepZoom: true });
+  else go({ ra, dec, size, keepZoom: true });
 }
 
 let noteTimer = 0;
@@ -1741,6 +1745,7 @@ const tourApi = {
   sweep: on => { if (Sky.isReady()) sweep(on && !calmMotion(), TOUR_FRAMES); },      // no automatic sweep for people who asked for less motion
   fly: (ra, dec, fov) => { if (Sky.isReady()) { S.busyUntil = performance.now() + 9000; Sky.flyTo(ra, dec, fov); } },
   open: t => openTarget(t),
+  viewFov: Sky.objectFov,
   // Getting the next step ready while the current one is being read: its map tiles and its first images.
   warm: (ra, dec, fov, layout = 'open') => {
     if (!Sky.isReady() || !Sky.isSpherex()) return;
@@ -1769,12 +1774,13 @@ function tourGo(i) {
   $('tourtext').innerHTML = esc(st.text).replace(/\*([^*]+)\*/g, '<em>$1</em>');          // *words between asterisks* in italics
   const links = $('tourlinks');
   links.hidden = !st.tryNext; links.textContent = st.tryNext ? 'Try next: ' : '';
-  for (const name of st.tryNext || []) {
+  for (const o of st.tryNext || []) {
     const b = document.createElement('button');
-    b.type = 'button'; b.textContent = name;
-    b.onclick = () => { tourEnd(); $('q').value = name; search(name); };
+    b.type = 'button'; b.textContent = o.name;
+    b.onclick = () => openKnown(o);
     links.appendChild(b);
   }
+  showGuides(st.points || []);
   $('tourback').disabled = i === 0;
   $('tournext').textContent = i === tourSteps.length - 1 ? 'Finish' : 'Next';
   st.run(tourApi);
@@ -1784,8 +1790,47 @@ function tourGo(i) {
   if (Sky.isReady()) Sky.reshape();          // the card may have changed the size of the map
   if (isNarrow()) window.scrollTo({ top: 0, behavior: calmMotion() ? 'auto' : 'smooth' });
 }
+/**
+ * Numbered pointers from the tour's card to parts of the panel: the card lists what each number is,
+ * and the same number sits on the part itself. The parts are redrawn and move as data arrives, so the
+ * pointers are not put inside them: they lie on a layer of their own and are placed again a few times a second.
+ */
+let guideTimer = 0;
+function showGuides(points) {
+  clearInterval(guideTimer);
+  const list = $('tourpoints'), layer = $('guides'), panel = $('panel');
+  list.hidden = layer.hidden = !points.length;
+  list.innerHTML = points.map((p, i) => `<li><i class="guide">${i + 1}</i><span><b>${esc(p.label)}</b> ${esc(p.text)}</span></li>`).join('');
+  layer.innerHTML = points.map((p, i) => `<i class="guide" data-at="${esc(p.at)}" data-dx="${+p.dx || 0}" data-dy="${+p.dy || 0}" hidden>${i + 1}</i>`).join('');
+  if (!points.length) return;
+  const place = () => {
+    const pr = panel.getBoundingClientRect(), nudge = isNarrow() ? 0 : 1;      // on a phone the pointers sit above their part, not beside it
+    for (const g of layer.children) {
+      const t = document.querySelector(g.dataset.at), r = t && t.offsetParent !== null ? t.getBoundingClientRect() : null;
+      g.hidden = !r || !r.width;
+      if (!g.hidden) { g.style.left = `${Math.round(r.left - pr.left + panel.scrollLeft + nudge * g.dataset.dx)}px`; g.style.top = `${Math.round(r.top - pr.top + panel.scrollTop + nudge * g.dataset.dy)}px`; }
+    }
+  };
+  place(); guideTimer = setInterval(place, 300);
+}
+/** Where a catalogued object is this month: its year-2000 place, moved along by its yearly motion. */
+function placeNow(o) {
+  const [ra, dec] = C.propagate({ ra: o.ra2000, dec: o.dec2000, pmra: o.pmra, pmdec: o.pmdec }, 2000, C.epochNow());
+  return { ...o, ra, dec };
+}
+const TRY_SIZE = 5;          // the field, in arcminutes, at which the tour's last objects are opened and kept
+/** Open one of the objects the tour's last step offers. Without a connection that works for the ones kept on this device. */
+async function openKnown(o) {
+  const r = placeNow(o);
+  if (navigator.onLine === false && !(await Store.has(liveKey(r.ra, r.dec, TRY_SIZE, S.det))) && !(await Store.has(liveKey(r.ra, r.dec, TRY_SIZE, 'kept')))) {
+    note(`${o.name} is read live from NASA’s archive, which needs a connection. Objects already opened on this device work without one.`, 9000);
+    return;
+  }
+  tourEnd(); $('q').value = o.name;
+  go({ ra: r.ra, dec: r.dec, size: TRY_SIZE, track: r });
+}
 function tourEnd() {
-  tourIdx = -1; $('tour').hidden = true; document.body.classList.remove('touring'); showExample(false);
+  tourIdx = -1; $('tour').hidden = true; document.body.classList.remove('touring'); showExample(false); showGuides([]);
   sweep(false); renderLook(); relayout();
   if (Sky.isReady()) Sky.reshape();
 }
@@ -1857,7 +1902,7 @@ function tourTiles() {
     for (const z of TOUR_FRAMES) add(266.4, -29.0, 110, size, z);
     add(83.82, -5.39, 60, size);
   }
-  for (const t of S.targets) { add(t.ra, t.dec, Math.max(3, t.size / 5), open); add(t.ra, t.dec, Math.max(3, t.size / 5), wide); }
+  for (const t of S.targets) { add(t.ra, t.dec, Sky.objectFov(t.size), open); add(t.ra, t.dec, Sky.objectFov(t.size), wide); }
   return [...urls];
 }
 /**
@@ -1881,7 +1926,7 @@ async function saveTourOffline(full) {
   let done = 0, failed = 0, next = 0;
   // Saving happens behind the scenes and must never slow down what the visitor is looking at:
   // it waits whenever something is being loaded or the map is on the move.
-  const busy = () => performance.now() < S.busyUntil || sweeping || Object.values(S.dets).some(d => d.loading);
+  const busy = savingMustWait;
   const worker = async () => {
     while (next < files.length) {
       while (busy()) await nap(600);
@@ -1894,10 +1939,65 @@ async function saveTourOffline(full) {
   await Promise.all([worker(), worker(), worker()]);
   const ok = failed <= files.length * 0.02;
   try { localStorage.setItem('chrono-offline', ok ? (full ? 'full' : 'lite') : ''); } catch { /* private mode */ }
-  if (full && ok) say('The guided tour is saved on this device and works offline.');
+  if (full && ok) { say(TOUR_SAVED); offerLastObjects(say); }
   else if (full) say(`Some of the tour could not be saved (${failed} of ${files.length} files). <button type="button" id="savetour">Try again</button>`);
   else say('The tour objects are saved on this device. <button type="button" id="savetour">Save the whole tour for offline use (about 90 MB)</button>');
   const btn = $('savetour'); if (btn) btn.onclick = () => saveTourOffline(true);
+}
+const savingMustWait = () => performance.now() < S.busyUntil || sweeping || Object.values(S.dets).some(d => d.loading);
+const TOUR_SAVED = 'The guided tour is saved on this device and works offline.';
+/**
+ * The objects offered at the end of the tour are read live from NASA's archive: some 400 exposures
+ * each, about a megabyte apiece. That is too much to fetch unasked, so it is offered: once read, they
+ * are kept on this device like any position already opened, and open without a connection too.
+ */
+async function offerLastObjects(say) {
+  if (!tourSteps.length) tourSteps = buildTour(S.targets);          // the tour may not have been started yet
+  const list = (tourSteps.at(-1)?.tryNext || []).map(placeNow);
+  if (!list.length || !('caches' in window)) return;
+  const kept = await Promise.all(list.map(o => Store.has(liveKey(o.ra, o.dec, TRY_SIZE, 'kept'))));
+  if (kept.every(Boolean)) return say(`${TOUR_SAVED.slice(0, -1)}, with the ${list.length} objects of its last step.`);
+  say(`${TOUR_SAVED} <button type="button" id="savelast">Keep the ${list.length} objects of its last step too</button> (read live from NASA: about 1 GB of downloads, several minutes)`);
+  $('savelast').onclick = () => keepLastObjects(list, say);
+}
+async function keepLastObjects(list, say) {
+  let failed = 0;
+  for (const [i, o] of list.entries()) {
+    const tell = what => say(`${TOUR_SAVED} Keeping the objects of its last step: ${esc(o.name)} (${i + 1} of ${list.length})${what ? `, ${what}` : ''}…`);
+    if (await Store.has(liveKey(o.ra, o.dec, TRY_SIZE, 'kept'))) continue;
+    tell('');
+    try {
+      // What the catalogue says, the encyclopedia card, the stars of the field: the very requests the
+      // page makes when the object is opened. The service worker keeps their answers.
+      const found = await Info.identifyFull(o.ra, o.dec, 10, 6).catch(() => null);
+      if (found?.best) {
+        const ids = await Info.aliases(found.best.oid);
+        const card = await Info.wikipedia(Info.wikiTitles([found.best.mainId, ...ids])).catch(() => null);
+        if (card?.thumb) await isPhoto(card.thumb);          // loads the encyclopedia's picture, which keeps it
+      }
+      await Info.gaiaStars(o.ra, o.dec, TRY_SIZE * 0.75 + 0.5).catch(() => null);
+      // The images, detector by detector, exactly as opening the object reads them.
+      const frames = await Archive.findFrames(o.ra, o.dec);
+      let whole = true;
+      for (let det = 1; det <= 6; det++) {
+        if (!frames.some(f => f.det === det)) continue;
+        const key = liveKey(o.ra, o.dec, TRY_SIZE, det);
+        if (await Store.has(key)) continue;
+        while (savingMustWait()) await nap(600);
+        tell(`detector ${det} of 6`);
+        const lines = [];
+        await Archive.stream(o.ra, o.dec, TRY_SIZE, det, line => lines.push(line), undefined, frames);
+        const end = lines.find(l => l.t === 'done');
+        if (end && end.failed <= 0.1 * (end.n + end.failed + 1)) await Store.put(key, lines); else whole = false;
+      }
+      if (whole) await Store.put(liveKey(o.ra, o.dec, TRY_SIZE, 'kept'), [{ t: 'kept', name: o.name, at: Date.now() }]); else failed++;
+    } catch { failed++; }
+  }
+  if (!failed) say(`${TOUR_SAVED.slice(0, -1)}, with the ${list.length} objects of its last step.`);
+  else {
+    say(`${TOUR_SAVED} ${failed} of the ${list.length} objects of its last step could not be read just now. <button type="button" id="savelast">Try again</button>`);
+    $('savelast').onclick = () => keepLastObjects(list, say);
+  }
 }
 function startOfflineSave() {
   const c = navigator.connection;
