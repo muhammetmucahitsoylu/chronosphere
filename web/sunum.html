@@ -1,0 +1,2839 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0908">
+<title>Chronosphere — Sinematik Sunum & Hikâye Modu</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0908'/%3E%3Ccircle cx='13' cy='17' r='7' fill='none' stroke='%23f3eee6' stroke-width='2'/%3E%3Ccircle cx='19' cy='14' r='7' fill='%23ff7b39'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/fonts.css">
+<style>
+:root {
+  --bg: #070605;
+  --surface: #13110f;
+  --surface-2: #1d1916;
+  --line: #2f2a25;
+  --line-2: #483f36;
+  --ink: #f3eee6;
+  --ink-2: #b8afa2;
+  --ink-3: #877e72;
+  --ember: #ff7b39;
+  --ember-ink: #1b0b02;
+  --mint: #5fe0b0;
+  --gold: #f2c14e;
+  --cyan: #4cc9f0;
+  --rose: #ff5d8f;
+  --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--ink);
+  font-family: var(--sans); -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+#stagewrap {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 42%, #15110d 0%, #070605 75%);
+}
+canvas#cinema {
+  display: block;
+  width: 100vw; height: 100vh;
+  cursor: pointer;
+}
+
+/* Top Floating Bar */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 30;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px;
+  background: linear-gradient(180deg, rgba(7,6,5,0.88) 0%, rgba(7,6,5,0.45) 70%, transparent 100%);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+body.idle .topbar, body.idle .bottomhud {
+  opacity: 0; pointer-events: none;
+}
+.brand {
+  display: flex; align-items: center; gap: 11px;
+  text-decoration: none; color: var(--ink);
+}
+.brand span {
+  font: italic 26px/1 var(--serif); letter-spacing: 0.3px;
+}
+.brand small {
+  font: 500 11px/1 var(--mono); color: var(--ember);
+  letter-spacing: 1.4px; text-transform: uppercase;
+  padding: 4px 8px; border-radius: 999px;
+  background: rgba(255, 123, 57, 0.12);
+  border: 1px solid rgba(255, 123, 57, 0.35);
+}
+.topactions {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.pillbtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(20, 18, 16, 0.85);
+  color: var(--ink-2);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font: 500 12.5px/1 var(--sans);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: all 0.18s ease;
+  text-decoration: none;
+}
+.pillbtn:hover {
+  color: var(--ink); border-color: var(--ember);
+  background: rgba(30, 26, 22, 0.95);
+}
+.pillbtn.active {
+  background: rgba(255, 123, 57, 0.18);
+  color: var(--ember);
+  border-color: var(--ember);
+}
+.pillbtn.cta {
+  background: var(--ember); color: var(--ember-ink);
+  border-color: var(--ember); font-weight: 600;
+}
+.pillbtn.cta:hover { filter: brightness(1.08); }
+
+/* Bottom HUD (Chapters + Timeline + Transport) */
+.bottomhud {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  padding: 10px 24px 16px;
+  background: linear-gradient(0deg, rgba(7,6,5,0.95) 0%, rgba(7,6,5,0.72) 68%, transparent 100%);
+  transition: opacity 0.35s ease;
+}
+.hudinner {
+  max-width: 1520px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.chapters {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;
+}
+.chapbtn {
+  position: relative;
+  text-align: left;
+  padding: 7px 10px 9px;
+  border-radius: 8px;
+  background: rgba(20, 18, 16, 0.78);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+.chapbtn:hover {
+  border-color: var(--line-2); color: var(--ink);
+  background: rgba(30, 27, 24, 0.9);
+}
+.chapbtn.active {
+  border-color: var(--ember); color: var(--ink);
+  background: rgba(255, 123, 57, 0.11);
+}
+.chapbtn .cnum {
+  display: block; font: 600 10px/1.2 var(--mono);
+  color: var(--ember); letter-spacing: 0.8px; text-transform: uppercase;
+}
+.chapbtn .ctitle {
+  display: block; font: 500 12px/1.25 var(--sans);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.chapbtn .cbar {
+  position: absolute; left: 0; bottom: 0; height: 2.5px;
+  background: var(--ember); width: 0%;
+}
+.transportbar {
+  display: flex; align-items: center; gap: 12px;
+}
+.playtoggle {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-width: 118px; height: 36px; padding: 0 16px;
+  border-radius: 999px; border: 0;
+  background: var(--ember); color: var(--ember-ink);
+  font: 600 13.5px/1 var(--sans); cursor: pointer;
+}
+.playtoggle:hover { filter: brightness(1.08); }
+.stepbtn {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--surface-2); border: 1px solid var(--line-2);
+  color: var(--ink); font-size: 16px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.stepbtn:hover { border-color: var(--ember); color: var(--ember); }
+.scrubwrap {
+  flex: 1; display: flex; align-items: center; gap: 10px;
+}
+.scrub {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 6px; border-radius: 3px;
+  background: var(--line); outline: none; cursor: pointer;
+}
+.scrub::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--ember);
+  border: 2px solid var(--ink); cursor: pointer;
+}
+.timereadout {
+  font: 500 12.5px/1 var(--mono); color: var(--ink-2);
+  min-width: 95px; text-align: right;
+}
+.kbdhint {
+  font: 11.5px/1 var(--mono); color: var(--ink-3);
+  display: flex; gap: 12px; align-items: center;
+}
+.kbdhint kbd {
+  background: var(--surface-2); border: 1px solid var(--line-2);
+  border-radius: 4px; padding: 2px 5px; color: var(--ink-2);
+  font: 10.5px/1 var(--mono);
+}
+
+/* Speaker Notes Card (toggleable with N) */
+.notescard {
+  position: fixed; right: 24px; top: 68px; z-index: 35;
+  width: min(400px, calc(100vw - 48px));
+  background: rgba(19, 17, 15, 0.94);
+  border: 1px solid var(--ember);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.85);
+  backdrop-filter: blur(10px);
+}
+.notescard[hidden] { display: none !important; }
+.noteshead {
+  display: flex; justify-content: space-between; align-items: center;
+  font: 600 11px/1 var(--mono); color: var(--ember);
+  letter-spacing: 1.1px; text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.noteshead button {
+  background: none; border: 0; color: var(--ink-2);
+  font-size: 17px; cursor: pointer;
+}
+.notesbody {
+  font-size: 13.5px; line-height: 1.5; color: var(--ink);
+}
+.notesbody ul {
+  padding-left: 16px; margin-top: 6px; display: grid; gap: 5px;
+}
+.notesbody li::marker { color: var(--ember); }
+
+/* Finale CTA Overlay */
+.finalecta {
+  position: fixed; left: 50%; top: 75%; transform: translate(-50%, -50%);
+  z-index: 25; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.finalecta[hidden] { display: none !important; }
+.finalecta a, .finalecta button {
+  padding: 13px 26px; border-radius: 999px;
+  font: 600 15px/1 var(--sans); text-decoration: none;
+  cursor: pointer; transition: transform 0.15s ease, filter 0.15s ease;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.7);
+}
+.finalecta a:hover, .finalecta button:hover {
+  transform: translateY(-2px); filter: brightness(1.08);
+}
+.finalecta .primary {
+  background: var(--ember); color: var(--ember-ink); border: 0;
+}
+.finalecta .secondary {
+  background: rgba(20, 18, 16, 0.92); color: var(--ink);
+  border: 1.5px solid var(--ember);
+}
+.finalecta .ghostbtn {
+  background: rgba(20, 18, 16, 0.85); color: var(--ink-2);
+  border: 1px solid var(--line-2);
+}
+
+@media (max-width: 960px) {
+  .chapters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .kbdhint { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar" id="topbar">
+  <a class="brand" href="index.html?lang=tr" title="Chronosphere Ana Sayfasına Git">
+    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
+      <circle cx="13" cy="17" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <circle cx="19" cy="14" r="8" fill="var(--ember)"/>
+    </svg>
+    <span>Chronosphere</span>
+    <small id="topbadge">SİNEMATİK SUNUM</small>
+  </a>
+  <div class="topactions">
+    <button type="button" class="pillbtn" id="modebtn" title="Sunucu Modu: Her sahnenin sonunda otomatik geçişi duraklatır, siz konuşurken animasyonlar canlı devam eder (Kısayol: P)">
+      <span id="modeicon">🎬</span> <span id="modelabel">Akış: Otomatik Film</span>
+    </button>
+    <button type="button" class="pillbtn" id="audiobtn" title="Uzay ambiyansı ve veri ses efektlerini aç/kapat (Kısayol: M)">
+      <span id="audioicon">🔇</span> <span id="audiolabel">Ses: Kapalı</span>
+    </button>
+    <button type="button" class="pillbtn" id="notesbtn" title="Sunucu için sahne konuşma notlarını göster/gizle (Kısayol: N)">
+      📋 <span id="noteslabel">Konuşmacı Notu</span>
+    </button>
+    <button type="button" class="pillbtn" id="langbtn" title="Dil değiştir: Türkçe / English (Kısayol: L)">
+      🌐 <span id="langlabel">TR</span>
+    </button>
+    <button type="button" class="pillbtn" id="fsbtn" title="Tam Ekran (Kısayol: F)">
+      ⛶ <span id="fslabel">Tam Ekran</span>
+    </button>
+    <a class="pillbtn cta" id="openappbtn" href="index.html?lang=tr">Uygulamayı Aç ↗</a>
+  </div>
+</header>
+
+<aside class="notescard" id="notescard" hidden>
+  <div class="noteshead">
+    <span id="notesheadtitle">KONUŞMACI REHBERİ (SAHNE 1/7)</span>
+    <button type="button" id="notesclose" aria-label="Kapat">×</button>
+  </div>
+  <div class="notesbody" id="notesbody"></div>
+</aside>
+
+<main id="stagewrap">
+  <canvas id="cinema" width="1920" height="1080" aria-label="Chronosphere Sinematik Anlatım Animasyonu"></canvas>
+</main>
+
+<div class="finalecta" id="finalecta" hidden>
+  <a class="primary" id="ctaTour" href="index.html?tour&lang=tr">🧭 İki Dakikalık Rehberli Turu Başlat</a>
+  <a class="secondary" id="ctaExplore" href="index.html?lang=tr">🔭 Gökyüzünü Serbestçe Keşfet</a>
+  <button type="button" class="ghostbtn" id="ctaReplay">🔄 Animasyonu Baştan Oynat</button>
+</div>
+
+<footer class="bottomhud" id="bottomhud">
+  <div class="hudinner">
+    <div class="chapters" id="chapters"></div>
+    <div class="transportbar">
+      <button type="button" class="stepbtn" id="prevscene" title="Önceki Sahne (Sol Ok)">‹</button>
+      <button type="button" class="playtoggle" id="playbtn" title="Oynat / Duraklat (Boşluk Tuşu)">⏸ Duraklat</button>
+      <button type="button" class="stepbtn" id="nextscene" title="Sonraki Sahne (Sağ Ok)">›</button>
+      <div class="scrubwrap">
+        <input type="range" class="scrub" id="scrub" min="0" max="132" step="0.05" value="0" aria-label="Zaman çizelgesi">
+        <span class="timereadout" id="timereadout">0:00 / 2:12</span>
+      </div>
+      <div class="kbdhint">
+        <span><kbd>Space</kbd> Oynat/Durdur</span>
+        <span><kbd>←</kbd><kbd>→</kbd> Sahne</span>
+        <span><kbd>1</kbd>–<kbd>7</kbd> Bölüm</span>
+        <span><kbd>P</kbd> Sunucu Modu</span>
+        <span><kbd>F</kbd> Tam Ekran</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+const REAL_DATA = {"cropSize": 52, "barnard": {"visits": [{"label_tr": "Ziyaret 1 \u00b7 A\u011fu\u2013Eyl 2025", "label_en": "Visit 1 \u00b7 Aug\u2013Sep 2025", "count": 18, "pos": [24.95, 29.52], "b64": "CwsMDAwMDAwMDAwMDQ0NDQ0NDA0NDQ4PERUaHR4bGBMSERAQDw4PDw4NDQ0PEBEPDg0NDQsLDAwNDAwMDQ0NDQ0NDQwMDQ0NDQ0ODxASFBQUExIREhIREA8PEREQDg0NDQ4PDg0MDAwLCw0NDQwMDQ4ODg0NDg0NDQ0NDg0ODg8QEBAQEBAQERISEhEQERISEA4NDQwNDQ0MDAwMDAwNDg0MDQ0NDg4NDg4ODg4ODQ4ODg4PEBAQDw8PEBESExMSERERERAPDg4NDQwMDAwNDAwMDQ4NDQ0NDQ0NDQ4ODg4ODg4ODw8QEBAQEA8QEBASFRkdGxYTERAPDg4ODg0NDAwMDAwMDAwNDQ4ODg4ODQ4ODw8PDw4PDw8QEBAREBAQEBARFB0rMTAkFxEPDg8PDg4NDQ0MDAsMDQwMDQ4PEA8PDg4ODg8PDw8PDxAQEBARERAREREREhotQk1GMR0TEA8PDw8ODQ0NDQwMDA0NDA0PEBEQDw8PDg8PEBAQEBAREBAREhISEhISEhMdNElTTTogFBEPDw8PDw4ODQ0NDQ0NDAwNDxAQDw8PDxAPEBARERERERESExMUFBMTExIUGy1CSUY0HxQREBAQEA8ODg4NDg4NDQ0NDQ4PEA8ODw8QEBEREhISEhESExQWFhYVFRQTFBciLzQxJxoTEhAQDxAPDg0NDQ0NDQ0NDQ0ODw8ODg8QERESExMTFBMTFBYXGBgXFhYVFRQWGh8hIh0WExIREBAREA8ODg0NDQ0ODg8PDw8PDg4PERISExQVFRUVFBUXGxsaGhkYFxcWGBscHRwaFhQSERESExMQDw4NDQ0MDhASEhAPDg4PDxESExQVFxcWFhcXGRwcHBsbGRkZGRwgIB4cGRYUExISExQTEQ8ODg4ODQ8SFRQREA8PDxAREhQWFxcYGRgZGRodHh0dHRwbGxwgIiIeGxgVFBMSEhMUExIQDw4ODg0PERMSEBAPDxAQERMVFxgaGhsbHB0dHh8gICEfHR0dHyAgHRoYFhQSEhITExIREBAPDg4ODg8QEA8PDw8QERIVFxobHB0dHh8gICEiIyQlIiAfHyAfHh0bGRYUFBMTExIRERAQDw8ODQ0ODg4PDw8QEBETFRgcHyEhISEiIyQlKCgpKSglIyIiISAeHRoYFxUVFBMSEhEREA8PDg4NDQ0ODw8QERESExUYHSEkIyIjJScoKy0uLy4tKygmJSQjIR4cGhgXFhUUExIREBAPDw4ODQ0NDg8PEBEREhMVFxsgIyUmKCssLjE1NTYzMzEuLCspJiMhHhwaGRcXFRQTEhAQDw4ODg0NDQ4PEBEQEhMVFxgbHiMnLTIzMzQ3Ojw+PDs3NTMxLionJCEeHBsZFxYUExIREBAPDw4NDg4PEBEREhMVFxkbHyElLTc8PDo6PUJFSEdFQT06NzMvKigkIB4cGhgWFhUUFBMSEBAQDg4PEBAQERMUFhgcICUnKjE6QUNBQUVLT1RTUEtGQj86NS8rJyQhHhwaFxYVFRYVExEQDw4PDxAREhMUFRcZHSMoKywxOj9CQ0hPV15kY19YUk1IQjs1MCsnIyAdGxkXFhYWFhQSEBAPDxARExUWFhYYGh8kKSwtMTg+Q0hRXWl1enlxamJbU0tCOjQuKSUhHxwaGBcXFxcUEhEQEBAQEhUXFxcXGRwfJCgqLjQ7QUlUZXmKkZSTkop/bWBTSEA4MSsnIyAdGxoZGRkXFRIRERERERIVFhcXGBsdICMoKzA3P0dUZoGXo6ioqqqimIJtW05EOzMtKCQgHhwbGhwbGRYUExISEhESFBYWFxkbHiEkKC0zOkNPYoCcsL/IycS8s6uYemNTRz42LyolIB4cGxsbGxkXFxYUERERERIVFhgZGx8iJSowNj5IVm+Vr8bW5evk2ce1pIpqWEpANzEsJiIfHBsaGhgYGBcXFRAQEBETFRcYGRsfIiYrMThBTF17oMLc+P///+zPtqOOcV1OQjkxLSgjIBwaGRcWFRYXFRQPDxAREhQWGBkcHiImLDI5Qk5hfqPJ7P/////207WfjXVfUEQ7My4pJCAcGhgWFRQUFBMRDhARERITFhgZGx0hJiwxOkJPYoGlyO3/////9da4oY93YFBFPDMtKCMfHRoXFhQTExIREA8REREREhQXGRsdISUqMDhBTmB6ocTh9f///+/Vt6KQdF1PQzoyLCYiHx0aGBYUExIRDw8PEBEQERITFRgbHSAlKS42PkpZcZm2zuPu9PHhybSljHBZTEE4MCklIR4bGRcVExMREA8PDw8QERESExUYGh0gJCgsNDtEUWWHo7vI0NHMxbywnINmVUg9NS4pJCAdGxgWFBMSEQ8PDg4ODxASEhMUFxkcHyImKi83P0lYc4uirrWxsrGrnolxXE9EOzQtKCMfHRsZFhQTERAPDw4ODw8QEhISFBYYGx0hIycsMzlBTVpuf46VlZWWkYNvYFRJPzgxLCcjHx0aGBUUEhEQDw8ODg8PEBESEhMVFxkcHyIlKC41O0RPWmVxd3t7enRqX1VMQzs0LyomIx8cGRcVExEREA8ODg4PDw8QERITExUXGh4gIyYrMDY9RUtRVltfYV9cVlBKQzw2MCsoJCIeHBgWFRMSEQ8PDg8ODg4ODxAREhMVFxkcHyEkKC0yNz1CRUhLTU9PTEhEQDs2MSwpJiMgHRoYFRQTEhEQDw8PDw4ODg8PEBETFBYYGx4gIiUqLjI1OTs+QEJCQkE/Ozg0MS0pJiMgHRoZFxUTEhERERAQEBEPDw4PEBARExQVFhkcHyAjJysuMTM1Njc5OTk5NzUxLiwoJSIfHhsZFxYUExIRERISEhAQDw4ODw8QERITFRUXGh0fISMmKSwuLjAwMTExMC8uLConJSIfHRwaGBYVFRMSERETExERDw4ODg8PDxASExUVFhgbHR8hIyYpKikrKyoqKioqKScmJCEfHBsaGBcWFRMSERERExQSEA8PDw4PDxAQERMUFhUWGRsdHyEjJCQlJSYlJSUkJSQiIiAeHRoZFxYVFRQSERERERISEQ8ODg8PDw8QEBASExQVFhgZGx0eICAgICEiIiEhISEgHx4dHBoZFxYVFBMSEREREBAQERAPDQ4PDw8PEBAPEBITFBUWGBkbHBwdHR0dHh4eHh8eHRsbGxoZGBYVFBMSEhAQEBAPDg4QEQ0ODxAQDw8PDw8QERIUFRcYGRkZGhsbGxwcHBscHRwaGBkZGBYVFBMTEhEREBAQDw4OEhgNEBITEhAODg8PEBESExQWFhcXFxgZGhoaGhoaGhoZGBcXFxYVFBMSEhEREBAPDw8OEBckDRAUFRQQDg4ODxAREhITFBUVFhYWFxgZGRoZGBgXFxUVFRQUFBMSEREREBAPDw4ODhEcLw0PEhMSDw4ODhASEhISExQUFBUVFRcXFxcYGBcXFhUUExMSExMRERAQEBEREA8ODQ4QGiwMDQ8PDw4ODg4PEBISEhITExQTExQUFBUWFxgXFhUUEhISEhIREREQDw8PEBAPDg0OEBUgDAwNDQ4ODQ0ODg8QERESEhISEhISEhISFBUXFxUTEhIRERISEREREA8ODg4PDg0NDg8RFQ=="}, {"label_tr": "Ziyaret 2 \u00b7 Mar\u2013May 2026", "label_en": "Visit 2 \u00b7 Mar\u2013May 2026", "count": 19, "pos": [25.08, 27.61], "b64": "CwsLCwwMDAwMDQ0NDA0NDQ0NDQ4NDg8RExgcHRsXExEQEA8PDw8QEA8ODQ0ODxAODQ0NDAsLCwsMDAsMDQ0ODQ0ODg0NDQ0ODg8QEBITFhcVExEREREQDw8REhEQDg0NDg4ODQwMDAwLCwwMDAwLDA0ODQ4NDg4ODQ4ODg8QEBAQERISEhEREhMSEhEQERMTEA4NDQ0NDAwLDAwLCwsMDQ0MDA0NDQ0NDg4ODw8ODg8QEBAQEREREhIRERQWFhUUExISEhAODQ0MDQwLCwsMDAwMDA0NDQwMDQ0NDQ4ODw8PDw8QEBERERISERISEhIWGR0eHBgUEREPDg0NDAwMDAsLDAwMDAwNDQ0NDQ0NDQ0ODg8PDxAQEBESEhITExISExMUGCIyODMmGhMRDw4NDQ0MDAwMDAwLDAwMDQ0ODg4ODQ0ODg4PDxAQEBESEhMTFBQUExQTFBwuQ0tGMyATERAPDg4NDQwMDAwNDAwNDQ0ODxAQDg4ODw8PEBAREhISExMUFRYWFRUUExYeMEhSTTkhFBEQDw8PDg0NDAwMDA0NDQ0NDg8REBAPDw8PEBESEhMTEhMUFRYXFxcWFRUWHS5DTUU1HxMQDw8PDw4NDQ0MDAwMDQ0NDQ8PEBAPEA8PEBESExQVFRQUFhgYGBgYFxYXGBwlMzkyJxoTEA8QDw8PDQ0MDAwMDQ4ODg8QEBAQEBAQEBESExUWFxYXFxkbGxsZGhkYGBkbHiAjHxsXExEQEBAQEA8ODQwMDAwODg8QEBAQEBEREhITFBUXGBkZGRkbHR4dHBsbGxscHiAhIB0aFxQSERESExIQDg0NDAwMDhESEhEQEBEREhMUFRcYGRoaGhobHR8gHx4dHR0eHyElJiEeGxcVExISExQTEA4NDQwMDA8TFhQSERAREhITFRcYGxscHRweHiAgISEhISAgICEkJyYiHhsYFRMSERITEhEPDg0NDAwPEhUUExIRERETFRYZGx0fHyAgISIjIyQkJCUkIyIkJSclIR4aGBcUExEREREQDw4NDQwMDhAREhISERISFBYXGh4hJCMkJCUnKCgoKCkqKSgnJycmJCEfHBoYFhQSERERERAPDg4NDQ4PDxAQEBETFBYXGRwhJSgoKCkqLC0uLi8vLi4sLCspKCYjIB4bGRgWFBIREREQDw8ODQwODg4PEBESFBUXGBoeIicqKy0vMTI1NTY3NzY1NDMwLSwpJiQgHRsZFhUTEhERDw8ODQ4NDQ8ODxASEhUWGBodHyMoKy8yNTg6Oz0/Pz8/PTs4NTMvLCkmIx8cGhcWFRMREA8ODQ0NDA4ODg8QEhMVFxkbHiIlKS0yOj9CREZISktLSUdDQDw5NDAtKCMgHhsYFxUTERAQDw0NDAwNDg8QERITFRcaGx8jKCwxOENKTk5RVVhaWVlUT0lFQDo1LyolIiAbGRgWFBMSERAPDQ0MDg8QERITFBUYGhwgJi0wNTxIUFVbYGlwc3VxbWRaUEhAOTIsKCQhHhoYFxUUFBMSEQ8NDQ4PEBETFBYWGBseIyoxNTk/SVNcZ3SBjJGQj4x+bl1RRj01LyomIh8dGhgWFRQUEhEODg4ODxASFBYWFxkbHyQrMjg7QUpXZXiPoKisq6aknZB2XU9DOjItKSMgHRsZFhYVFBIRDw4ODxARExYZGRkbHR8kKi82PENOXHGOorfCyMfDvLOmj29WSD42LykkIR4bGRcWFxYUERAPDhARERMWGRoaGh0hIiguNz5GUmN/mK/G2ufq6NjGsZt/YExDOTErJSEeGxgWGBkYFRMREQ8REhIUFhcZGRodISYqMThASVdqg5630ez////z1rughmdSRjw0LCUhHhoYFhcYGBYTExQRERISExQWFxkbHiEmKjE5QUpabYmeudX7/////+O+oYdqVkc7MywmIh4aFxcXFhYTFBYVEhAQERIUFRcZHB8iJisxOUFLWW2HnbjX/P/////kvqCIalRGOjMrKCMfGxkXFhUTEhMVFBEPEBESFBUXGhwfIycrMTc/SVVphZ210PL////927mhiGVSRDkyLSkkIR0bGBYUFBISEhIQDxESEhMVFxkcHyIlKy81PEZSZH2cssfd8ffs4Mm2oIJfTkE4MS0oJSEfGxkXFRMSERARDxARExMTFRcZHB4gJCgtMzpDTl1xkKm6wsrQzMO6qpFyWEk+NS8qJyMgHRsZFhQUEhEREA8QEhMTFBYXGRsdHyInLDE4QUtXZYCUpqyvrK2tppN7YVBDOzMsKCQgHRsZFxUUEhIQEA8PEBITFBQWFhgZGx4gJSovNj1FUFxqfYqWmJeXlY14YVNGPTYwKiUiHhsaGBYVFBMREA8PDhARExQVFRYYGRsdICQpLDI4QEhSW2VxeH2Af3ZrXFJHPzgxKycjHx0aGRcWFRMSERAODg4QEBIUFBUVFhkaHB4iJyouMzpBRk1TWWFlaGZhWE9GQDk0LiklIR4cGhkWFRQTERAQDg4NEBEREhMUFBUXGBodHyMnKy81Oj9DSE1TWVtZU0xFPzo0LysmIyAeGxkYFhQSEhAPDw4NDhAQERISExIUFRgaHB4gIygrLzM3Oj5CRkpLS0hCPTgzMCwnIyAfHRsYFhMSEREQDw8ODg4PEBERERESExQWGBocHSAkJyktMDM1OT5BQkI/OjYyLysoJSIgHRsZGBUTEhEREBAPDg4ODw8QEBARERMUFhcYGx0eICIlKCorLjE0Njg4NzQwLCooJSIfHRsZGBYUExISEREQDw8PDxAPDxAQERETFBUWFxkbHB0fISMlJigqKy0wMDAtKiknJSMhHhsZGBYVExIREhEREBAQEBAQDg4PERAREhMUFRYYGhobHR8gISIkJScoKikpKCYmJCMiIB0aGBcUExIREREREREREhEQDw4ODxEREBITFBQVFxgYGBscHR4fISIjJCUlIyMjIiEgHx0cGRcWExISERAQEBAREhMSDw4ODhAQEBESEhMUFRUWFRcYGRoaHB4fHyAiICEgISAeHBwbGRgWExIRERAPEBAQERISEA4ODg8PDw8QERESExMTFBUVFhcYGBobGx0dHR0dHR4dHBoZGBgWFRIREBAQEBAPDxAQEA8ODg8PDw8PEBAQERESEhMTFRUVFhcXGBgZGRkbHBwcGxkYFxcWFRMREBAREA8PDw8PDw8QEQ4PEBEQDw8QEBAQEBESEhMUFRUVFhYXFxcZGRoaGhkWFhUVFRQTERAQEA8PDw8ODg4PEhkNDxIUEhAPDw8QEBARERISExQUFBQVFhYWFxgYGBgWFBUUFBMTEhAQEBAQEBAPDg0OEBgmDRATFBMQDw4PEBARERERERISEhMTFBUVFhcXFhYVFBMSERISEhIRDw8PEBAQDgwNDhEbLQ0PEhIRDw4ODhARERAQEBAQEREREhQUExQWFhUUExMREBESERERERAPDxAQEA4NDA4RGiwNDg8PDw4ODQ4PEBAQDw8PDxAQEBEREhITFBUUExIRDxAQEBAREREQDw4PDw4NDQ0ODxYiDQ0NDA0NDQ0ODg8PDxAPDw8PEBAREBAREhQVExIREA8PDw8QEREREA4ODg4ODg0NDQ8RFA=="}, {"label_tr": "Ziyaret 3 \u00b7 A\u011fu\u2013Eyl 2026", "label_en": "Visit 3 \u00b7 Aug\u2013Sep 2026", "count": 24, "pos": [25.72, 26.34], "b64": "CwoKCwwNDQ0MDQ4ODg4ODQ0NDQ0NDg8QEhccHx8dGRUTEhEQDw8QEA8ODQ0PEREPDg0NDQsKCwsMDAwMDQ0ODw8PDg4ODg4ODg4PEBITFBUVFBMSEhIREBAQEhIQDgwNDg8PDg0NDQwLCwsMDAwMDA0ODg8PDw8PDw4ODg4ODxAREhISEhERERMTEhERERITEA4NDQ4ODg0NDAwMDAwNDg4NDQwODg8PDw8PEA8PEA8QDxAREhISEREQERIUFBUUFBMSEhEPDg4ODQ0NDQwMDAwMDQ4PDg0NDg4PDw8QEBAQEBAREREREhMTEhISEhETFx0gHhoUEhEPDg4ODg4NDAwMDAwMDA0NDw4ODg4PDw8QEBEREREREhISEhMTExMTExMTFh8tMjAlGRMRDw8PDw4ODQ0NDQwMDAwMDg4PDw8PDw8PEBEREhISEhITExQVFhUUFBUUFRstQ0xJNB8VEg8PEBAPDg4ODQ0MDAwMDA0PEBEQDw8PDxAREhMTExMUFBQVFhcXFxUVFBYeN09VTzsjFhIQEBAQDw8ODQ4ODQwMDA0NDhAREA8PDxAREhMUFRUWFhUWFxgZGhgYFxcYHjFFT0Y1IRYTEhEREA8PDg0NDg4NDQwMDQ4QERAQDxAQERITFRYXGBgYGRobGxsaGhkZGh0kMTczKB0WExIRERAQDw4NDQ0ODg0NDQ4ODxAPDxAQERITFRcXGRoaGhwfHh4dHRwcHB0cHyUoJiEZFhMTEhMSEhAODg0ODQ4NDhAQEA8PEBARERITFRcYGhsdHR0gIiIiIR8fHyAfICEiIiAdGRYUFBMUFBQSDw4NDQ0NDhATEhEQEBAQERIUFhcYGRsdHx8gIiUlJiUjIyIjIiUnJiQgHhoXFhUVFRYVExEPDg4NDQ4SFRQSERAQERETFBcYGhscHyEiJCUnKSorKigmJSUnKSklIB0aGBcWFhUVFBMRDw8ODg0OERUUEhEREBESEhQXGhweHyEkJigqLC4xMTEuLCoqKispJSEdGxoYFxYVFBMTEhEQDw4ODQ8RERAQEBESEhMVGBwgIiIlKCosLzE1Nzg3NjMxLy0sKSYjHx0cGhkXFhQTEhIRERAODg0ODg8PEBESExMUFhoeJCUmKSwvMjU4PEBAQD48OTY0MS0qJiMgHhwaGBYUExMSEREQDw4NDg4PEBAREhMUFhgbICYoKSwvMzg7P0RISUpIREE+OjYyLSkmIyAeHBkXFRQTEhIREQ8PDQ4PDxARERIUFRcaHCElKSwwNDk9QkdPVVhaVVBMR0M/OjMuKSYjIR4aGBYUExISEhEQDw0ODxARERMTFBYYGx4iJSovNz5BREpRW2NnaGVeWFJMR0E5Mi0pJSIfHBkXFhQTExISERAODg8QERETFBUXGh0iJSgtNT5HS01XYXF9g4WBeG5iWlFJQDkxLCgjIB0aGBcWFRQUEhERDg8QEBESExUWGRwgJSksMjlFTlNXaHyOl5qampSHdmdaUEU+Ni8qJCEfGxkYGBcWFRIREQ4PEBESFBUWFxodIykuMDU7R1FZZYGXpquxsrKxpY95Y1VJQDcxKyYiHxsaGRkYFxQSEBAPDxARFBYXGBkbHiMqLzI2PEZRYXOds7nCyM3Oyrynh2xaTEI6MiwnJCAcGxoaGRcUEhEQDw8QEhYZGRkZGx4jKC0xNz1JVWuBprzW5/j88uHJr5J2X09EOjQsKCQgHRsbGxoXFBIQDxARERIWGBgYGBseIicsMTg+S1dzjanG5//////u0bKXfWNSRjs0LigkIR0bGhscGRYUEhAREhESFBYWFxgbHiImLDE4P0tYd5Cqxu//////9tGzmIBlVEg8NS4pJCAdGxobGxgXFxUTEREQERIUFhcZGx0hJSowOD9LV3WQq83u//////LRtJl/ZlRHPTUuKSQgHBoYGBgXFxgWFA8QEBESExQWGBodICQpLjY9SVRvi6fD4/r///3ozrGXemFQRDszLSgiHxsYFxcWFRYXFRMODxAQERIUFRcZHB8iJywyO0VPZn2iuM3d6Ozj1saqj3NcTEI5MiwnIh4aFxYVExMTExIRDg8PEBAREhQWGBseISUpLzc/Sltxkqe2vsTJxsCxmoJoVkhANjArJiIeGRcWFBMSEhEQDw4PDxAQERIVFRcaHSEjKCwyO0RRX3mPnqasr6ulmYdvXlBFPTQvKSUhHhoXFhQSEREQDw4ODw8PEBETFBUXGRweIiYrLzc+SFRjcoKMkJCQjH5tYlVKQTkzLSgkIB0aGBUUExIRDw8ODQ4PDxAREhMVFhkbHiElKS0zOUFKU1xkam9xcGtlXFRMRDw1MCsnIh4cGhcVExIREA8ODg0ODw8QERESFBYXGh0gIycqLzU7Q0hOUldaW1tYVE9KRD03MSwnJCAcGxkWFBMSERAPDw4NDg8QEREREhMUFhgcHiEjJywxNjtAQ0ZJSktLSUdCPzs2MS0oJSEeGxkYFhQTEhAQDw4ODQ4PDxAQERESFBUXGRwfIiUpLTE0ODs9Pj8/QEA9OjY0MS0pJSIgHRsZFxUTExIQDw4NDQ0NDg8PDxAQEhQVFhgaHSAjJiksLzEyNTY3ODc3NTIvLiwpJiIhHx0aGBYVExIREA8ODQ0NDQ0ODg8PEBESFBYXGRseISQmKSosLS4vMDEwLy4sKignJiMgHh0bGBYVFBIRERAPDg4ODg0NDQ4ODw8RERMUFhgaHB4hIyUmJygpKiorKigoKCclIyEgHRwaGRcVFBISEREQEA8PDw8NDQ0ODg8PEBESExQWGRscHiAhIyQkJCUmJiUkJCQjISAfHhsZGBYVFBISEREQEBESERAPDQwMDQ4PDxAREhMTFRcZGhwdHh8gISEiIiEiISEgHh4cHBsZFxYVFBMREREQEBESExEQDg0MDA0ODw8QERISExQWGBkZGhscHR0eHh8fHx8eHhwaGhkZFxYVFBMSERAQEBARExMRDw0MDAwMDQ8PEBAREhMUFBYXFxkYGhoaGxwcHBwcHBsZGBgXFxUUFBIRERAQDw8PEBISEQ4MDQ0NDQ4ODw8QEBESEhMUFRYXFxgYFxgZGhoaGhoYFxYVFhYUExIRERAQDw8PDg4QEA8ODAwNDQ0ODg4ODw8PEBESExQUFBUVFRUWFhcYGBgXFxYUFBQVFBMREA8QDw8PDg4NDg4ODwwNDg8PDg0NDQ4ODw8QERMTExMUFBUUFBUWFhcXFhYVFBMTFBQSEQ8PDw4ODg8ODQ0OERgMDhETEQ4NDA0ODg4PEBASEhISEhMUFBQUFRUVFRUVExISEhISERAPDw4ODg4ODQ0NDxYlDA8SFRIPDQwNDg8QEBAQEhIRERESExMTFBUUFBQUExIREQ8QERAPDg4PDg8ODQ0MDRAaLAsNEBIQDgwMDA0PEBAQEBESEBARERISEhMUFBMTEhEQDw8PDg8QDg0NDQ4PDg0MDAwPGisLDA0ODQ0MDAwNDhAQDw8QEBAQEBAQEBARExQUExEQDw4ODg4PEA8ODQ0NDg0MDAwMDhQfCwsLDAsMDAwMDQ4PDw8PEBAQDw8PDw8PEBIUFBIQDw4ODg4ODxAPDg0NDQ0NDAsLDA4QFA=="}]}, "wise0855": {"dets": [{"det": 1, "band": [0.75, 1.11], "b64": "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"}, {"det": 2, "band": [1.11, 1.64], "b64": "JC0qKh8lICYkHBwnISUkGhwbLBQSCBMpGSdKam5pXEo1IyIvJxcOGQsOGx8kLTInGyw5TCAzPTMoJzVANSovMB4eICMcIiwwFgwXKBYfO15kWk06ICAWIhcMHBURGBchLiw0Jx0bM0cnQlFKOi9JXVU2KyQqKCcuKiUbKRgeIBIRJC9IST49KicWDhYpGR8jJCMoLjUyJicuJSk8HzxLT0VKYHFdOSsoMiglNjYvJh8SFyoeDBQcJy4lLCUgIQ4WGB8QICQvOEI5MCIoLSYoOSAzMjpJYGxnVzQvJyouN0hPRjAWAhEbFhwaHyYlJyEkJB0ZFiofGBAkNEFCQzwuMTMoNEwQDiEtTlxoXUgtHRYWLz5OX1c+HQwMFR4gIScdGx8hHiAjGwkbJAwRHi0zODs/PUVCQj9iDwoXJDNGUkIyFwILHis5SldUPjsqKSYrHyUhHh4hLTA0KCIUFh8kHS8sLC87Smh2bFZRag4MECUpKzUrIQYADh8pNT07Qkdpcm1VODI5KyciFyc4MychFx0hHR4yMi00NFWFk4FgU1wMDSAkJCEwHRkOCxUoMTc2NDd2qMC2hFk2OjUxKAgULy0sJx0lJikjKi8xN0Rjg419Xkg/ChIjKSAqKyYXDRoaJyIzMy5IldDs3KpoODo+SVNaPi8nIhYZLCUiJSY3SFx0dXNuZkpAPgwBEikrLjAvJx0eIywkICMgQpHV8t+paTdAap/Ew5JTNhoPECwyHiEnOWGNoJt5WEZKQjoPBhgeJykjKywvIzY7JhodJj9wsce2hFU7ZLHx///fiUAqIBwuLxsZICxppLy0kVs6P0hDBBAiIBkeJjUrMy8qJiwQFCoyRWx3a1hJP27S/////6dULSUdJSwdGyQrVZCyqYJKOkJFWw4RMT4kISo6PEQ0IyMhJRkkJjI6Q0tNSENq0P////2xTDIqHigtKywoIkBuin5YNyc1OWQHFT1QSzlBU1xXOyIjJSMfJDEoKzc9UUtAVqjk//3WhEQsLSArLjQ6OSo+X1tNNC4gGiBPAA83U1VQYHZ5ZEw5MSQaIiwyMiwzQ1dOP0RtnbOmhVc8LCsqKzA6Oz9ATFRWRzcrIxQXOgscMTlETXKMkHRZQzowLTIqNzEnLj5MQDsyQ0pVWFQ+Ny0wLSUsMkU4NTlISD0xKiIkIC8nKio/PVB8pbKUZEU5QEBFOjkjHiUrPjcxLy8rMjs/HyUiJCsrKC4pGBQiNDMtKSAcISIrLiovRWBrjrTGp3A8MDlFRT4xJiAoHyo1Li0jLi8mLyQiIiMeGiYpIRsWJis0NjAmNCklLzQ4RXSPj5OqtqFyNCs4OjErHBknFh4kNSwgHi8uIys0OEg9KR4mKBQbHiYlIjAvJiklJjA1PFaHpaWWiIt4TyYrKikfEhEWDRIbHCA0Hw0iIyQ0X3uNflYgGxQhGBQaIhskIicqJCgjMD5XhKWoiWJQQDAuLycdFRscGBYLHiAjQ0o9LiUmQIO3xbeGPhcMGCALDxAbHR8oMSMVJzU9TmSDgmhALiEyKCUkISMqJCAdEB4wWYegj29FMk+RyN3MnFEfJSEVGBgODRAZKCsnIy05PTxNUUQ9JiMrLzIvLTAqLicfHCMoS5PP6tqgaTlGfrfLtodVMSIjISAiHwwYGy4yKS0wOCszODwqJCYzOjg1MCMjLScgHx0iKV64/f//yns4OlV/kIBfSjkqIBogMCUdIB8tNi0qMTsnLTAkIxIiPkdISjUxJy0wJBwfHRpjvf3//819QS83P0ZQRkVALiYmGA8cIyA1PEZFQzQoHiMnGx8UKzhBRkI6OCsiNyQcIRkRT5na8uGiZEI4MCc0NDM3NjEsKCMTExsnOWyMkntIHCAVHBssLCszOj0yKjQjISUoHhYMFTFgkZmHZzoxNDAyLCQiJys1MEBAKyEqNm2r0NSwaBkpKSgwKiklLDgpJSAsKSEgJx4RIRwfNkRJRTcXHiQtMyseExskJTlPRDYlITyGzvD00o4oNjY1JCcpHCcsJyYiKC0mKR8OGCMtIycgKSEMFxQeHyIjJBIWGRwrOzYrHh44g8vv7tGPLSo0Kx4oIx8gJh0hKzQeHxkUHhomNzgmFRQeCAQeFyMmIyAWIiEgICIfHRshLl6jw8amdyAyMSUVHCEVIBcpKzo0LBcdIhMfGzQyGhMOEg8UHBkgJi0yOzcxJhYdGBsbFxk2Y3h5ZlMhKjQsGRsdHxcRICw+OCgiGx0ZFCQrIBwdJB0dISocIi0pND4+Mi4hFAgZFxcfKTIyPUtJHycuIikeIh0VABU3NzkoGRgtIhknJRooLDQdHigsKyAhGis1MikqLRQIESUhJC4vQUA5PBwXGhMoKyM4Lh4hKS8xJRgRJy8fJx4gLj0uHSEyJx4XFg4fJSIaFR0fERooLjE6P0A1NTMWISFCTUc/OzwxKCotKiksFx4QDxsmOkZCOSwrNzIiHxsUHCogDwwUERQYHisvPkM5KzI/Jiw+ZHZlT0ZBNSojLjtTUC4hFhAqUGFlXT4sJicqJxYQCgceKRAPEAAADB4oLywrKho4Qi45WnqOhFY6KiIbHzFWcmpIMiIfN2CBgmU0GykWISAJAwkMFCEkHhoJCBkUKjAvHyAaNEEaOl2HmIpUHxMcFR0vWWlhRjQfFTBph4tvPiQnLkMzFwgNEAQkJSMWGBEZJDAxLCEfHys/HDJKbYd4SRoUFhwdKT5OTDkqIBgrX4OHb0EtSm91Y0QhHA8ZLDEhGR4lIjQxNCgnHh8WNjkwNUZYRyoUGBQaFjApNiclKyUWGkZna1JDQmqPnIRdNCUXIScnNCUqLiwvMjAqMywhGSU3JRkoKyggKiweHiUpKRkhJCgtJBstSlBIREdolJmCUS0lGx4cGh4xLzU7NzUzMi0hFxofGyMdIRsSHCQcFhkeFREWFxkwLzUdITIxNTk5TXJ2XjUlEhceHRcfGzRIUkg4NDUiDAAlJR4aNTYsHyEdGRwuLCccGRUfLC8sGBYZLCwtHS4+QiofGQUWFRwWEx01SFxTPDczIAIAISAULkpNOy4lDAcRICUlKB0aJicuHBESHBYaIyEcLx4YDAUKCQcTFREdNlBaYkEsJCYeGBciFy9HSDsiGxgSFR8dIyElGSIpKxMVIiMQFCAiKywcEhcNDg0WGRQXHzlSZ2BIJxghJyEkKBoiOTUkFxcQGh8UHhYeIxQcJBkZFSEiFiYqIx4cFBEXCw0RHyYiKiUqO09MNBoWEBsbIC0VKCAUBwkYGyEeFiMbJCkeFA4QFhIeJB4rLyAkHSYsHhgQHykqJiYjLTI1LSUkGRMiISgqDSgZAwIUIhkTGhwhFiIgIRkYDxEfLSAdKCwrKiovLiETFh0RJiclKTAtIRwiLiEhKDg0MAkaJxIXHBokFh8hJh8eJiUlFw0RGiEgEScrKjgtKScdEx8bFRkcIy80LxwmKScoKT1AOkAWHSQmJCMsIBEXISUcFyklHx4XICMqJCkuLis3OisoHBIYJCQkJS00PzUrJyowKSc6S0NBIysgHiklNCkkFRcqMx0pGw8TGRwoNTMuHyYvOD4xKyQjJyAoKisrMDAvMSkuJyMqPD5CNA=="}, {"det": 3, "band": [1.64, 2.42], "b64": "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"}, {"det": 4, "band": [2.42, 3.82], "b64": "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"}, {"det": 5, "band": [3.82, 4.42], "b64": "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"}, {"det": 6, "band": [4.42, 5.0], "b64": "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"}]}, "epsindib": {"pts": [[0.7565, 0.056, 0, 1], [1.0666, 14.604, 0, 1], [1.0923, 15.214, 0, 1], [1.0788, 16.912, 1, 1], [1.1044, 12.974, 1, 1], [0.9586, 5.284, 1, 1], [0.9817, 7.301, 1, 1], [1.0048, 9.353, 1, 1], [0.7947, 0.135, 1, 1], [0.8134, 0.263, 1, 1], [0.8328, 0.563, 1, 1], [0.8933, 3.374, 1, 1], [0.9145, 3.575, 1, 1], [0.9364, 16.112, 1, 1], [1.029, 12.122, 1, 1], [1.0534, 16.535, 1, 1], [0.7673, 0.061, 1, 1], [0.8524, 1.076, 1, 1], [0.8726, 1.744, 1, 1], [0.7759, 0.043, 1, 1], [0.7945, 0.099, 1, 1], [0.8327, 0.703, 1, 1], [0.8523, 1.052, 1, 1], [1.0666, 19.14, 2, 1], [1.0922, 18.02, 2, 1], [0.7565, 0.073, 2, 1], [0.7738, 0.047, 2, 1], [0.7921, 0.062, 2, 1], [0.8109, 0.269, 2, 1], [0.8301, 0.697, 2, 1], [0.8497, 1.033, 2, 1], [0.8696, 1.724, 2, 1], [0.8904, 2.622, 2, 1], [0.9113, 3.954, 2, 1], [0.9331, 4.642, 2, 1], [0.9549, 6.15, 2, 1], [0.978, 8.101, 2, 1], [1.0012, 9.905, 2, 1], [1.0251, 13.581, 2, 1], [1.0494, 17.158, 2, 1], [0.8696, 1.871, 2, 1], [1.0667, 19.622, 2, 1], [1.562, 25.041, 0, 2], [1.5996, 26.903, 0, 2], [1.1072, 10.06, 0, 2], [1.133, 9.143, 0, 2], [1.6377, 22.652, 0, 2], [1.1601, 9.84, 0, 2], [1.1877, 13.399, 0, 2], [1.2162, 20.091, 0, 2], [1.2453, 25.304, 0, 2], [1.5759, 26.772, 0, 2], [1.6136, 26.973, 0, 2], [1.6516, 22.382, 0, 2], [1.2748, 30.881, 0, 2], [1.3052, 26.186, 0, 2], [1.3361, 10.476, 0, 2], [1.3681, 4.128, 0, 2], [1.5759, 30.123, 0, 2], [1.6135, 26.117, 0, 2], [1.6516, 23.338, 0, 2], [1.1072, 10.824, 1, 2], [1.1331, 10.792, 1, 2], [1.1603, 10.639, 1, 2], [1.1879, 14.442, 1, 2], [1.2163, 20.27, 1, 2], [1.2454, 24.32, 1, 2], [1.2751, 32.313, 1, 2], [1.5625, 26.348, 1, 2], [1.6, 28.612, 1, 2], [1.6382, 24.801, 1, 2], [1.4344, 5.235, 1, 2], [1.4689, 10.197, 1, 2], [1.5046, 13.697, 1, 2], [1.1097, 12.332, 2, 2], [1.1626, 13.251, 2, 2], [1.1885, 13.541, 2, 2], [1.2461, 27.081, 2, 2], [1.2757, 34.412, 2, 2], [1.337, 10.714, 2, 2], [1.369, 4.605, 2, 2], [1.4014, 4.077, 2, 2], [1.5421, 25.738, 2, 2], [1.6175, 29.767, 2, 2], [1.3061, 30.269, 2, 2], [1.1086, 11.714, 2, 2], [1.1611, 10.951, 2, 2], [1.1352, 11.796, 2, 2], [1.1624, 12.033, 2, 2], [1.2169, 25.477, 2, 2], [1.3368, 10.584, 2, 2], [1.5792, 33.718, 2, 2], [1.1607, 12.164, 2, 2], [1.1085, 11.116, 2, 2], [1.1342, 10.946, 2, 2], [1.161, 11.133, 2, 2], [1.4693, 11.01, 2, 2], [1.5051, 17.851, 2, 2], [1.4693, 10.698, 2, 2], [1.5051, 16.15, 2, 2], [1.1607, 12.016, 2, 2], [1.1883, 15.553, 2, 2], [1.2168, 23.788, 2, 2], [1.2458, 21.896, 2, 2], [1.107, 13.39, 3, 2], [1.3052, 34.965, 3, 2], [1.336, 12.526, 3, 2], [1.3679, 5.397, 3, 2], [1.4003, 5.532, 3, 2], [1.5408, 29.589, 3, 2], [1.5407, 29.343, 3, 2], [1.1353, 12.294, 4, 2], [1.3855, 6.03, 4, 2], [1.4187, 5.099, 4, 2], [1.4526, 9.764, 4, 2], [1.0949, 17.37, 4, 2], [1.3689, 5.723, 4, 2], [1.5793, 37.955, 4, 2], [1.12, 12.202, 4, 2], [1.1463, 12.705, 4, 2], [1.217, 26.181, 4, 2], [1.3369, 11.666, 4, 2], [1.4879, 14.633, 4, 2], [1.524, 24.007, 4, 2], [1.5613, 35.406, 4, 2], [1.1476, 13.04, 4, 2], [1.175, 14.638, 4, 2], [1.2033, 22.902, 4, 2], [1.2319, 30.684, 4, 2], [1.2614, 37.636, 4, 2], [1.2912, 38.328, 4, 2], [1.5987, 36.582, 4, 2], [1.637, 30.98, 4, 2], [1.3219, 26.425, 4, 2], [1.3534, 5.172, 4, 2], [1.6473, 23.963, 0, 3], [1.6851, 20.184, 0, 3], [1.7243, 17.762, 0, 3], [1.7638, 14.202, 0, 3], [1.8053, 9.664, 0, 3], [1.8476, 6.955, 0, 3], [1.8908, 8.714, 0, 3], [1.9344, 9.065, 0, 3], [1.9793, 11.426, 0, 3], [2.0248, 14.921, 0, 3], [2.0719, 18.785, 0, 3], [2.1203, 21.855, 0, 3], [2.1696, 17.881, 0, 3], [2.3764, 7.989, 0, 3], [2.4202, 9.097, 0, 3], [1.6852, 22.424, 0, 3], [1.7244, 18.459, 0, 3], [2.4201, 8.757, 0, 3], [2.3764, 8.167, 0, 3], [2.4201, 9.987, 0, 3], [1.6851, 21.139, 0, 3], [1.7243, 19.036, 0, 3], [1.764, 12.985, 0, 3], [1.8478, 7.604, 0, 3], [1.891, 9.695, 0, 3], [1.9348, 9.66, 0, 3], [1.6381, 26.496, 1, 3], [1.6758, 25.158, 1, 3], [1.7799, 11.431, 1, 3], [1.8219, 8.919, 1, 3], [1.8643, 8.053, 1, 3], [1.9078, 10.984, 1, 3], [1.9515, 10.284, 1, 3], [1.9968, 13.898, 1, 3], [2.0426, 19.919, 1, 3], [2.0902, 23.729, 1, 3], [2.1387, 22.144, 1, 3], [2.1886, 18.008, 1, 3], [2.2394, 14.962, 1, 3], [2.291, 10.778, 1, 3], [1.7143, 23.854, 1, 3], [2.3432, 9.458, 1, 3], [2.3958, 10.165, 1, 3], [1.7401, 17.613, 1, 3], [2.1883, 18.638, 1, 3], [1.7398, 18.967, 1, 3], [1.7798, 12.062, 1, 3], [1.8641, 8.146, 1, 3], [1.9075, 11.131, 1, 3], [1.8051, 11.046, 2, 3], [1.979, 13.749, 2, 3], [2.0247, 19.806, 2, 3], [2.0716, 25.806, 2, 3], [2.1201, 26.351, 2, 3], [2.1691, 23.476, 2, 3], [2.2197, 17.125, 2, 3], [2.2708, 13.604, 2, 3], [2.3233, 11.042, 2, 3], [2.1692, 23.535, 2, 3], [1.6438, 28.452, 2, 3], [1.979, 13.721, 2, 3], [1.7215, 25.477, 3, 3], [1.7614, 16.841, 3, 3], [1.8015, 10.677, 3, 3], [1.8437, 9.036, 3, 3], [1.973, 12.448, 3, 3], [2.0188, 18.857, 3, 3], [2.0644, 24.733, 3, 3], [2.1125, 26.136, 3, 3], [2.1609, 23.475, 3, 3], [2.2109, 18.16, 3, 3], [2.2609, 14.37, 3, 3], [2.3127, 11.158, 3, 3], [2.3652, 10.573, 3, 3], [2.414, 13.69, 3, 3], [1.8856, 11.468, 3, 3], [1.9293, 11.439, 3, 3], [1.6203, 30.901, 3, 3], [1.6569, 30.062, 3, 3], [1.978, 11.967, 3, 3], [2.024, 20.125, 3, 3], [2.0705, 26.402, 3, 3], [2.1191, 27.189, 3, 3], [1.6944, 28.905, 3, 3], [2.1677, 23.426, 3, 3], [2.2185, 17.885, 3, 3], [2.2695, 13.881, 3, 3], [2.3219, 11.147, 3, 3], [1.7239, 25.529, 3, 3], [2.3742, 10.777, 3, 3], [2.4196, 12.362, 3, 3], [1.7238, 25.737, 3, 3], [1.764, 16.703, 3, 3], [1.8049, 10.948, 3, 3], [1.8473, 9.051, 3, 3], [1.8898, 10.833, 3, 3], [1.9338, 11.494, 3, 3], [2.415, 9.4, 0, 4], [2.4586, 8.305, 0, 4], [3.6427, 18.417, 0, 4], [3.7412, 26.843, 0, 4], [3.6879, 29.958, 1, 4], [3.7866, 35.712, 1, 4], [3.2273, 7.945, 1, 4], [3.3139, 7.992, 1, 4], [3.4046, 8.619, 1, 4], [2.6, 7.064, 1, 4], [2.6713, 6.676, 1, 4], [2.7437, 7.186, 1, 4], [2.9751, 14.292, 1, 4], [3.0564, 15.054, 1, 4], [3.1407, 9.38, 1, 4], [3.4966, 11.225, 1, 4], [3.5908, 16.673, 1, 4], [2.4982, 8.396, 1, 4], [2.4415, 10.833, 1, 4], [2.8179, 7.738, 1, 4], [2.8944, 10.665, 1, 4], [2.4981, 8.359, 1, 4], [2.5313, 7.112, 1, 4], [2.5313, 7.287, 1, 4], [2.5995, 7.266, 1, 4], [2.7433, 7.353, 1, 4], [2.8176, 8.629, 1, 4], [3.6425, 24.639, 2, 4], [3.741, 35.75, 2, 4], [2.415, 12.546, 2, 4], [2.4584, 11.193, 2, 4], [2.523, 7.977, 2, 4], [2.5912, 7.641, 2, 4], [2.6612, 8.174, 2, 4], [2.7332, 7.615, 2, 4], [2.807, 8.744, 2, 4], [2.9622, 15.086, 2, 4], [3.0433, 16.899, 2, 4], [3.1272, 11.21, 2, 4], [3.2126, 8.428, 2, 4], [3.3003, 9.635, 2, 4], [3.3899, 10.21, 2, 4], [3.4812, 12.015, 2, 4], [3.5744, 17.887, 2, 4], [2.8837, 11.303, 2, 4], [3.6429, 25.27, 2, 4], [4.3412, 23.83, 0, 5], [4.3783, 20.453, 0, 5], [3.8293, 33.118, 0, 5], [4.4154, 17.278, 0, 5], [3.9295, 36.947, 0, 5], [3.9638, 36.985, 0, 5], [3.9984, 38.281, 0, 5], [4.3548, 24.12, 0, 5], [4.3901, 19.924, 0, 5], [4.4238, 17.449, 0, 5], [4.033, 40.342, 0, 5], [4.0683, 39.094, 0, 5], [4.1038, 40.853, 0, 5], [4.1394, 37.965, 0, 5], [4.3548, 570.455, 0, 5], [4.39, 20.79, 0, 5], [4.4238, 18.7, 0, 5], [3.8626, 37.082, 1, 5], [3.8961, 36.002, 1, 5], [3.9639, 40.589, 1, 5], [3.9986, 41.397, 1, 5], [4.0335, 43.382, 1, 5], [4.3417, 24.671, 1, 5], [4.3788, 22.477, 1, 5], [4.4159, 19.537, 1, 5], [4.2113, 29.36, 1, 5], [4.2475, 26.12, 1, 5], [4.284, 26.433, 1, 5], [3.9304, 42.912, 2, 5], [3.9993, 51.633, 2, 5], [4.0343, 46.984, 2, 5], [4.1406, 44.369, 2, 5], [4.1764, 40.722, 2, 5], [4.2124, 30.843, 2, 5], [4.3217, 27.874, 2, 5], [4.396, 23.572, 2, 5], [4.0694, 46.833, 2, 5], [3.8652, 37.801, 2, 5], [3.8987, 40.672, 2, 5], [3.9645, 44.247, 2, 5], [4.1046, 46.396, 2, 5], [4.3584, 26.554, 2, 5], [3.8965, 42.361, 2, 5], [3.8311, 71.727, 2, 5], [3.864, 40.075, 2, 5], [3.8973, 40.003, 2, 5], [4.2483, 28.233, 2, 5], [4.2848, 28.898, 2, 5], [3.8964, 42.585, 2, 5], [3.9301, 45.533, 2, 5], [3.9644, 47.061, 2, 5], [3.999, 47.675, 2, 5], [3.8291, 43.188, 3, 5], [4.0683, 53.281, 3, 5], [4.1037, 52.016, 3, 5], [4.1393, 49.701, 3, 5], [4.175, 45.047, 3, 5], [4.3203, 30.411, 3, 5], [3.8653, 45.883, 4, 5], [4.1589, 49.698, 4, 5], [4.195, 40.937, 4, 5], [4.231, 32.261, 4, 5], [3.8132, 42.304, 4, 5], [4.1404, 43.492, 4, 5], [4.3586, 29.777, 4, 5], [3.8459, 43.735, 4, 5], [3.8791, 46.066, 4, 5], [3.9646, 49.605, 4, 5], [4.1047, 51.457, 4, 5], [4.2672, 32.926, 4, 5], [4.3038, 31.431, 4, 5], [4.3407, 29.286, 4, 5], [3.8805, 46.355, 4, 5], [3.9141, 48.113, 4, 5], [3.9483, 50.86, 4, 5], [3.9825, 51.728, 4, 5], [4.0175, 52.602, 4, 5], [4.0525, 53.596, 4, 5], [4.3776, 28.483, 4, 5], [4.4149, 24.927, 4, 5], [4.0876, 52.304, 4, 5], [4.1232, 50.116, 4, 5], [4.4312, 16.309, 0, 6], [4.4628, 14.703, 0, 6], [4.4951, 13.019, 0, 6], [4.5277, 11.258, 0, 6], [4.5607, 10.814, 0, 6], [4.594, 12.273, 0, 6], [4.6274, 12.111, 0, 6], [4.6611, 16.665, 0, 6], [4.6951, 15.952, 0, 6], [4.7295, 12.717, 0, 6], [4.7641, 12.444, 0, 6], [4.7987, 14.986, 0, 6], [4.8331, 12.905, 0, 6], [4.9758, 16.659, 0, 6], [4.4313, 17.253, 0, 6], [4.4629, 14.861, 0, 6], [4.4953, 13.565, 0, 6], [4.9758, 17.488, 0, 6], [4.4628, 14.934, 0, 6], [4.4952, 13.807, 0, 6], [4.5278, 12.825, 0, 6], [4.5942, 12.194, 0, 6], [4.6276, 12.666, 0, 6], [4.6614, 17.048, 0, 6], [4.4233, 20.811, 1, 6], [4.4548, 17.842, 1, 6], [4.5407, 13.389, 1, 6], [4.5737, 13.846, 1, 6], [4.607, 14.725, 1, 6], [4.6407, 16.099, 1, 6], [4.6747, 18.558, 1, 6], [4.7089, 15.998, 1, 6], [4.7431, 14.658, 1, 6], [4.7774, 13.843, 1, 6], [4.8119, 16.188, 1, 6], [4.882, 16.251, 1, 6], [4.9179, 17.08, 1, 6], [4.9536, 16.528, 1, 6], [4.9896, 18.431, 1, 6], [4.5083, 14.495, 1, 6], [4.8463, 15.996, 1, 6], [4.5081, 15.316, 1, 6], [4.5406, 13.278, 1, 6], [4.6068, 15.175, 1, 6], [4.6404, 15.663, 1, 6], [4.5606, 14.699, 2, 6], [4.7294, 16.303, 2, 6], [4.764, 16.356, 2, 6], [4.7985, 17.118, 2, 6], [4.8328, 17.522, 2, 6], [4.8681, 18.119, 2, 6], [4.9039, 19.239, 2, 6], [4.94, 17.47, 2, 6], [4.8329, 17.451, 2, 6], [4.4281, 22.557, 2, 6], [4.6948, 19.613, 2, 6], [4.4921, 15.198, 3, 6], [4.5566, 13.968, 3, 6], [4.5898, 15.736, 3, 6], [4.6904, 19.628, 3, 6], [4.7245, 16.91, 3, 6], [4.7583, 17.304, 3, 6], [4.7924, 16.056, 3, 6], [4.8269, 16.839, 3, 6], [4.8615, 17.682, 3, 6], [4.8969, 18.013, 3, 6], [4.9327, 63.38, 3, 6], [4.9687, 19.531, 3, 6], [5.0046, 19.992, 3, 6], [4.6229, 15.021, 3, 6], [4.6566, 19.528, 3, 6], [4.4077, 26.013, 3, 6], [4.4391, 21.268, 3, 6], [4.695, 19.691, 3, 6], [4.7292, 17.885, 3, 6], [4.7633, 16.494, 3, 6], [4.7977, 15.277, 3, 6], [4.4704, 18.967, 3, 6], [4.8322, 17.754, 3, 6], [4.8671, 18.339, 3, 6], [4.9031, 19.243, 3, 6], [4.495, 17.078, 3, 6], [4.9749, 20.248, 3, 6], [5.0111, 18.886, 3, 6], [4.495, 18.009, 3, 6], [4.5277, 15.406, 3, 6], [4.5604, 15.893, 3, 6], [4.5936, 15.595, 3, 6], [4.6267, 16.397, 3, 6], [4.6608, 20.141, 3, 6]], "visits": [{"pos": [27.21, 24.34], "b64": "FxceIB8jIiEcGhwaFhYWGBcWGRgbGh4iJiQiIiEhICQmJiUmJictLy8vLzA2PD4+NjQyNRMVGBoXGhsbGBkaGhYUFxcZGBYXGBogKi8sKSMhHiEjIyQkJScoLTEzLi0uMTIxNjI3NTYQExYXExIXGRkYGxoaFxcYGxgUFhkcIis1Ni8lHx0eISMjJykqKSksLy4sKi4vMDIyMzU2EhQVFBQRExkXFhgZGhkYFhgVFhoeICItNzszJx4cHx8iIyUpKy4tKy0tKy0tMTExLzA0NA4SFA8TEhUVFhYXGRgVFxcZGR0hISImLDU2LyMdGx0gIyEiJygrLi8uLzAwLS4wMDM2NDQPDRAQFxYWFhQWGRoWFhgaGBwiJyknJScsLCchIB8iISQmJSQnLC4vLiouMDAvLTQ2Nzg2Dg4PExgVGhgaHyAdGRcYGxgcJCkpJyEhISAgIR4gISMkJSUmJikpLSsrLTIvLi0yOTg3OBQREBQXGRYbJDQ8NicbGBocHCAlJiIgHx4eHx4fHyAhJSQoJycqKCcsLC0xLi8vMzY2NjYXFRQTExYUHjRVY1k+IRocGxweHh0fICAeICEfHB0iIyMmJScoKicpLCwsLywsLzE1NzY2FhYXFBQWFCBGbHttRB0aGhseHBodHh0dHyEiIiAfHiAlJiYnKSkpLCwrKy0qLTAxNTg1NBUWFxURFhccQGZ6ZD0aGBoaGxsZHBwbHBwfIiMjIh0gJCgnJygpLzU1Li4uLC0vMjY2NzUSExMTEBQWGyVCUUIpGhsbGhoaGhkcHBwdICEkIyAeHSEoJiorLTc/PzcuKy8wMDQ3NTU2EhIPEhQZFRcbISgkGBobGx0bGRgZGhodHh8iISIhISEjKCUoKzM7Q0U6My0wMDQ1NzU2OB0WEREVGBUUFBYYGBcYGhocGxgYGRobHB8iIiIhHyMmJiYlKiwyOD9AOjIwMTQ0NzU1OjoeGRIPExcWFBQREBYVFhcWGx0bGxsfHh4bHx8hIiMkJSYlJi0uMTM2NjMvLzAyODs4Njk6HBURDxESEhIREREUFxkZFhgZHCEhISEdHx0fIiUnJygnJCQsLzAuLy0tLzAxLzU5Ojc4OBcVDhAREA0RExMUFhocGRcXGB4hISMiHx4kJCMkKCcpKyUjJiwsLCwuLjAwMC8yNDg2NDgREREUERAPEBIUGRYaHBwYGRgaHyIhJCImJyYmJyYoLSwnJCYpKykrLC4wMS8tMTQ3ODc4EhQQEhMTEhMUFhcXGBscGhkZHB0hIB8hJy4uKy0sLC0nJyQnJycoKi0rLC8vMjM0NTc5ORUUEhMWGRgXGBkZGRgYHRweGx8hHyQkJSwyNjg1NDIsJyYpKywqKiooKSsvMjIyNDc3ODsQFBQVHCYwJx4aFxYYFxsfHBscHyElKS42QkpLTkU5MSsrLCopKSwqKyoqMDIzNTY7PDk9DxETFiZBUUUvHBkYGhocHR8dHRoiKS81Q2d+iHtoTTcxMjIvKi8pKywtKjAyMzk/S1FJRA8OExgvT2FdQiMbIBwbHSEhIR8fIyo1Q2Gd0vfUo2ZFNTAvMC0tKSkrLi8xMTRAWX6KeF8NEBAYLkVaUTgjHyQiHB0iIiMjICYtOEmPvv////+qXTgwLiwvLisqKiwwMC42SHyms6WFDQ4SFx8sOjMpGiAkJB4dISMjIiMjKTlcoO7/////y3g9LSwsLS0sKSorMTU0OliMu8q8kwwTFRcXHBsZFxYaHyEdGxwhIiIgHSUxVZjs/////8pkPi8rLC0sLCkqLDA0NjhThq+8s4gVFBUUFhYSERMXGBodIRwaHR8gICAmLkR+yPv//+WdUzcxLSwsKi8qKy0vODg4RGN/mZRvFBMTFRkSERIUFxcbHh4dGhwdHR8iKCk1THup2syjY0E0LiwrLS4tKyovNUFFPzlATmdoXBUVGBcVExMTEhIVFRsbGRkbGxwhJSYoLDlMXWliW0c4Ly8rLDMyMy4qMT9LT0U5QEhba2YXFhkZFBIVFRUWFRQXHBwaGxgcICYmJCUpNDw/PTs1MS0rKy8zNjUtLDE+R01HPDtEVmpjFhkaFxQXFRQVGRQUGRwcGx0eGiEkJCIgJCouLSsrKywpKCkuNDc2LywvNT5BPzo3PktZVxQTExYVFxMUFBYTFxoaGxwfIh4dHx4dHh8kJicmJSgpJyQnLDI0MS4vLTAyNzYzMzU8QkQREBIUFBYTFRYTExQUFxYYHR4cHB4fHCElJyQkIyQjKCUkJiotMC8tMDExLjIzMDA1N0E+EA8UFBQUDxMYFBMTExYWFxscGBkcGyAjISMiIyAiIycpKCklKi4tLCsvNDMzMjIvMjc8PRUVFhYUEhEVGRcVExgbFxcdHRwYGh0gJCcnIyEgIiQoKSkqKCorKioqLzM2NzYzMTM0OjkYFRYZFBUWGBYXGhkbGhoaHhwgHBkbHiMjJSQjIiclKCsrLC0tLC0sLCswNTo6NzIyNzY3FhMZHB0ZFxkZGhoaGRoaGhweHR0bGxkdICMmIyUlJycrLi8uKSwtListMDU3PDkzMzMyMxYWGh8jHxwbGRgXFBQXGBoZHB0dGxscHCAiJCUnJikqLS8tLCksLC0sLi4yNTw3NzY3NDQaFhkgKSgeGRUTFBMTGBcYFxseGRodHh8gIiMkKCcpKisrLiwrJigrLSsvLjA0Njk6OTUyGRcYHSUkHRYTEhQUFhcZFxcYHB8mJCMfICMlJSQoKSkqKiwsLCwrLSktLysuMzQ3OTs1NhcVFhUZGRUVExIUFxUZGhYZGyIwPEA0JSAlJyooKCcnKC0qKioqKywsLCwvMDExMzg4NTYVFBQXFhcVFRMSFBQWGRkXHB4rR1ddRTEsNz41MSknJygrJyspJikqLiwsMjAzMzM0NjM1FRcWFRUVFRcVFBMYFhgXFx4pN1JnaE46PVtuZ0ovJyQlJiUpKycoKioqLTAuLzEyMi8zMxIRExUVERMUEhEUFRgYFhkjM0JQXWFIN0VzjohnPS8mJCcoLC0nJyorKy4xLy8zMzEyNDYREBESEQ8VFBQUERITGRweLjtBPkA+MTFJdY+LckY2LyYnKS0uLicoLSwuMzE0NzM1NTQ2FBQRDxAWExcZFRMSExocHyk1NzInIiMnNldsa1hNSj8zKiorKSkqLy8sLzI0MzY1MjY4ORYWEhUVExQWFRUVEhEXGRogJiolHx4dISgzPkNPWF1VQS8pKCgqJyksLzMyMTA0NjQ2Nz8bGBUQEBcUFRMSERAXGh0aHB8eHRobHR4cJCo3SF9nW0MtJCkqLCknKi8yMDAxMDUyMzpFJR8YERQVERYVERIUFhwfHBobHhwYHB4cISMnMEBRV049LCovMS8qKistLzExMDEwLzQ9TDEoHhMQEBYXFxUUFhYYGBgWGBwbGRwcHB8gJCszOD88MS0vNDUwKyssLy8tMC4tLS4wOUgxLiAVDxAPEhMVFBYVEhYUFRcZGRobHhoeISIpKjAzNDEvN0I9MCopKSkrLTAwLi0vMDY+JCQdFQ8PDxAOERQSFBcXFRYZGBoZGxocHiEjJygsMTQvLzk9Oy0lKCkoKy0wLy0xNDU2Og=="}, {"pos": [27.2, 24.5], "b64": "HB0dIy0qJyEcHRoaGBgVFxgXFxodGx8hIyIjJCMdISEhJCYoKisxMC8pLC8vNT5BNjU3NRcZHB4fIBoYFhMXGBgUFRkYGxoYGx4jJzEvJyQkHSkkIycnJyksLC4uLissJy02NzQ1MiwVFhwWFx4ZGBQWGRwYFhcYGRsaGhkeJC01ODInJSMnJiglISQoJiksLi8rKCcqLzYyMS4wExYXFBccGxkTFhsdHRoRFhsZHCEiHyYtPD4zJyAgJCUlIyAjJScpLDAuLiwtLDAzMjEzMxIWFxIUGh0XEhQcHB0ZFRkbHSAoJiIhLDY2MCkgIiQkJSYjIicpLC4wMzEwMDAxNzE1NjkQExQUFRcaFxYcGRsbGhoeHB8jLCggHSMsLSYlJCQlJSYkJCQkJiwzNDEzMDExMjUyNz89ExUYFRUXFBcaISAaGRoaHB0gJSonISAfICAgISMjISMjIyMnKystMzMxMi0sLjE0Njo9PBgYGxgWFhQYJjRCNSUYHRsaHiMkISQjIiEfHSAiISImJCIjKCwoKi4wMS4uLSorMjY5NzgUGBoTGBkXIDxTbFs5IhkYFhkeHh8jJCIhISQhHh8eISUlIicoJigtLy0tMisrLzQ5ODs2GRkXGRcWGCVJboRzTSkcGxgZHSEdICEjICYkIx4hICMkJSYpKSssMC0vMDEsMjM8Ozo4NxcZFxYWEBciQGdzaEEkGBwaHBwYHB0hHiIlISIgIyIlIyQoLC4sMTQ0LC0qLDIxNjc3OTUTFBMQEhUYHCZITkIuHhodGhoZGxgbHh8hHiIjJCMjJCQnKScqKjJCQDYwKi85Ojc3NjQ2ERAUEQ8VFxkZHiMhHRsZGxsYFxgZHyAgIR4fISUlJyYmKS0jKy43Rkg7My0xNzw3MzIzNhgVFxYUFRkVExEXGBkZFxgbGhsWGR4gIiAhHx8hJiglJjElKC4yOEA+OC8vMTg4NTE0NzkdGRkXEhQWExESFBgcGRoaGh8iHB0dHyAiIyIjJSgoJygrJicqLjI2NjQxMTE2Ojc3Njo6GRQTExASFRQVFRMaHR8bHR4hIhwcGB0jJCckJSYlJiYoLSspKS4sLS4xLDI0Oj04NTY4OBYPEBISFRcZGxgVGRoZHB4dHyQhGRwdICUmIyQnKCkpKiwvLCsuLSwtLiwvNTo8OTk4OTcWFRQVFBQVFRcYGBYWGhoc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"}, {"pos": [26.97, 24.9], "b64": "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"}, {"pos": [26.04, 25.23], "b64": "ExcjKS4uKysgExMWFBUYGBkgJRkfJCQlKS0kHB8fJiolKS0rLS0zOTY1Mzg7QUQ3ODM3PRYVFB8mJiQeGBcYIBkbGxocIx8aHyUrMjU0LCQhHyQkIiYpLC4xMzY3MS41Nzo3NzoxNzwUDxIaFhsYGBQRGiMiIx8cGxkcICElKDQ7PTYtJCcmIiQoLy0vMDE0MS0uNDs4OTg0MDEyGRQUFxITFBYRHR0lJiMkHh0hHx4cICMrOj8+MyslLiolLzMsKDExNTMzOTc5OTk5NDM0NxUZFhcUDRYdGhwdHRscHyMlJCohHyIjJjNANygoJykoKC0yKCcwNzo0QDc0PT04NTo9OTsWHBgaFhkUGCIlIBcZHx0gJSgoKywmJyQsKy0hIyMnJSopLScoMTY1LzgyNzg0OTo8Qz47HxofIB0dGRgjJighHR8bGiUmKzIuJiAjJigiIy4qIiYqKSopKS0xLis3LzY1Ozo7PEA/OhkWFx4gHR0VJz5JOiQfGhcgJSEqKSEYGCAmIyItKyEnKSonJistLy41PDkwNTs9Ozc6Pj0WFxofGRkgI0Foc2ZIKxsdGx4hHyEeGRgfKygmJygmKysoKikvLiwvOj4+NT48ODo6PD47ExkeHx0WGSRXfodzVTMeFhgVGB4iIxwZIyYmJiIoJCgrJiopLi0uMDY2MDA2Ozk5PDo8OxMYGhUXEREoT3B8dkwhHRUUFhYaICAlIR4iJh8iISYlKiIpJy0wNTs8MysrNTs5OjxAREYZGhQVEhgZHi9QWlU4HRgUExsaGxwgJiMiJSwmHyInKSUiJSktLTpFTkA2MTc4OTg7QEVFHxcMFBYXIRkYKTUxGhETFRsaGxsfIigmHyYrKSclLCooKyorMzhCTk1KPTc0Nzc6NDk+RB8WEhQZFxcaHRwcHRcSExUeICEeIiclIyAjKicqLCgoLSwsLDk8P0dFRDoxNjY1OTY4O0EnHRYaFxQWGhwcGxYTFhcdHiMdGiAkJyknJSgtLTAsKywqLzM3Ojo7Nzo2Mzc6OD08PD4+KCIdGRcVFBoaHBsZGxYVGR0jIR4jJCYtMSouLyksLDEsKio3OTk2MDY4Njw/OztDREA7PBUUDhUSExgcHR8eGRoXFBUbIhodJikkJisoKS4vJSg1LCwrNTo2NDMzMzs6OTc6PkJCQEEODxIREBcaGRkZGhcVEhYWFB0VHCcoHh8iJC0oJystOCkqLC0wNS4tKystMDk6QD09Q0FHEhEUCg4RFxkXEhEPFhcYGRgdHR8eIiAoICMoKSAoKi8vLC8wMjItLSsqLy00Mjk8PjZERRUYFBYYFxobFRMNEBUdGxwhICMkIiIjKCssLyElLTAoLSsvKy0wMTAwMzYzNDI5Oz06OT0UGBUdIy02LyUZExQZHRoaIyMmKCUjKTE2NjUvLCwrLSosLSksKzAsLTQ6Ojg4Oj4+QkBEERQYIDZPWlI7JRwdHh4aJSksKCkiJCo7QEVWSDczLzAtLi4rKC0qKjAzOT07OD5LXFpKThMSFyU+YG13VC0dJCAhJioqMi0rLDdCVmh+gotpRTg3My8qKysvMjEyNzc5PDtGVo+mkHISFBIhN1JqYUwqJColICgrKS8tLjE0P2yQ9v/XgmBINDUzLiorMzQzMjAyODxCUoi+27+WEBkcISw1ST4uICMlIyQnIyozLiwrLUt14P///+6LSzUuLCIpKjIzMzIpKzM3P1mm4OfeoBUbHB8fIyYlEBgbHycjJSMpKikoKixViP//////w0ksKiscIykxMjQ3MS0zNTpYm9ffxZwQGBgTHB0cFRMPFhwmIiAdIyYoKS85UIv//////7RHLyonJSYuMDI7NzE1ODo6RHeZtqGHDRULDxcZGRUYHBUbJCAdHyIlKCc1MTqH0Pf/8dF1RzMuMC0vNzYwNTk7PEZHPz5EX3V/bxgRDxAZFBYWHyEaHxYaHSEiISQnLyovRYepsKyCWkU3Ly0wNjw/OTU4O0NOVkw6PlJqgHgUERITERgXGiQiGRcbGR8jIiInKSomLj9IU15jTkA1LzExMjVARTwzMjFBUlZKODlTbX95FxQVFhURGR4aGychHBcdIiUlIyYmKCkxNzk4NDQwKS8tLzM3PT47MjI0O0dOQzg/TVhvaQ0TEg8UFRoeFRchISMhHRwiJSskIiQlKismKi8tJiEuLi0yNjk4OTEzNDM4PEI9QEVOVFMNDxEOEhUUFQ8UGRwhIBwaIicpJR8hJSgsLSkrKickKiorLTEzMjMxLzIxNDlBRENCQ0hKDRQRExQUDhcVGBoYHiMeICMnJyIfIyQnLCwqJyomKCshJS8zLicvMTA3OTM3P0E6QT1GRhAXFBcUGhkXHxsVGx8lHiEeICIiHhomKi0rJisrKB8pKykwMSoqLzUwMjAzND09PDs6QEIRERwcHx4SGRsXGRcZIiMeISQiIRsaJCsvLSgoKCIkJCotMS4vKjAuLisxLzc/Pz09NzlCDREZISQlIBsZFxMXISEjGyEeGiQZHB4kKykoISUjJSQoMTIuKi4xKigoMjU8QT49OzM5QRAYGSgsJRwgGxoVFxYhIBocIBsiHyEfKSsoJyQoJywsMjQ0NC8uKSknKSw1OTs5Pjs9P0UTFB0zNisjHSIZGRkbGRsXHh8hISUfHiUoJygkJScrMTIyMjEvLi0rLS4zNj8/Oz5GREVLEBMXKS8sIR4bFxUXGBgbGSIgJCUoKCMmKCMoKScjKDEyLywsJygoMDQ1NTU6Pzw8QkdGSxUUExcfIBwcExMTFhUcHx4gHCE4RUAtLystJy0oKCowMC4hLS4sLTA4ODY6NT05NzxFREEaGhQRFBogIBkTFRsaEhoaIB0xV2pfSzMsSk9CMygtLi4mKC0yMTIyNjY5Ojo5Ojk5P0NBExASGBQZHRsaGRgcHx4ZHCEuQWF5e2Q/RHCHglY5LCotLi4tLC8zNTc6Ozg5ODg/PkFBQRUQDB4THCQgHBgZGiUiHCEtOEpYYmldO1mIo6N8SDQxLTEwLSstMjw2NDk6O0FFQ0NDPEERFxIQECEcGRcSExYZIB0gL0NPR01DPjlZj5+XiFE2PTY3NTAqLDAzNTI5PkFBSEFDP0JDGBsLDBQWFRUXFxQSEhshJC5ASjspKSoyTmFyg3NRVlFCPzM3LzAxLzA2PDxBQEE9Qj1EQhseFRQMDQ8RGRkYExAUFh0jNDUjIyQmKC5ATVhncm9uTkA2NDAtLy8wMDQ0Lzg+QD4/QjwlHxIOCwoQERccGhQYGxYcHSQjFyAjIyYpLjVCVHOAbks2MC8wKyspMDEyMjE5PkRGQz9MIyEXFA0NFRcZIBwYHh8bFxcXGyEhIiAiKzEvNElhcGJBNjQzNDUnLS80LzEyNz1BR0Q/VDYoHxoTDRYcHhwaGRYWEQ0OFxsZGx8hIiMpLy80QVFIOzU3Ozk0LzMuLzQ0LTM5ODs/RVE/NCkdGBEYHB0YEBMXFRgYFhodHBkZGyAnJygrLjY7ODI4QEI7NDMxMSouMy0yNjU1ODtHLi4qFhITGhkYFxASExQWGBgbHh4dGB0gJCcrKCU0Pj02NkFQPS8zMzMzMzIwLjU1ODw/Pw=="}, {"pos": [25.73, 25.7], "b64": "GBweIiguMC4sJSAdGRcWFxcZGBgaGh0jJCIfHyAfICIkJSMjJCUkKC0tLCovPD88NTIyNRQcGxobISMiISIfHhwUFBQYFBQYHBsfKjIuKCAfHiIkJSEiIyUjIScuLywnKywvMDIxMDQQGRwZExkhHB0cHyAcFxIXGBQXGBoaIDI/QTYpIx8iIiEgIyYoJCQqMDArKSkuLi4uMjUyERcZFxMVHRwWFxkeHBQRFBgZGRYdGiIyREU8KyMhHSEeHiMqJSMqLy8tLC0sMC4uLzAxNRAUFxMTFR4eGRYXGRkYGBkZGh0fIRogLj09NisjHx0gISMlJyMiKi4sJyorLCssKi8zNzoREhYRFBscFxUUFRcdGhsdGx0jKCgiGyQtLiklISEgISEjKCYkJiwrKiYoKygsLS0zOj47ExITERcaGhMVFRodGhkZHRwdICcqJR4fISYmISAgIiUlJCQmKSktKSkoLSorLCwtNTo6OhESERAZHBgWIThLPyMbHiAgHx8lJSAbHSAjIiMgISUoJiMkJygoJiYoLC4rLi0vMjg6OTYSFRQWHB0dHjVlf2lBIyEjIBweHRoaGBoeICIiHSAkJSUkJCgqKSgsKSwqKy4tMTM3ODk3FRoaGhwZHCFMeo9/VS0hHBseGhkZFxodHRsfHx4iJCAlIiQnKSwsMDAuKy0xMS0zODo5OhIYGhoYGBYkRnJ8cEoqHhobHRsaFxgcHR0dHx4dICMiJCInKCktLzU5NS4xMTEvMjg6ODcPFRYXFRUVGjBOW082HRoZGhwcHBocGhocHh8fHh0eHiMiJSYrLDNBQjg0NDMxKzI4OTc4ERQVExUYGBgaJC8oIhgXGBodHB4fHBobGh4iIR4gHSAjJiQnLDA6SEg+MzEyMjI0Nzc2NRsVEhAWFhYTFBkXFRkYFh0gHB0eIB0bHh4bHyIiIR0hJSUlJyswNkBANS8uMDE1NzczMjglGhEOEBQYFhQWFhIVFRcbHhkXHSIhHSEhHx8eIiIiJyUlJyorLC81MzExLjAzNzk5NjY3IxkMDBIUGhkXGBcSGRgWFhkZFh0jIh0fIB8gISQkIiQnJygpKy0vLCwuKyguMzg7PDg2OB8YEBATFhgYFhkZFxgZGRQYGRoZHiEhHR0iJCglJiQhJicnKSwtLCckJiYoLS4zODk5NzgVFhIRERUYGBQWGBYZGhcX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"}]}, "rwaur": {"pts": [[1.0684, 144.13, 0, 1], [1.094, 153.41, 0, 1], [1.1194, 145.95, 0, 1], [0.7469, 67.35, 0, 1], [0.7645, 70.74, 0, 1], [0.7821, 85.5, 0, 1], [0.8009, 91.47, 0, 1], [0.8196, 99.05, 0, 1], [0.8391, 68.17, 0, 1], [0.8587, 151.11, 0, 1], [0.879, 140.34, 0, 1], [0.8999, 144.8, 0, 1], [0.9211, 148.89, 0, 1], [0.9726, 158.2, 0, 1], [0.9958, 166.92, 0, 1], [1.0193, 173.45, 0, 1], [1.0438, 176.84, 0, 1], [0.9431, 146.38, 0, 1], [0.9652, 154.61, 0, 1], [0.8582, 193.04, 1, 1], [0.8788, 155.79, 1, 1], [0.8995, 149.6, 1, 1], [0.921, 159.96, 1, 1], [0.9429, 179.16, 1, 1], [0.9653, 186.71, 1, 1], [0.9883, 191.86, 1, 1], [1.0117, 210.42, 1, 1], [0.7409, 109.45, 1, 1], [0.7583, 120.25, 1, 1], [1.0359, 192.83, 1, 1], [1.0603, 201.33, 1, 1], [1.0859, 218.07, 1, 1], [1.1116, 217.16, 1, 1], [0.7758, 120.87, 1, 1], [0.7944, 128.06, 1, 1], [0.8131, 137.06, 1, 1], [0.8324, 144.34, 1, 1], [0.8519, 218.65, 1, 1], [0.9818, 204.87, 2, 1], [1.005, 222.51, 2, 1], [1.0291, 221.77, 2, 1], [1.0536, 228.86, 2, 1], [1.0785, 235.45, 2, 1], [1.1041, 246.02, 2, 1], [0.7537, 173.63, 2, 1], [0.7712, 186.55, 2, 1], [0.7894, 187.2, 2, 1], [0.808, 190.21, 2, 1], [0.8271, 201.13, 2, 1], [0.8468, 261.87, 2, 1], [0.8666, 245.36, 2, 1], [0.8872, 218.36, 2, 1], [0.9081, 224.07, 2, 1], [0.9298, 230.21, 2, 1], [0.9518, 238.31, 2, 1], [0.9744, 232.24, 2, 1], [1.4411, 225.96, 0, 2], [1.4758, 283.73, 0, 2], [1.5116, 258.64, 0, 2], [1.5483, 330.85, 0, 2], [1.1054, 208.41, 0, 2], [1.1313, 176.36, 0, 2], [1.1582, 191.73, 0, 2], [1.1855, 159.67, 0, 2], [1.214, 219.38, 0, 2], [1.2429, 249.17, 0, 2], [1.2726, 213.57, 0, 2], [1.3025, 190.58, 0, 2], [1.3333, 250.94, 0, 2], [1.3649, 234.74, 0, 2], [1.397, 260.21, 0, 2], [1.5853, 401.75, 0, 2], [1.6234, 332.22, 0, 2], [1.4303, 211.84, 0, 2], [1.2692, 301.19, 1, 2], [1.2992, 306.18, 1, 2], [1.33, 318.78, 1, 2], [1.3615, 318.43, 1, 2], [1.3936, 364.0, 1, 2], [1.427, 374.99, 1, 2], [1.461, 374.87, 1, 2], [1.4968, 398.39, 1, 2], [1.5329, 445.2, 1, 2], [1.5702, 447.78, 1, 2], [1.6078, 490.48, 1, 2], [1.6461, 520.42, 1, 2], [1.12, 270.78, 1, 2], [1.1462, 219.58, 1, 2], [1.1737, 233.86, 1, 2], [1.2017, 255.66, 1, 2], [1.2303, 260.59, 1, 2], [1.2597, 249.99, 1, 2], [1.4619, 323.8, 2, 2], [1.4975, 332.05, 2, 2], [1.5335, 379.94, 2, 2], [1.5708, 377.08, 2, 2], [1.1217, 243.25, 2, 2], [1.1477, 283.41, 2, 2], [1.1752, 298.47, 2, 2], [1.2032, 306.68, 2, 2], [1.2318, 315.94, 2, 2], [1.608, 505.31, 2, 2], [1.6462, 517.43, 2, 2], [1.2609, 329.68, 2, 2], [1.2907, 319.45, 2, 2], [1.3214, 320.51, 2, 2], [1.3523, 340.23, 2, 2], [1.3842, 336.88, 2, 2], [1.417, 351.88, 2, 2], [1.4511, 374.32, 2, 2], [2.354, 623.22, 0, 3], [1.6228, 283.25, 0, 3], [1.6589, 323.84, 0, 3], [1.6968, 352.51, 0, 3], [1.7361, 372.35, 0, 3], [1.7759, 372.68, 0, 3], [1.8178, 442.17, 0, 3], [1.86, 485.93, 0, 3], [2.1489, 462.93, 0, 3], [2.1991, 622.63, 0, 3], [2.2496, 643.18, 0, 3], [2.3017, 650.45, 0, 3], [1.903, 432.66, 0, 3], [1.9469, 485.06, 0, 3], [1.9921, 444.13, 0, 3], [2.0378, 562.02, 0, 3], [2.4056, 557.23, 0, 3], [2.085, 492.54, 0, 3], [2.1335, 444.65, 0, 3], [1.9367, 512.62, 1, 3], [1.9809, 516.02, 1, 3], [2.0268, 544.24, 1, 3], [2.0732, 546.59, 1, 3], [2.1214, 574.7, 1, 3], [2.1701, 595.23, 1, 3], [2.2203, 592.69, 1, 3], [2.2708, 596.11, 1, 3], [1.6394, 378.89, 1, 3], [1.6772, 398.56, 1, 3], [1.7152, 424.39, 1, 3], [2.3228, 613.57, 1, 3], [2.3752, 616.28, 1, 3], [2.4211, 694.5, 1, 3], [1.7548, 536.53, 1, 3], [1.7947, 535.69, 1, 3], [1.837, 550.92, 1, 3], [1.8794, 611.57, 1, 3], [1.9227, 567.52, 1, 3], [2.1782, 553.03, 2, 3], [2.2286, 571.05, 2, 3], [2.2798, 535.7, 2, 3], [2.3323, 545.9, 2, 3], [1.6436, 397.69, 2, 3], [1.6814, 416.07, 2, 3], [1.7202, 424.78, 2, 3], [1.7599, 436.81, 2, 3], [2.3848, 573.1, 2, 3], [1.8003, 493.84, 2, 3], [1.8426, 443.46, 2, 3], [1.8854, 548.74, 2, 3], [1.9292, 527.62, 2, 3], [1.9732, 493.29, 2, 3], [2.0189, 516.26, 2, 3], [2.0652, 531.35, 2, 3], [2.1137, 554.07, 2, 3], [2.1621, 475.8, 2, 3], [3.6497, 1334.25, 0, 4], [3.7483, 1491.29, 0, 4], [3.8462, 1828.02, 0, 4], [2.4348, 726.97, 0, 4], [2.4878, 711.34, 0, 4], [2.6243, 771.3, 0, 4], [2.695, 758.78, 0, 4], [2.7681, 717.95, 0, 4], [2.8434, 922.95, 0, 4], [2.9209, 1027.24, 0, 4], [3.0002, 1023.62, 0, 4], [3.083, 1043.91, 0, 4], [3.2819, 1163.07, 0, 4], [3.3702, 1206.24, 0, 4], [3.46, 1282.33, 0, 4], [3.5534, 1272.62, 0, 4], [3.1679, 1052.13, 0, 4], [3.254, 1090.01, 0, 4], [2.8414, 873.54, 1, 4], [2.9191, 906.86, 1, 4], [2.9992, 896.77, 1, 4], [3.0828, 1142.16, 1, 4], [3.1672, 1053.88, 1, 4], [3.2533, 1097.24, 1, 4], [3.3415, 1143.74, 1, 4], [3.4322, 1164.07, 1, 4], [2.4196, 776.52, 1, 4], [2.4655, 800.21, 1, 4], [3.5255, 1142.07, 1, 4], [3.6209, 1183.94, 1, 4], [3.7184, 1188.41, 1, 4], [3.817, 1317.32, 1, 4], [2.531, 768.0, 1, 4], [2.5997, 750.69, 1, 4], [2.6702, 787.42, 1, 4], [2.7427, 766.93, 1, 4], [2.8169, 1109.91, 1, 4], [3.3173, 759.51, 2, 4], [3.4069, 737.98, 2, 4], [3.4984, 792.57, 2, 4], [3.5925, 893.81, 2, 4], [3.689, 783.2, 2, 4], [3.7891, 849.15, 2, 4], [2.4522, 880.33, 2, 4], [2.5141, 849.75, 2, 4], [2.5826, 826.99, 2, 4], [2.6519, 778.28, 2, 4], [2.7234, 789.25, 2, 4], [2.7977, 784.87, 2, 4], [2.8744, 813.91, 2, 4], [2.9522, 817.1, 2, 4], [3.0328, 885.04, 2, 4], [3.1166, 837.94, 2, 4], [3.2024, 924.05, 2, 4], [3.2893, 766.79, 2, 4], [4.2185, 2151.69, 0, 5], [4.2547, 2034.79, 0, 5], [4.291, 2356.44, 0, 5], [4.3277, 2186.06, 0, 5], [3.8271, 1994.72, 0, 5], [3.8601, 2002.6, 0, 5], [3.8935, 2143.51, 0, 5], [3.9268, 1941.84, 0, 5], [3.9611, 1883.49, 0, 5], [3.9955, 1912.89, 0, 5], [4.0303, 2049.1, 0, 5], [4.065, 1772.68, 0, 5], [4.1003, 1950.28, 0, 5], [4.1358, 1793.52, 0, 5], [4.1715, 1905.9, 0, 5], [4.3641, 2187.13, 0, 5], [4.4014, 2291.26, 0, 5], [4.207, 2066.71, 0, 5], [4.0263, 1564.13, 1, 5], [4.0613, 1731.61, 1, 5], [4.0966, 1714.97, 1, 5], [4.1322, 1648.1, 1, 5], [4.1678, 1874.48, 1, 5], [4.2037, 1937.3, 1, 5], [4.2398, 1807.26, 1, 5], [4.2759, 1765.26, 1, 5], [4.3122, 1843.77, 1, 5], [4.3492, 1871.75, 1, 5], [4.3864, 1941.8, 1, 5], [4.4236, 1922.8, 1, 5], [3.8138, 1686.83, 1, 5], [3.8458, 1643.95, 1, 5], [3.8788, 1724.38, 1, 5], [3.9124, 1812.43, 1, 5], [3.9464, 1766.38, 1, 5], [3.9807, 1621.85, 1, 5], [4.0153, 1643.46, 1, 5], [4.2404, 1023.67, 2, 5], [4.2767, 1067.61, 2, 5], [4.313, 1083.48, 2, 5], [4.3498, 1204.9, 2, 5], [3.8154, 1216.39, 2, 5], [3.8478, 1073.96, 2, 5], [3.8807, 1004.4, 2, 5], [3.9142, 933.67, 2, 5], [3.9481, 953.64, 2, 5], [3.9823, 967.88, 2, 5], [4.386, 1185.24, 2, 5], [4.4223, 1270.95, 2, 5], [4.0167, 980.59, 2, 5], [4.0514, 1046.34, 2, 5], [4.0866, 1019.06, 2, 5], [4.1219, 1097.99, 2, 5], [4.1572, 1293.2, 2, 5], [4.193, 1307.95, 2, 5], [4.229, 1263.57, 2, 5], [4.9606, 2583.31, 0, 6], [4.4095, 2317.73, 0, 6], [4.4408, 2003.33, 0, 6], [4.4723, 2322.93, 0, 6], [4.5045, 2196.36, 0, 6], [4.5371, 2424.3, 0, 6], [4.5702, 2656.68, 0, 6], [4.6036, 2724.38, 0, 6], [4.8187, 2824.12, 0, 6], [4.8529, 465.14, 0, 6], [4.8891, 2550.34, 0, 6], [4.9249, 2550.12, 0, 6], [4.6368, 2566.47, 0, 6], [4.6708, 2863.41, 0, 6], [4.7048, 2558.11, 0, 6], [4.7392, 2663.87, 0, 6], [4.9964, 2024.89, 0, 6], [4.7733, 2006.19, 0, 6], [4.8078, 2338.62, 0, 6], [4.6626, 1763.22, 1, 6], [4.6967, 1630.49, 1, 6], [4.7307, 1795.27, 1, 6], [4.7646, 1641.99, 1, 6], [4.7987, 1775.11, 1, 6], [4.8331, 1685.64, 1, 6], [4.8679, 1695.56, 1, 6], [4.9037, 1771.98, 1, 6], [4.4246, 1525.65, 1, 6], [4.4557, 1428.33, 1, 6], [4.4871, 1519.01, 1, 6], [4.9395, 1688.09, 1, 6], [4.9755, 1588.67, 1, 6], [5.0115, 1631.42, 1, 6], [4.5193, 1899.21, 1, 6], [4.5517, 1760.81, 1, 6], [4.5848, 1863.26, 1, 6], [4.6181, 2100.79, 1, 6], [4.6517, 2022.33, 1, 6], [4.8389, 1220.38, 2, 6], [4.8741, 1228.21, 2, 6], [4.9098, 1230.21, 2, 6], [4.9456, 1222.35, 2, 6], [4.4281, 1222.77, 2, 6], [4.4596, 1173.05, 2, 6], [4.4915, 734.94, 2, 6], [4.5239, 1328.65, 2, 6], [4.9813, 1360.05, 2, 6], [4.5564, 1384.16, 2, 6], [4.5898, 1414.75, 2, 6], [4.6233, 1384.13, 2, 6], [4.6571, 1456.01, 2, 6], [4.6907, 1409.36, 2, 6], [4.7249, 1460.75, 2, 6], [4.7593, 1369.89, 2, 6], [4.7937, 1352.51, 2, 6], [4.8279, 1088.41, 2, 6]]}};
+
+// ============================================================================
+// CHRONOSPHERE CINEMATIC ENGINE (1920x1080 Logical Coordinate Space, 60 FPS)
+// ============================================================================
+
+const SCENES = [
+  {
+    id: 1, t0: 0, t1: 18,
+    short_tr: "1930 Plüton & X Gezegeni",
+    short_en: "1930 Pluto & Planet X",
+    eyebrow_tr: "PERDE I · HAREKET EDEN EVREN",
+    eyebrow_en: "ACT I · THE RESTLESS UNIVERSE",
+    title_tr: "Gökyüzü donmuş bir fotoğraf değildir.",
+    title_en: "The night sky is not a frozen photograph.",
+    notes_tr: [
+      "İnsanlar gece gökyüzüne baktığında yıldızları sonsuza dek sabit sanır.",
+      "1930'da Clyde Tombaugh iki fotoğrafı üst üste koyup kırparak (Blink Comparator) zıplayan tek bir nokta yakaladı: Plüton.",
+      "Bugün Neptün ötesi cisimlerin yörüngeleri, karanlıkta gizlenen dev bir 'X Gezegeni'ne (5–10 Dünya kütlesi) işaret ediyor."
+    ],
+    notes_en: [
+      "When people look up at the night sky, they assume stars are fixed forever.",
+      "In 1930, Clyde Tombaugh flipped two plates in a Blink Comparator and spotted one jumping dot: Pluto.",
+      "Today, aligned Kuiper Belt orbits point toward a hidden 'Planet X' (5–10 Earth masses, 20–30× Neptune's distance)."
+    ],
+    subs_tr: [
+      [0, 6, "Gece gökyüzüne baktığımızda yıldızları sonsuza dek sabit sanırız. Oysa evren her saniye hareket ediyor."],
+      [6, 12, "1930'da Clyde Tombaugh, aynı gökyüzünün iki fotoğrafını hızla değiştirerek zıplayan tek bir nokta yakaladı: Plüton."],
+      [12, 18, "Bugün Neptün ötesindeki buzlu cisimlerin hizalanışı, karanlıkta saklanan bir 'X Gezegeni'ne ve bilinmeyen dünyalara işaret ediyor."]
+    ],
+    subs_en: [
+      [0, 6, "When we look up at the night sky, stars seem frozen in place. Yet the universe is moving every second."],
+      [6, 12, "In 1930, Clyde Tombaugh flipped between two photographs of the same sky patch and spotted one jumping dot: Pluto."],
+      [12, 18, "Today, aligned orbits beyond Neptune hint at an unseen 'Planet X' and thousands of cold worlds hiding in the dark."]
+    ]
+  },
+  {
+    id: 2, t0: 18, t1: 38,
+    short_tr: "Kızılötesi & 102 Renk Sihri",
+    short_en: "Infrared & 102-Band Magic",
+    eyebrow_tr: "PERDE II · GÖRÜNMEZ IŞIK VE NASA SPHEREx",
+    eyebrow_en: "ACT II · INVISIBLE LIGHT & NASA SPHEREx",
+    title_tr: "Soğuk dünyalar ısı ışığında saklanır; SPHEREx onları 102 renkte yakalar.",
+    title_en: "Cold worlds hide in infrared heat; SPHEREx captures them in 102 colours.",
+    notes_tr: [
+      "Kahverengi cüceler ve uzak gezegenler görünür ışıkta karanlıktır; yalnızca kızılötesi (ısı) ışığında parlarlar.",
+      "Mart 2025'te fırlatılan NASA SPHEREx, tüm gökyüzünü 6 ayda bir 102 kızılötesi renkte haritalar.",
+      "Filtre tekerleği yoktur! Rengi bir uçtan diğerine değişen filtresi (LVF) sayesinde, teleskop adım attıkça aynı yıldız her pozda yeni bir renge düşer."
+    ],
+    notes_en: [
+      "Brown dwarfs and cold worlds are dark in visible light; they only glow in infrared heat.",
+      "Launched in March 2025, NASA's SPHEREx maps the entire sky every 6 months in 102 infrared bands.",
+      "No filter wheel! With its Linear Variable Filter, each step across the sky lands a star on a new wavelength — turning time into a spectrum."
+    ],
+    subs_tr: [
+      [18, 25, "Peki bu soğuk dünyaları neden göremiyoruz? Çünkü yıldız gibi parlamazlar; yalnızca gözümüzün göremediği 'kızılötesi' ısı renklerinde ışıldarlar."],
+      [25, 32, "NASA'nın SPHEREx uzay teleskobu, tüm gökyüzünü 6 ayda bir 102 farklı kızılötesi renkte tarıyor — üstelik filtre tekerleği bile kullanmadan."],
+      [32, 38, "Rengi kenardan kenara değişen özel filtresi sayesinde, teleskop adım attıkça aynı yıldız her pozda farklı bir renge düşer ve tayfı oluşur!"]
+    ],
+    subs_en: [
+      [18, 25, "Why haven't we seen these cold worlds? Because they don't shine in visible light — they only glow in infrared heat."],
+      [25, 32, "NASA's SPHEREx space telescope surveys the entire sky every six months in 102 infrared colours — without even a filter wheel."],
+      [32, 38, "Through its Linear Variable Filter, each step of the telescope places the same star on a new colour: stepping through time builds a spectrum!"]
+    ]
+  },
+  {
+    id: 3, t0: 38, t1: 54,
+    short_tr: "1.6 Milyon Poz Darboğazı",
+    short_en: "The 1.6M Exposure Bottleneck",
+    eyebrow_tr: "PERDE III · İMKÂNSIZ VERİ DAĞI",
+    eyebrow_en: "ACT III · THE IMPOSSIBLE DATA MOUNTAIN",
+    title_tr: "Yüz milyonlarca yıldız, 1.6 milyon poz: Tek bir ekip hepsine bakamaz.",
+    title_en: "Hundreds of millions of stars, 1.6 million exposures: No single team can look.",
+    notes_tr: [
+      "SPHEREx 450 milyondan fazla gökadayı ve 100 milyondan fazla yıldızı 1.6 milyon açık pozda tekrar tekrar fotoğraflıyor.",
+      "Hiçbir profesyonel gökbilimci ekibi yüz milyonlarca cismi tek tek gözle kontrol edemez.",
+      "Üstelik her ham FITS dosyası 63 MB büyüklüğünde, farklı açılarda eğik ve kataloglar yıldızların 2000 yılındaki eski konumlarını tutuyor."
+    ],
+    notes_en: [
+      "SPHEREx repeatedly photographs 450M+ galaxies and 100M+ stars across 1.6 million public exposures.",
+      "No single team of astronomers can inspect hundreds of millions of objects by eye.",
+      "And each raw FITS file is 63 MB, rotated at arbitrary angles, while catalogues store Year-2000 coordinates that miss fast movers."
+    ],
+    subs_tr: [
+      [38, 46, "Ancak ortada devasa bir darboğaz var: SPHEREx yüz milyonlarca yıldızı ve gökadayı 1,6 milyon pozda tekrar tekrar fotoğraflıyor."],
+      [46, 54, "Her bir ham dosya 63 megabayt, farklı açılarda eğik ve kataloglar 2000 yılının eski konumlarını tutuyor. Herkesin bakabilmesi için yeni bir yol gerekti."]
+    ],
+    subs_en: [
+      [38, 46, "But there is a massive bottleneck: SPHEREx photographs hundreds of millions of stars and galaxies across 1.6 million exposures."],
+      [46, 54, "Each raw file is 63 MB, rotated at different angles, and catalogues hold old Year-2000 positions. We needed a bridge so anyone could look."]
+    ]
+  },
+  {
+    id: 4, t0: 54, t1: 74,
+    short_tr: "Chronosphere Mimari Sihri",
+    short_en: "Chronosphere Architecture",
+    eyebrow_tr: "PERDE IV · SUNUCUSUZ, SANİYELER İÇİNDE CANLI BİLİM",
+    eyebrow_en: "ACT IV · SERVERLESS, LIVE SCIENCE IN SECONDS",
+    title_tr: "63 MB yerine 200 KB cerrahi kesim: Doğrudan NASA'dan tarayıcınıza.",
+    title_en: "200 KB surgical byte-slicing instead of 63 MB: Straight from NASA to your browser.",
+    notes_tr: [
+      "Chronosphere'in sunucusu yoktur; çökecek bir arka plan sistemi bulunmaz.",
+      "1.6 milyonluk dizinden hedefi bulur, HTTP Range ile 63 MB'lık dosyanın yalnız hedef yıldız çevresindeki ~200 KB'lık piksel bloğunu kesip alır.",
+      "TAN-SIP astrometri ile tüm pozları Kuzey-Yukarı hizalar, 2000 yılı katalog konumlarını 2026'ya taşır ve cihazınızda anında oynatır."
+    ],
+    notes_en: [
+      "Chronosphere has zero backend server — nothing to maintain or crash.",
+      "It queries the 1.6M exposure index and uses HTTP Range requests to slice just ~200 KB around your star from 63 MB NASA cloud files.",
+      "Aligns every exposure North-Up via TAN-SIP astrometry, propagates Year-2000 stars to 2026, and computes everything live in the browser."
+    ],
+    subs_tr: [
+      [54, 61, "Chronosphere'in hiçbir sunucusu yoktur. Gökyüzünde bir noktaya tıkladığınız anda tarayıcınız doğrudan NASA'nın açık bulut arşiviyle konuşur."],
+      [61, 68, "63 megabaytlık dev dosyaları indirmek yerine, 'HTTP Range' cerrahi kesimiyle yalnızca yıldızınızın etrafındaki birkaç yüz kilobaytlık pikseli çeker."],
+      [68, 74, "Eğik pozları Kuzey-Yukarı ızgarada hizalar, 2000 yılı katalog konumlarını bugüne taşır ve tüm hesaplamayı saniyeler içinde cihazınızda yapar."]
+    ],
+    subs_en: [
+      [54, 61, "Chronosphere has no server. The moment you click any point in the sky, your browser talks directly to NASA's open cloud archive."],
+      [61, 68, "Instead of downloading 63 MB files, HTTP Range surgical slicing fetches only the few hundred kilobytes of pixels around your target."],
+      [68, 74, "It aligns tilted exposures onto a North-Up grid, moves Year-2000 star positions to today, and computes everything live on your device."]
+    ]
+  },
+  {
+    id: 5, t0: 74, t1: 104,
+    short_tr: "Gerçek Teleskop Kanıtları",
+    short_en: "Real Telescope Proofs",
+    eyebrow_tr: "PERDE V · GERÇEK NASA SPHEREx VERİSİYLE 3 KANIT",
+    eyebrow_en: "ACT V · 3 PROOFS WITH REAL NASA SPHEREx DATA",
+    title_tr: "Kayan yıldızlar, karanlıktan çıkan soğuk dünyalar ve su-metan izleri.",
+    title_en: "Drifting stars, cold worlds emerging from the dark, and water-methane fingerprints.",
+    notes_tr: [
+      "Kanıt 1 (Barnard Yıldızı): Gerçek SPHEREx D5 piksellerinde 3 ziyarette kuzeye yılda 10.4 yay saniyesi (1.7 piksel) sıçrayışı.",
+      "Kanıt 2 (WISE 0855): 7.4 ışık yılı uzaktaki en soğuk kahverengi cüce (-23°C). İlk 4 dedektörde görünmezken 4 mikron ötesinde (D5–D6) aniden beliriyor!",
+      "Kanıt 3 (Epsilon Indi B & RW Aurigae): 450 gerçek pozdan çıkan tayfta Su Buharı (H₂O) ve Metan (CH₄) çukurları; RW Aurigae'nin 1 yıldaki parlaması."
+    ],
+    notes_en: [
+      "Proof 1 (Barnard's Star): Real SPHEREx D5 pixels hopping 10.4 arcsec/yr north across 3 visits.",
+      "Proof 2 (WISE 0855): Coldest known brown dwarf (-23°C, 7.4 ly away). Invisible below 4 µm, suddenly materializing in D5–D6!",
+      "Proof 3 (Epsilon Indi B & RW Aurigae): 450 real exposures revealing deep H₂O and CH₄ absorption dips, plus RW Aurigae flaring/fading."
+    ],
+    subs_tr: [
+      [74, 84, "İşte gerçek SPHEREx teleskop pikselleriyle üç kanıt: İlk olarak Barnard Yıldızı. Üç ziyarette kuzeye yılda 10,4 yay saniyesi sıçrayışı anında yakalanıyor."],
+      [84, 94, "İkinci kanıt: Eksi 23 derece soğukluğundaki WISE 0855. İlk dört dedektörde halka tamamen boşken, 4 mikronun ötesinde karanlıktan yeni bir dünya çıkıyor!"],
+      [94, 104, "Üçüncü kanıt: Epsilon Indi B'nin 450 gerçek pozdan oluşan tayfındaki derin çukurlar su buharı ve metanı; RW Aurigae ise genç bir yıldızın değişimini gösteriyor."]
+    ],
+    subs_en: [
+      [74, 84, "Here are three proofs using real SPHEREx telescope pixels: First, Barnard's Star hopping 10.4 arcseconds per year north across three visits."],
+      [84, 94, "Second: sub-freezing brown dwarf WISE 0855. Below 4 microns the ring is empty; beyond 4 microns in Detector 6, a hidden world blazes into view!"],
+      [94, 104, "Third: Epsilon Indi B's 450-exposure spectrum reveals deep water vapour and methane valleys, while RW Aurigae splits by visit as it flares and fades."]
+    ]
+  },
+  {
+    id: 6, t0: 104, t1: 120,
+    short_tr: "Parlaklık Merdiveni & Denetim",
+    short_en: "Brightness Ladder & Check",
+    eyebrow_tr: "PERDE VI · DÜRÜST BİLİM VE OTOMATİK DOĞRULAMA",
+    eyebrow_en: "ACT VI · HONEST SCIENCE & AUTOMATIC VERIFICATION",
+    title_tr: "Sahte keşif iddiası yok: Komşu yıldız denetimi ve Parlaklık Merdiveni.",
+    title_en: "No false discovery claims: Neighbour-star verification and the Brightness Ladder.",
+    notes_tr: [
+      "Tek bir SPHEREx pozu 19. kadire iner; 22–25. kadirdeki X Gezegeni bundan 16 ila 250 kat daha sönüktür. Chronosphere sınırlarını dürüstçe gösterir.",
+      "Ama daha parlak olan ve hareket eden her yeni cismi SPHEREx kaydeder!",
+      "Her ölçüm aynı karedeki komşu yıldızlarla kıyaslanır (kamera hatası mı, gerçek mi?) ve alandaki tüm yıldızlar katalogsuz taranır."
+    ],
+    notes_en: [
+      "A single SPHEREx exposure reaches mag 19; predicted Planet X (mag 22–25) is 16–250× fainter. Chronosphere states its limits honestly.",
+      "Yet anything brighter that moves or changes in the infrared is recorded — waiting to be spotted like Pluto.",
+      "Every measurement is checked against neighbour stars in the same frame, plus a blind catalogue-free field scan."
+    ],
+    subs_tr: [
+      [104, 112, "Peki SPHEREx, X Gezegeni'ni tek pozda görebilir mi? Chronosphere dürüst bilimi seçer: Tek poz 19. kadire iner; X Gezegeni bundan 16 ila 250 kat sönüktür."],
+      [112, 120, "Fakat daha parlak olup hareket eden her şeyi SPHEREx kaydeder! Aracımız her yıldızı komşularıyla sınar, katalogsuz tarar ve tek tıkla doğrulatır."]
+    ],
+    subs_en: [
+      [104, 112, "Can a single SPHEREx exposure see Planet X? Chronosphere chooses honest science: one exposure reaches magnitude 19, while Planet X is 16 to 250 times fainter."],
+      [112, 120, "Yet whatever is brighter and moves, SPHEREx records! Our tool checks every star against its neighbours, scans fields blindly, and links to external observatories."]
+    ]
+  },
+  {
+    id: 7, t0: 120, t1: 132,
+    short_tr: "Şimdi Sıra Sizde",
+    short_en: "Now It Is Your Turn",
+    eyebrow_tr: "PERDE VII · THE BRIGHT NOBLES · NASA SPACE APPS 2026",
+    eyebrow_en: "ACT VII · THE BRIGHT NOBLES · NASA SPACE APPS 2026",
+    title_tr: "Gökyüzü yerinde durmuyor. Şimdi sıra sizde.",
+    title_en: "The sky is not still. Now it is your turn.",
+    notes_tr: [
+      "6 dilde (Türkçe dahil), çevrimdışı çalışabilen, sıfır sunuculu açık bilim aracı.",
+      "Hiçbir eğitim gerektirmeden gökyüzünde istediğiniz noktaya tıklayın, zamanı oynatın ve ne olduğunu keşfedin.",
+      "Sunumu buradan doğrudan Canlı Uygulamaya veya Rehberli Tura bağlayabilirsiniz!"
+    ],
+    notes_en: [
+      "Available in 6 languages, works offline on any phone or laptop, zero server required.",
+      "Click any point in the sky with zero prior training, play time as a movie, and check what is real.",
+      "Launch straight into the live app or guided tour from the buttons below!"
+    ],
+    subs_tr: [
+      [120, 126, "Altı dilde, sunucusuz, çevrimdışı çalışabilen ve tamamen gerçek teleskop verisine dayanan açık bir keşif aracı: Chronosphere."],
+      [126, 132, "Buradaki hiçbir şey bir keşif iddiası değildir; daha çok insanın bakmasına yardım eder. Gökyüzü yerinde durmuyor — şimdi sıra sizde!"]
+    ],
+    subs_en: [
+      [120, 126, "In six languages, serverless, offline-capable, and built purely on real telescope data: Chronosphere."],
+      [126, 132, "Nothing here claims a discovery — it helps more people look. The sky is not still. Now it is your turn!"]
+    ]
+  }
+];
+
+const TOTAL_DURATION = 132;
+let lang = (new URLSearchParams(location.search).get('lang') === 'en') ? 'en' : 'tr';
+let currentTime = 0;
+let playing = true;
+let presenterMode = false;
+let notesOpen = false;
+let audioEnabled = false;
+let lastFrameWall = performance.now();
+
+// Decode real SPHEREx stamps into offscreen canvases for instant hardware-accelerated blitting
+const STAMP_CACHE = {};
+function decodeStampCanvas(b64, size, tintMode = 'gray') {
+  const key = b64.slice(0, 24) + '_' + tintMode;
+  if (STAMP_CACHE[key]) return STAMP_CACHE[key];
+  const bin = atob(b64);
+  const cv = document.createElement('canvas');
+  cv.width = size; cv.height = size;
+  const c = cv.getContext('2d');
+  const im = c.createImageData(size, size);
+  const d = im.data;
+  for (let i = 0; i < size * size; i++) {
+    const v = bin.charCodeAt(i);
+    const o = i * 4;
+    if (tintMode === 'ir') {
+      // Warm infrared thermal palette
+      d[o] = Math.min(255, Math.round(v * 1.15));
+      d[o + 1] = Math.min(255, Math.round(Math.pow(v / 255, 1.35) * 235));
+      d[o + 2] = Math.min(255, Math.round(Math.pow(v / 255, 2.2) * 190));
+      d[o + 3] = 255;
+    } else {
+      d[o] = v; d[o + 1] = v; d[o + 2] = v; d[o + 3] = 255;
+    }
+  }
+  c.putImageData(im, 0, 0);
+  STAMP_CACHE[key] = cv;
+  return cv;
+}
+
+function makeTimeColorCanvas(b64Early, b64Mid, b64Late, size) {
+  const key = 'rgb_' + b64Early.slice(0, 16) + b64Late.slice(0, 16);
+  if (STAMP_CACHE[key]) return STAMP_CACHE[key];
+  const b1 = atob(b64Early), b2 = atob(b64Mid), b3 = atob(b64Late);
+  const cv = document.createElement('canvas');
+  cv.width = size; cv.height = size;
+  const c = cv.getContext('2d');
+  const im = c.createImageData(size, size);
+  const d = im.data;
+  for (let i = 0; i < size * size; i++) {
+    const r = b1.charCodeAt(i), g = b2.charCodeAt(i), b = b3.charCodeAt(i);
+    const o = i * 4;
+    d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
+  }
+  c.putImageData(im, 0, 0);
+  STAMP_CACHE[key] = cv;
+  return cv;
+}
+
+// Pre-generate deterministic background starfields
+const BG_STARS = Array.from({ length: 180 }, (_, i) => {
+  const s = Math.sin(i * 12.9898 + 78.233) * 43758.5453;
+  const s2 = Math.sin(i * 45.164 + 19.13) * 19432.17;
+  const s3 = Math.sin(i * 91.7 + 3.1) * 8123.4;
+  return {
+    x: (s - Math.floor(s)) * 1920,
+    y: (s2 - Math.floor(s2)) * 1080,
+    r: 0.6 + (s3 - Math.floor(s3)) * 1.8,
+    a: 0.2 + ((i * 7) % 10) * 0.07,
+    warm: i % 5 === 0
+  };
+});
+
+const PLATE_STARS = Array.from({ length: 42 }, (_, i) => {
+  const sx = Math.sin(i * 31.7 + 11.3) * 9999.1;
+  const sy = Math.cos(i * 17.9 + 5.7) * 9999.1;
+  return {
+    x: 40 + (sx - Math.floor(sx)) * 460,
+    y: 40 + (sy - Math.floor(sy)) * 380,
+    r: 1.4 + (i % 4) * 0.75
+  };
+});
+
+// ============================================================================
+// WEB AUDIO API PROCEDURAL SPACE AMBIENT & TELEMETRY SYNTHESIZER
+// ============================================================================
+let audioCtx = null;
+let droneGain = null;
+let lastPingKey = '';
+
+function initAudio() {
+  if (audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  audioCtx = new AC();
+  droneGain = audioCtx.createGain();
+  droneGain.gain.value = 0.0001;
+  droneGain.connect(audioCtx.destination);
+
+  // Warm cosmic chord (D2, A2, F#3)
+  [73.42, 110.0, 146.83, 220.0].forEach((freq, idx) => {
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+    osc.frequency.value = freq;
+    g.gain.value = idx < 2 ? 0.035 : 0.012;
+    osc.connect(g);
+    g.connect(droneGain);
+    osc.start();
+  });
+}
+
+function playTelemetryPing(freq = 520, dur = 0.14, vol = 0.035) {
+  if (!audioEnabled || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.15, now + dur);
+    g.gain.setValueAtTime(vol, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.connect(g);
+    g.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + dur + 0.02);
+  } catch (e) {}
+}
+
+function toggleAudio() {
+  initAudio();
+  if (!audioCtx) return;
+  audioEnabled = !audioEnabled;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const now = audioCtx.currentTime;
+  droneGain.gain.setTargetAtTime(audioEnabled ? 0.45 : 0.0001, now, 0.3);
+  updateUI();
+  if (audioEnabled) playTelemetryPing(660, 0.18, 0.04);
+}
+
+// ============================================================================
+// DRAWING HELPERS
+// ============================================================================
+const cv = document.getElementById('cinema');
+const ctx = cv.getContext('2d');
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function lerp(a, b, t) { return a + (b - a) * clamp(t, 0, 1); }
+function easeOutCubic(t) { const x = clamp(t, 0, 1); return 1 - Math.pow(1 - x, 3); }
+function easeInOutCubic(t) {
+  const x = clamp(t, 0, 1);
+  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawCard(x, y, w, h, opts = {}) {
+  ctx.save();
+  roundRect(ctx, x, y, w, h, opts.r || 16);
+  ctx.fillStyle = opts.fill || 'rgba(18, 15, 13, 0.88)';
+  ctx.fill();
+  ctx.lineWidth = opts.bw || 1.2;
+  ctx.strokeStyle = opts.border || '#2f2a25';
+  ctx.stroke();
+  if (opts.accentTop) {
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = opts.accentTop;
+    ctx.fillRect(x, y, w, 3.5);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawBadge(x, y, text, color = '#ff7b39', bg = 'rgba(255,123,57,0.14)') {
+  ctx.save();
+  ctx.font = '600 12px "IBM Plex Mono", monospace';
+  const tw = ctx.measureText(text).width;
+  const pw = tw + 20, ph = 25;
+  roundRect(ctx, x, y, pw, ph, 12.5);
+  ctx.fillStyle = bg;
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x + 10, y + ph / 2 + 0.5);
+  ctx.restore();
+  return pw;
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight, align = 'left') {
+  const words = text.split(' ');
+  let line = '';
+  const lines = [];
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + ' ';
+    if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+      lines.push(line.trim());
+      line = words[n] + ' ';
+    } else {
+      line = testLine;
+    }
+  }
+  if (line.trim()) lines.push(line.trim());
+  ctx.save();
+  ctx.textAlign = align;
+  lines.forEach((l, i) => {
+    ctx.fillText(l, x, y + i * lineHeight);
+  });
+  ctx.restore();
+  return lines.length * lineHeight;
+}
+
+function wavelengthToColor(lam) {
+  // 0.75 to 5.0 um -> warm infrared spectrum
+  const t = clamp((lam - 0.75) / (5.0 - 0.75), 0, 1);
+  if (t < 0.25) {
+    const u = t / 0.25;
+    return `rgb(${Math.round(lerp(130, 255, u))}, ${Math.round(lerp(195, 232, u))}, ${Math.round(lerp(255, 175, u))})`;
+  } else if (t < 0.55) {
+    const u = (t - 0.25) / 0.30;
+    return `rgb(255, ${Math.round(lerp(232, 135, u))}, ${Math.round(lerp(175, 57, u))})`;
+  } else if (t < 0.80) {
+    const u = (t - 0.55) / 0.25;
+    return `rgb(${Math.round(lerp(255, 215, u))}, ${Math.round(lerp(135, 48, u))}, ${Math.round(lerp(57, 30, u))})`;
+  } else {
+    const u = (t - 0.80) / 0.20;
+    return `rgb(${Math.round(lerp(215, 145, u))}, ${Math.round(lerp(48, 20, u))}, ${Math.round(lerp(30, 24, u))})`;
+  }
+}
+
+function drawSceneHeader(scene, localT) {
+  const a = easeOutCubic(localT / 0.8);
+  ctx.save();
+  ctx.globalAlpha = a;
+  const eye = lang === 'tr' ? scene.eyebrow_tr : scene.eyebrow_en;
+  const title = lang === 'tr' ? scene.title_tr : scene.title_en;
+  ctx.font = '600 13px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#ff7b39';
+  ctx.fillText(eye, 82, 92);
+
+  ctx.font = '400 44px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(title, 82, 136);
+  ctx.restore();
+}
+
+
+// ============================================================================
+// SCENE 1: 1930 PLUTO BLINK COMPARATOR & THE PLANET X HYPOTHESIS
+// ============================================================================
+function renderScene1(localT) {
+  drawSceneHeader(SCENES[0], localT);
+
+  // LEFT CARD: 1930 Clyde Tombaugh Blink Comparator
+  const lx = 80, ly = 162, lw = 840, lh = 685;
+  drawCard(lx, ly, lw, lh, { accentTop: '#ff7b39' });
+
+  drawBadge(lx + 26, ly + 22, lang === 'tr' ? '1930 · LOWELL GÖZLEMEVİ' : '1930 · LOWELL OBSERVATORY');
+  ctx.font = '400 30px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(lang === 'tr' ? 'İki Fotoğraf, Zıplayan Tek Bir Nokta: Plüton' : 'Two Photographs, One Jumping Dot: Pluto', lx + 26, ly + 82);
+
+  // Blink Comparator Viewport
+  const px = lx + 28, py = ly + 104, pw = 540, ph = 435;
+  ctx.save();
+  roundRect(ctx, px, py, pw, ph, 10);
+  ctx.fillStyle = '#050504';
+  ctx.fill();
+  ctx.strokeStyle = '#3c342c';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.clip();
+
+  // Subtle coordinate grid on plate
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+  ctx.lineWidth = 1;
+  for (let gx = 60; gx < pw; gx += 60) {
+    ctx.beginPath(); ctx.moveTo(px + gx, py); ctx.lineTo(px + gx, py + ph); ctx.stroke();
+  }
+  for (let gy = 60; gy < ph; gy += 60) {
+    ctx.beginPath(); ctx.moveTo(px, py + gy); ctx.lineTo(px + pw, py + gy); ctx.stroke();
+  }
+
+  // Flip between Plate A (23 Jan 1930) and Plate B (29 Jan 1930) every 0.95s
+  const plateIdx = Math.floor(localT / 0.95) % 2;
+  const flipPhase = (localT % 0.95) / 0.95;
+  if (flipPhase < 0.08 && localT > 0.5) {
+    const k = 's1_flip_' + Math.floor(localT / 0.95);
+    if (lastPingKey !== k) { lastPingKey = k; playTelemetryPing(plateIdx ? 620 : 480, 0.07, 0.02); }
+  }
+
+  // Fixed background stars
+  PLATE_STARS.forEach(s => {
+    ctx.beginPath();
+    ctx.arc(px + s.x, py + s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(243, 238, 230, 0.85)';
+    ctx.fill();
+  });
+
+  // The jumping dot: Pluto!
+  const plutoA = { x: px + 245, y: py + 248 };
+  const plutoB = { x: px + 318, y: py + 206 };
+  const curP = plateIdx === 0 ? plutoA : plutoB;
+  const otherP = plateIdx === 0 ? plutoB : plutoA;
+
+  // After 2.5s, reveal the ghost trail & locking reticle
+  const lockAlpha = clamp((localT - 2.2) / 1.2, 0, 1);
+  if (lockAlpha > 0) {
+    ctx.save();
+    ctx.globalAlpha = lockAlpha;
+    // Ghost position of the other plate
+    ctx.beginPath();
+    ctx.arc(otherP.x, otherP.y, 6, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 123, 57, 0.45)';
+    ctx.setLineDash([3, 3]);
+    ctx.stroke();
+
+    // Dashed path arrow between Plate A and Plate B
+    ctx.beginPath();
+    ctx.moveTo(plutoA.x, plutoA.y);
+    ctx.lineTo(plutoB.x, plutoB.y);
+    ctx.strokeStyle = '#ff7b39';
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Target ring around current Pluto position
+    const pulseR = 16 + Math.sin(localT * 6) * 2.5;
+    ctx.beginPath();
+    ctx.arc(curP.x, curP.y, pulseR, 0, Math.PI * 2);
+    ctx.strokeStyle = '#5fe0b0';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+
+    ctx.font = '600 13px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#5fe0b0';
+    ctx.fillText(lang === 'tr' ? '← Zıplayan Nokta: PLÜTON!' : '← Jumping Dot: PLUTO!', curP.x + 22, curP.y + 4);
+    ctx.restore();
+  }
+
+  // Draw Pluto star dot itself
+  ctx.beginPath();
+  ctx.arc(curP.x, curP.y, 4.2, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = '#ff7b39';
+  ctx.shadowBlur = 12;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Top-left plate date stamp inside viewport
+  roundRect(ctx, px + 14, py + 14, 245, 34, 8);
+  ctx.fillStyle = 'rgba(15, 13, 11, 0.88)';
+  ctx.fill();
+  ctx.strokeStyle = plateIdx === 0 ? '#4cc9f0' : '#ff7b39';
+  ctx.lineWidth = 1.3;
+  ctx.stroke();
+  ctx.font = '600 13px "IBM Plex Mono", monospace';
+  ctx.fillStyle = plateIdx === 0 ? '#4cc9f0' : '#ff7b39';
+  ctx.fillText(
+    plateIdx === 0
+      ? (lang === 'tr' ? '● PLAKA 1 · 23 OCAK 1930' : '● PLATE 1 · 23 JAN 1930')
+      : (lang === 'tr' ? '● PLAKA 2 · 29 OCAK 1930' : '● PLATE 2 · 29 JAN 1930'),
+    px + 26, py + 35
+  );
+  ctx.restore();
+
+  // Right side of Left Card: Explanation steps
+  const exX = px + pw + 22, exW = lw - pw - 68;
+  const steps1 = lang === 'tr' ? [
+    ['1. Aynı Gökyüzü, İki Tarih', 'Tombaugh 6 gün arayla çekilen iki fotoğrafı üst üste hizaladı.'],
+    ['2. Sabit Yıldızlar Yerinde Kalır', 'Uzak yıldızlar hiç kıpırdamaz; göz sadece sıçrayan noktayı yakalar.'],
+    ['3. Aynı Yöntem Bugün de Geçerli', 'Yakınımızdaki her gizli dünya kendini parlaklığıyla değil, hareketiyle ele verir.']
+  ] : [
+    ['1. Same Sky, Two Dates', 'Tombaugh aligned two photographic plates taken 6 days apart.'],
+    ['2. Distant Stars Stay Fixed', 'Background stars never budge; the human eye instantly catches the hopping dot.'],
+    ['3. Still True Today', 'Any unknown nearby world gives itself away not by brightness, but by motion.']
+  ];
+
+  steps1.forEach((st, idx) => {
+    const sy = py + 18 + idx * 142;
+    drawCard(exX, sy, exW, 126, { fill: 'rgba(28, 24, 20, 0.78)', border: idx === 2 ? '#ff7b39' : '#2f2a25', r: 12 });
+    ctx.font = '600 13px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = idx === 2 ? '#ff7b39' : '#f3eee6';
+    ctx.fillText(st[0], exX + 14, sy + 28);
+    ctx.font = '400 13px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#b8afa2';
+    wrapText(ctx, st[1], exX + 14, sy + 52, exW - 28, 19);
+  });
+
+  // Bottom callout in Left Card
+  drawCard(lx + 28, py + ph + 18, lw - 56, 98, { fill: 'rgba(255, 123, 57, 0.08)', border: 'rgba(255, 123, 57, 0.4)', r: 12 });
+  ctx.font = '600 13px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#ff7b39';
+  ctx.fillText(lang === 'tr' ? 'TEMEL İLKE' : 'CORE PRINCIPLE', lx + 46, py + ph + 44);
+  ctx.font = '400 15.5px "IBM Plex Sans", sans-serif';
+  ctx.fillStyle = '#f3eee6';
+  wrapText(
+    ctx,
+    lang === 'tr'
+      ? 'Yüz milyonlarca nokta arasında yeni bir gezegen veya kahverengi cüce arıyorsanız, aynı yere tekrar tekrar bakıp neyin kıpırdadığını bulmalısınız.'
+      : 'To find a new planet or brown dwarf among hundreds of millions of stars, you must look at the same spot repeatedly and see what moves.',
+    lx + 46, py + ph + 68, lw - 92, 22
+  );
+
+  // RIGHT CARD: Planet X & Outer Solar System Orbits
+  const rx = 950, ry = 162, rw = 890, rh = 685;
+  const rAppear = easeOutCubic((localT - 4.5) / 1.5);
+  ctx.save();
+  ctx.globalAlpha = clamp(0.25 + 0.75 * rAppear, 0, 1);
+  drawCard(rx, ry, rw, rh, { accentTop: '#f2c14e' });
+
+  drawBadge(rx + 26, ry + 22, lang === 'tr' ? '2016–2026 · GÜNEŞ SİSTEMİ SINIRI' : '2016–2026 · OUTER SOLAR SYSTEM', '#f2c14e', 'rgba(242,193,78,0.14)');
+  ctx.font = '400 30px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(lang === 'tr' ? 'Peki Plüton’un Ötesinde Ne Saklanıyor? "X Gezegeni"' : 'What Hides Beyond Pluto? The "Planet X" Hypothesis', rx + 26, ry + 82);
+
+  // Orbital diagram center
+  const cx = rx + 470, cy = ry + 335;
+
+  // Subtle background glow
+  const rg = ctx.createRadialGradient(cx - 60, cy, 4, cx, cy, 260);
+  rg.addColorStop(0, 'rgba(242, 193, 78, 0.16)');
+  rg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = rg;
+  ctx.fillRect(rx + 20, ry + 100, rw - 40, 440);
+
+  // Clustered Kuiper Belt / Extreme TNO ellipses (all pulled leftwards!)
+  const tnoAngles = [-0.42, -0.22, -0.06, 0.12, 0.28, 0.45];
+  tnoAngles.forEach((ang, i) => {
+    ctx.save();
+    ctx.translate(cx - 45, cy);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.ellipse(-115, 0, 145 + (i % 3) * 18, 42 + (i % 2) * 10, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(76, 201, 240, 0.42)';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // Moving icy body along each TNO orbit
+    const tAng = localT * (0.35 + i * 0.05) + i * 1.2;
+    const bx = -115 + Math.cos(tAng) * (145 + (i % 3) * 18);
+    const by = Math.sin(tAng) * (42 + (i % 2) * 10);
+    ctx.beginPath();
+    ctx.arc(bx, by, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#4cc9f0';
+    ctx.fill();
+    ctx.restore();
+  });
+
+  // Label for aligned TNOs
+  ctx.font = '600 12.5px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#4cc9f0';
+  ctx.fillText(lang === 'tr' ? 'Aynı Yöne Çekilmiş Uzak Buzlu Cisimler' : 'Distant Icy Bodies Pulled into Alignment', rx + 42, ry + 145);
+  ctx.font = '400 12.5px "IBM Plex Sans", sans-serif';
+  ctx.fillStyle = '#b8afa2';
+  ctx.fillText(lang === 'tr' ? '(Caltech 2016: Kütleçekimsel hizalanma kanıtı)' : '(Caltech 2016: Gravitational clustering evidence)', rx + 42, ry + 165);
+
+  // Sun & Neptune inner ring
+  ctx.beginPath();
+  ctx.arc(cx - 45, cy, 24, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(cx - 45, cy, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffd166';
+  ctx.shadowColor = '#ffd166';
+  ctx.shadowBlur = 14;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.font = '500 11.5px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#ffd166';
+  ctx.fillText(lang === 'tr' ? 'Güneş & Neptün (30 AU)' : 'Sun & Neptune (30 AU)', cx - 108, cy + 42);
+
+  // Counter-balancing Giant Dashed Orbit of PLANET X to the right!
+  ctx.save();
+  ctx.translate(cx - 45, cy);
+  ctx.rotate(-0.08);
+  ctx.beginPath();
+  ctx.ellipse(115, 0, 235, 135, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = '#ff7b39';
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([8, 6]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Planet X moving slowly on outer right arc
+  const pxAng = -0.55 + Math.sin(localT * 0.4) * 0.35;
+  const pxx = 115 + Math.cos(pxAng) * 235;
+  const pxy = Math.sin(pxAng) * 135;
+
+  ctx.beginPath();
+  ctx.arc(pxx, pxy, 14, 0, Math.PI * 2);
+  ctx.fillStyle = '#1b0b02';
+  ctx.fill();
+  ctx.strokeStyle = '#ff7b39';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  ctx.font = '700 15px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#ff7b39';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('?', pxx, pxy + 1);
+
+  ctx.textAlign = 'left';
+  ctx.font = '600 14px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#ff7b39';
+  ctx.fillText(lang === 'tr' ? 'X GEZEGENİ (Varsayım)' : 'PLANET X (Hypothesis)', pxx - 70, pxy - 26);
+  ctx.restore();
+
+  // Bottom 3 stat boxes on Right Card
+  const pxStats = lang === 'tr' ? [
+    ['5 – 10× Dünya', 'Öngörülen Kütle (NASA)'],
+    ['20 – 30× Neptün', 'Güneş’e Uzaklık (~600 AU)'],
+    ['10.000 – 20.000 Yıl', 'Tek Bir Yörünge Turu']
+  ] : [
+    ['5 – 10× Earth', 'Predicted Mass (NASA)'],
+    ['20 – 30× Neptune', 'Distance from Sun (~600 AU)'],
+    ['10,000 – 20,000 Yrs', 'One Orbit Around Sun']
+  ];
+
+  pxStats.forEach((st, i) => {
+    const bx = rx + 28 + i * 282, by = ry + 558, bw = 266, bh = 98;
+    drawCard(bx, by, bw, bh, { fill: 'rgba(28, 24, 20, 0.85)', border: '#3d352e', r: 12 });
+    ctx.font = '400 28px "Instrument Serif", Georgia, serif';
+    ctx.fillStyle = '#f2c14e';
+    ctx.fillText(st[0], bx + 18, by + 44);
+    ctx.font = '400 13px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#b8afa2';
+    ctx.fillText(st[1], bx + 18, by + 72);
+  });
+  ctx.restore();
+}
+
+// ============================================================================
+// SCENE 2: INVISIBLE INFRARED UNIVERSE & SPHEREx 102-BAND LINEAR FILTER
+// ============================================================================
+function renderScene2(localT) {
+  drawSceneHeader(SCENES[1], localT);
+
+  // LEFT CARD: Visible Light vs Infrared Thermal Scanner
+  const lx = 80, ly = 162, lw = 820, lh = 685;
+  drawCard(lx, ly, lw, lh, { accentTop: '#ff7b39' });
+  drawBadge(lx + 26, ly + 22, lang === 'tr' ? 'NEDEN KIZILÖTESİ (ISI) IŞIĞI?' : 'WHY INFRARED (HEAT) LIGHT?');
+  ctx.font = '400 30px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(lang === 'tr' ? 'Gözümüzün Karanlık Gördüğü Yerde Gizli Dünyalar Parlar' : 'Where Human Eyes See Darkness, Cold Worlds Glow', lx + 26, ly + 82);
+
+  // Scanner viewport
+  const vx = lx + 28, vy = ly + 104, vw = lw - 56, vh = 430;
+  ctx.save();
+  roundRect(ctx, vx, vy, vw, vh, 12);
+  ctx.fillStyle = '#050404';
+  ctx.fill();
+  ctx.strokeStyle = '#3c342c';
+  ctx.stroke();
+  ctx.clip();
+
+  // Animated scanline position (sweeps left-right smoothly)
+  const splitFrac = 0.18 + 0.68 * (0.5 - 0.5 * Math.cos(localT * 0.65));
+  const splitX = vx + vw * splitFrac;
+
+  // Ordinary white stars visible on BOTH sides
+  const commonStars = [
+    [120, 90, 2.5], [280, 70, 2.0], [520, 110, 3.0], [670, 280, 2.2],
+    [180, 340, 2.1], [430, 360, 2.6], [620, 85, 1.9], [90, 230, 1.8]
+  ];
+  commonStars.forEach(([sx, sy, sr]) => {
+    ctx.beginPath();
+    ctx.arc(vx + sx, vy + sy, sr, 0, Math.PI * 2);
+    ctx.fillStyle = '#e8e2d5';
+    ctx.fill();
+  });
+
+  // RIGHT OF SCANLINE (or LEFT? Let's make LEFT of scanline = INFRARED SPHEREx, RIGHT = VISIBLE EYE!)
+  // Clip to LEFT of splitX for INFRARED REVEAL
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(vx, vy, splitX - vx, vh);
+  ctx.clip();
+
+  // Warm infrared nebula glow
+  const irGrad = ctx.createRadialGradient(vx + 390, vy + 215, 20, vx + 390, vy + 215, 360);
+  irGrad.addColorStop(0, 'rgba(255, 123, 57, 0.24)');
+  irGrad.addColorStop(0.6, 'rgba(180, 45, 25, 0.11)');
+  irGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = irGrad;
+  ctx.fillRect(vx, vy, vw, vh);
+
+  // Hidden cold objects revealed ONLY in Infrared!
+  const irObjects = [
+    { x: 230, y: 190, r: 9, c: '#ff7b39', tr: 'Kahverengi Cüce (-23°C)', en: 'Cold Brown Dwarf (-23°C)', sub_tr: 'Görünür ışıkta tamamen karanlık!', sub_en: 'Pitch black in visible light!' },
+    { x: 480, y: 235, r: 11, c: '#f2c14e', tr: 'Toz Bulutu İçinde Bebek Yıldız', en: 'Newborn Star Inside Dust Cloud', sub_tr: 'Kızılötesi ışık tozun içinden geçer', sub_en: 'Infrared pierces straight through dust' },
+    { x: 340, y: 320, r: 8, c: '#5fe0b0', tr: 'Su (H₂O) ve Metan (CH₄) Buzları', en: 'Water (H₂O) & Methane (CH₄) Ices', sub_tr: 'Moleküller kızılötesi renkleri soğurur', sub_en: 'Molecules absorb specific IR bands' }
+  ];
+
+  irObjects.forEach(o => {
+    const ox = vx + o.x, oy = vy + o.y;
+    const gr = ctx.createRadialGradient(ox, oy, 1, ox, oy, o.r * 3.5);
+    gr.addColorStop(0, o.c);
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.arc(ox, oy, o.r * 3.5, 0, Math.PI * 2); ctx.fill();
+
+    ctx.beginPath(); ctx.arc(ox, oy, o.r, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = o.c; ctx.stroke();
+
+    // Label box
+    roundRect(ctx, ox + 16, oy - 22, 238, 44, 8);
+    ctx.fillStyle = 'rgba(12, 10, 9, 0.9)';
+    ctx.fill();
+    ctx.strokeStyle = o.c;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.font = '600 12.5px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = o.c;
+    ctx.fillText(lang === 'tr' ? o.tr : o.en, ox + 26, oy - 4);
+    ctx.font = '400 11.5px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#d5cdc0';
+    ctx.fillText(lang === 'tr' ? o.sub_tr : o.sub_en, ox + 26, oy + 14);
+  });
+  ctx.restore();
+
+  // Draw ghosts on the Visible side so the viewer sees they are missing!
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(splitX, vy, vx + vw - splitX, vh);
+  ctx.clip();
+  irObjects.forEach(o => {
+    const ox = vx + o.x, oy = vy + o.y;
+    ctx.beginPath(); ctx.arc(ox, oy, 11, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = '500 11.5px "IBM Plex Mono", monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.32)';
+    ctx.fillText(lang === 'tr' ? 'Gözle Görünmez' : 'Invisible to Eye', ox + 16, oy + 4);
+  });
+  ctx.restore();
+
+  // Scanline bar
+  ctx.beginPath();
+  ctx.moveTo(splitX, vy); ctx.lineTo(splitX, vy + vh);
+  ctx.strokeStyle = '#ff7b39';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Corner headers inside scanner
+  drawBadge(vx + 16, vy + 16, lang === 'tr' ? '◀ SPHEREx KIZILÖTESİ (0.75 – 5.0 µm)' : '◀ SPHEREx INFRARED (0.75 – 5.0 µm)', '#ff7b39', 'rgba(15,12,10,0.9)');
+  drawBadge(vx + vw - 275, vy + 16, lang === 'tr' ? 'İNSAN GÖZÜ (GÖRÜNÜR IŞIK) ▶' : 'HUMAN EYE (VISIBLE LIGHT) ▶', '#9e9589', 'rgba(15,12,10,0.9)');
+  ctx.restore();
+
+  // Bottom summary row of Left Card
+  const stats2 = lang === 'tr' ? [
+    ['102 Renk', '0,75 ile 5 mikron arası kızılötesi'],
+    ['6 Ayda Bir', 'Tüm gökyüzü baştan sona taranır'],
+    ['Mart 2025', 'NASA SPHEREx uzaya fırlatıldı']
+  ] : [
+    ['102 Colours', 'Infrared from 0.75 to 5 microns'],
+    ['Every 6 Months', 'Entire sky mapped pole to pole'],
+    ['March 2025', 'NASA SPHEREx launched to orbit']
+  ];
+  stats2.forEach((st, i) => {
+    const bx = lx + 28 + i * 258, by = vy + vh + 18, bw = 246, bh = 98;
+    drawCard(bx, by, bw, bh, { fill: 'rgba(28, 24, 20, 0.85)', r: 12 });
+    ctx.font = '400 28px "Instrument Serif", Georgia, serif';
+    ctx.fillStyle = '#ff7b39';
+    ctx.fillText(st[0], bx + 16, by + 42);
+    ctx.font = '400 12.5px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#b8afa2';
+    ctx.fillText(st[1], bx + 16, by + 70);
+  });
+
+  // RIGHT CARD: Linear Variable Filter (LVF) -> How stepping in time builds a 102-band spectrum!
+  const rx = 930, ry = 162, rw = 910, rh = 685;
+  drawCard(rx, ry, rw, rh, { accentTop: '#5fe0b0' });
+  drawBadge(rx + 26, ry + 22, lang === 'tr' ? 'SPHEREx’İN OPTİK SIRRI · FİLTRE TEKERLEĞİ YOK!' : 'SPHEREx OPTICAL SECRET · NO FILTER WHEEL!', '#5fe0b0', 'rgba(95,224,176,0.14)');
+  ctx.font = '400 30px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(lang === 'tr' ? 'Doğrusal Değişken Filtre: Zamanda İlerlemek = Tayf Çıkarmak' : 'Linear Variable Filter: Stepping in Time = Building a Spectrum', rx + 26, ry + 82);
+
+  // Filter bar visualization
+  const fx = rx + 42, fy = ry + 132, fw = rw - 84, fh = 96;
+  const lvGrad = ctx.createLinearGradient(fx, fy, fx + fw, fy);
+  lvGrad.addColorStop(0.0, '#7cc6fe');
+  lvGrad.addColorStop(0.25, '#ffe599');
+  lvGrad.addColorStop(0.55, '#ff7b39');
+  lvGrad.addColorStop(0.82, '#d62828');
+  lvGrad.addColorStop(1.0, '#6a040f');
+
+  ctx.save();
+  roundRect(ctx, fx, fy, fw, fh, 12);
+  ctx.fillStyle = lvGrad;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#f3eee6';
+  ctx.stroke();
+
+  // Filter wavelength labels along top of filter
+  ctx.font = '600 12px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#b8afa2';
+  const ticks = [['0.75 µm', 0.02], ['1.4 µm (H₂O)', 0.24], ['2.4 µm', 0.48], ['3.3 µm (CH₄)', 0.72], ['5.0 µm', 0.95]];
+  ticks.forEach(([lbl, pos]) => {
+    ctx.fillText(lbl, fx + fw * pos - 20, fy - 10);
+  });
+
+  // 8 animated exposures stepping across the filter!
+  const stepCycle = (localT * 1.15) % 9;
+  const activeStep = Math.min(7, Math.floor(stepCycle));
+  const samplePoints = [
+    { lam: 0.92, flux: 0.72 },
+    { lam: 1.41, flux: 0.28, dip: 'H₂O' },
+    { lam: 1.72, flux: 0.84 },
+    { lam: 1.92, flux: 0.35, dip: 'H₂O' },
+    { lam: 2.25, flux: 0.88 },
+    { lam: 2.72, flux: 0.31, dip: 'H₂O' },
+    { lam: 3.32, flux: 0.22, dip: 'CH₄' },
+    { lam: 4.15, flux: 0.78 }
+  ];
+
+  // Spectrum plot box below filter
+  const sx = fx, sy = fy + 168, sw = fw, sh = 265;
+  drawCard(sx, sy, sw, sh, { fill: '#0a0908', border: '#38312b', r: 12 });
+
+  // Grid & axes in spectrum plot
+  ctx.font = '500 11.5px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#877e72';
+  ctx.fillText(lang === 'tr' ? 'PARLAKLIK (TAYF / SPEKTRUM)' : 'BRIGHTNESS (SPECTRUM)', sx + 16, sy + 24);
+  ctx.fillText(lang === 'tr' ? 'Her nokta = 1 SPHEREx pozu (farklı zamanda, farklı renkte)' : 'Each dot = 1 SPHEREx exposure (different time, different colour)', sx + sw - 415, sy + 24);
+
+  // Shaded water & methane absorption bands in plot
+  const plotX = lam => sx + 40 + ((lam - 0.75) / (4.6 - 0.75)) * (sw - 80);
+  const plotY = fl => sy + sh - 36 - fl * (sh - 78);
+
+  [[1.32, 1.50, 'H₂O (Su)'], [1.82, 2.02, 'H₂O'], [2.58, 2.86, 'H₂O'], [3.18, 3.48, 'CH₄ (Metan)']].forEach(([l0, l1, name]) => {
+    const bx0 = plotX(l0), bx1 = plotX(l1);
+    ctx.fillStyle = 'rgba(76, 201, 240, 0.09)';
+    ctx.fillRect(bx0, sy + 36, bx1 - bx0, sh - 68);
+    ctx.font = '600 11px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#4cc9f0';
+    ctx.fillText(name, bx0 + 4, sy + 52);
+  });
+
+  // Draw smooth connecting curve up to activeStep
+  ctx.beginPath();
+  for (let i = 0; i <= activeStep; i++) {
+    const px = plotX(samplePoints[i].lam);
+    const py = plotY(samplePoints[i].flux);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.strokeStyle = 'rgba(255, 123, 57, 0.75)';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Draw stars on the filter & laser beams dropping into the spectrum plot!
+  for (let i = 0; i <= activeStep; i++) {
+    const pt = samplePoints[i];
+    const cx = plotX(pt.lam);
+    const cyFilter = fy + fh / 2;
+    const cyPlot = plotY(pt.flux);
+    const isCurrent = i === activeStep;
+
+    // Star position on the LVF filter
+    ctx.beginPath();
+    ctx.arc(cx, cyFilter, isCurrent ? 11 : 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#0a0908';
+    ctx.fill();
+    ctx.lineWidth = isCurrent ? 3 : 2;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
+
+    // Exposure label above star on filter
+    ctx.font = '600 11.5px "IBM Plex Mono", monospace';
+    ctx.fillStyle = isCurrent ? '#5fe0b0' : '#f3eee6';
+    ctx.textAlign = 'center';
+    ctx.fillText((lang === 'tr' ? 'Poz ' : 'Exp ') + (i + 1), cx, cyFilter - 18);
+
+    // Vertical laser beam from filter down to spectrum point
+    ctx.beginPath();
+    ctx.moveTo(cx, fy + fh);
+    ctx.lineTo(cx, cyPlot);
+    ctx.strokeStyle = isCurrent ? '#5fe0b0' : 'rgba(255, 255, 255, 0.22)';
+    ctx.lineWidth = isCurrent ? 2.2 : 1.2;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Plotted spectrum point
+    ctx.beginPath();
+    ctx.arc(cx, cyPlot, isCurrent ? 8 : 5.5, 0, Math.PI * 2);
+    ctx.fillStyle = wavelengthToColor(pt.lam);
+    ctx.fill();
+    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+    ctx.textAlign = 'left';
+  }
+
+  // Bottom insight box on Right Card
+  drawCard(fx, sy + sh + 16, fw, 74, { fill: 'rgba(95, 224, 176, 0.08)', border: 'rgba(95, 224, 176, 0.45)', r: 12 });
+  ctx.font = '600 15px "IBM Plex Sans", sans-serif';
+  ctx.fillStyle = '#5fe0b0';
+  ctx.fillText(
+    lang === 'tr'
+      ? '💡 Neden Önemli? Chronosphere’de bir yıldızın zaman içindeki pozlarını toplamak, otomatik olarak 102 renkli kimyasal tayfını çıkarır!'
+      : '💡 Why It Matters: In Chronosphere, collecting exposures over time automatically builds the object’s 102-band chemical spectrum!',
+    fx + 18, sy + sh + 58
+  );
+  ctx.restore();
+}
+
+// ============================================================================
+// SCENE 3: THE 1.6 MILLION EXPOSURE BOTTLENECK & 3 TECHNICAL BARRIERS
+// ============================================================================
+function renderScene3(localT) {
+  drawSceneHeader(SCENES[2], localT);
+
+  // LEFT CARD: 3D All-Sky HEALPix Sphere & Massive Scale Telemetry
+  const lx = 80, ly = 162, lw = 890, lh = 685;
+  drawCard(lx, ly, lw, lh, { accentTop: '#ff7b39' });
+  drawBadge(lx + 26, ly + 22, lang === 'tr' ? 'TÜM GÖKYÜZÜ TARAMASI · VERİ SELİ' : 'ALL-SKY SURVEY · DATA TSUNAMI');
+  ctx.font = '400 30px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(lang === 'tr' ? 'Tek Bir Uzman Ekibinin Bakamayacağı Kadar Büyük Bir Gökyüzü' : 'A Sky Far Too Vast for Any Single Team of Scientists to Inspect', lx + 26, ly + 82);
+
+  // 3D Celestial Sphere projection center
+  const cx = lx + 285, cy = ly + 365, rad = 205;
+  ctx.save();
+  // Outer halo
+  const sg = ctx.createRadialGradient(cx, cy, rad * 0.2, cx, cy, rad * 1.25);
+  sg.addColorStop(0, 'rgba(255, 123, 57, 0.14)');
+  sg.addColorStop(0.7, 'rgba(76, 201, 240, 0.06)');
+  sg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = sg;
+  ctx.beginPath(); ctx.arc(cx, cy, rad * 1.25, 0, Math.PI * 2); ctx.fill();
+
+  // Sphere outline
+  ctx.beginPath();
+  ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+  ctx.fillStyle = '#070605';
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#483f36';
+  ctx.stroke();
+
+  // Rotating longitude/latitude HEALPix wireframe & thousands of galaxy dots
+  const rot = localT * 0.45;
+  for (let lat = -60; lat <= 60; lat += 30) {
+    const lr = (lat * Math.PI) / 180;
+    const yOff = Math.sin(lr) * rad;
+    const rxRing = Math.cos(lr) * rad;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + yOff, rxRing, rxRing * 0.22, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  for (let lon = 0; lon < 6; lon++) {
+    const a = rot + (lon * Math.PI) / 6;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, Math.abs(Math.cos(a)) * rad, rad, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 123, 57, 0.14)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Simulated SPHEREx scanning swath band sweeping across the 3D sphere
+  const scanAngle = Math.sin(localT * 0.9) * 0.7;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.clip();
+  ctx.translate(cx, cy);
+  ctx.rotate(scanAngle);
+  const swGrad = ctx.createLinearGradient(0, -36, 0, 36);
+  swGrad.addColorStop(0, 'rgba(255, 123, 57, 0)');
+  swGrad.addColorStop(0.5, 'rgba(255, 123, 57, 0.38)');
+  swGrad.addColorStop(1, 'rgba(255, 123, 57, 0)');
+  ctx.fillStyle = swGrad;
+  ctx.fillRect(-rad, -36, rad * 2, 72);
+
+  // Dense galaxy/star points lighting up on sphere
+  for (let i = 0; i < 140; i++) {
+    const phi = (i * 2.39996) + rot * 0.6;
+    const u = (i / 140) * 2 - 1;
+    const rProj = Math.sqrt(1 - u * u);
+    const x3 = rProj * Math.cos(phi);
+    const z3 = rProj * Math.sin(phi);
+    if (z3 > -0.2) {
+      const px = x3 * rad * 0.92;
+      const py = u * rad * 0.92;
+      const inSwath = Math.abs(py) < 32;
+      ctx.beginPath();
+      ctx.arc(px, py, inSwath ? 2.4 : 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = inSwath ? '#5fe0b0' : (i % 3 === 0 ? '#ff7b39' : '#e0d8c8');
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+  ctx.restore();
+
+  // Telemetry Counters on right half of Left Card
+  const countProg = easeOutCubic(Math.min(1, localT / 2.2));
+  const metrics = [
+    {
+      val: Math.round(450 * countProg) + ' Milyon+',
+      val_en: Math.round(450 * countProg) + ' Million+',
+      lbl_tr: 'Haritalanan Gökada (Galaksi)',
+      lbl_en: 'Galaxies Mapped Across the Sky',
+      c: '#ff7b39'
+    },
+    {
+      val: Math.round(100 * countProg) + ' Milyon+',
+      val_en: Math.round(100 * countProg) + ' Million+',
+      lbl_tr: 'Samanyolu Yıldızı (Tekrar Tekrar)',
+      lbl_en: 'Milky Way Stars Observed Repeatedly',
+      c: '#f2c14e'
+    },
+    {
+      val: (1.6 * countProg).toFixed(1) + ' Milyon',
+      val_en: (1.6 * countProg).toFixed(1) + ' Million',
+      lbl_tr: 'Herkese Açık SPHEREx Pozu',
+      lbl_en: 'Public SPHEREx Exposures in Archive',
+      c: '#5fe0b0'
+    },
+    {
+      val: '63 MB / Poz',
+      val_en: '63 MB / File',
+      lbl_tr: 'Tek Bir Ham FITS Görüntü Dosyası',
+      lbl_en: 'Size of a Single Raw FITS Exposure',
+      c: '#4cc9f0'
+    }
+  ];
+
+  metrics.forEach((m, i) => {
+    const mx = lx + 520, my = ly + 115 + i * 112, mw = 340, mh = 98;
+    drawCard(mx, my, mw, mh, { fill: 'rgba(26, 22, 19, 0.9)', border: '#3a322b', r: 12 });
+    ctx.font = '400 34px "Instrument Serif", Georgia, serif';
+    ctx.fillStyle = m.c;
+    ctx.fillText(lang === 'tr' ? m.val : m.val_en, mx + 18, my + 44);
+    ctx.font = '400 13.5px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#c8bfb2';
+    ctx.fillText(lang === 'tr' ? m.lbl_tr : m.lbl_en, mx + 18, my + 74);
+  });
+
+  // Bottom citizen science note on Left Card
+  drawCard(lx + 28, ly + 575, lw - 56, 84, { fill: 'rgba(255, 123, 57, 0.09)', border: 'rgba(255, 123, 57, 0.4)', r: 12 });
+  ctx.font = '500 15px "IBM Plex Sans", sans-serif';
+  ctx.fillStyle = '#f3eee6';
+  wrapText(
+    ctx,
+    lang === 'tr'
+      ? 'SOHO’daki 5.000 kuyruklu yıldızın çoğunu ve WISE’daki 3.000 kahverengi cüce adayını gönüllü insanlar buldu. Ne kadar çok göz bakarsa, keşif şansı o kadar artar!'
+      : 'Volunteers spotted most of SOHO’s 5,000+ comets and 3,000 brown dwarf candidates in WISE. The more eyes that look, the more we find!',
+    lx + 46, ly + 608, lw - 92, 22
+  );
+
+  // RIGHT CARD: The 3 Technical Walls Blocking Ordinary Users
+  const rx = 1000, ry = 162, rw = 840, rh = 685;
+  drawCard(rx, ry, rw, rh, { accentTop: '#ff5d8f' });
+  drawBadge(rx + 26, ry + 22, lang === 'tr' ? 'NEDEN DOĞRUDAN BAKILAMIYORDU?' : 'WHY COULDN’T PEOPLE JUST LOOK?', '#ff5d8f', 'rgba(255,93,143,0.14)');
+  ctx.font = '400 30px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(lang === 'tr' ? 'Ham Teleskop Verisinin Önündeki 3 Büyük Duvar' : 'The 3 Technical Barriers Hiding Raw Telescope Data', rx + 26, ry + 82);
+
+  const barriers = [
+    {
+      num: 'ENGEL 01', num_en: 'BARRIER 01',
+      title_tr: 'Devasa Dosya Boyutu: Tek Yıldız İçin 22 GB İndirme!',
+      title_en: 'Massive File Size: 22 GB Download for One Star!',
+      desc_tr: 'Bir noktayı 360 pozda görmek için 360 × 63 MB = 22.6 GB ham FITS verisi indirmek gerekir. Normal bir tarayıcıda ya da telefonda imkânsızdır.',
+      desc_en: 'Viewing 360 exposures of one spot requires 360 × 63 MB = 22.6 GB of raw FITS files — impossible on a phone or normal browser.',
+      c: '#ff5d8f',
+      drawVisual: (vx, vy, vw, vh) => {
+        // Giant 63MB block crushing bandwidth bar
+        roundRect(ctx, vx + 16, vy + 18, 115, vh - 36, 8);
+        ctx.fillStyle = 'rgba(255, 93, 143, 0.2)'; ctx.fill();
+        ctx.strokeStyle = '#ff5d8f'; ctx.lineWidth = 1.8; ctx.stroke();
+        ctx.font = '700 18px "IBM Plex Mono", monospace';
+        ctx.fillStyle = '#ff5d8f';
+        ctx.fillText('63 MB', vx + 42, vy + 55);
+        ctx.font = '500 11px "IBM Plex Mono", monospace';
+        ctx.fillStyle = '#e0d6c8';
+        ctx.fillText('× 360 POZ', vx + 40, vy + 78);
+        ctx.fillText('= 22.6 GB!', vx + 38, vy + 98);
+      }
+    },
+    {
+      num: 'ENGEL 02', num_en: 'BARRIER 02',
+      title_tr: 'Dönük Açılar (TAN-SIP) ve Gökyüzü Parıltısı',
+      title_en: 'Rotated Exposures (TAN-SIP) & Zodiacal Glow',
+      desc_tr: 'Her poz farklı bir yörünge açısıyla çekilir, mercek bükülmesi içerir ve yoğun kızılötesi arka plan ışıması sönük cisimleri boğar.',
+      desc_en: 'Every exposure is rotated at a different roll angle with lens distortion and bright infrared background glow drowning faint stars.',
+      c: '#f2c14e',
+      drawVisual: (vx, vy, vw, vh) => {
+        const mcx = vx + 74, mcy = vy + vh / 2;
+        [-0.45, 0.15, 0.65].forEach((a, idx) => {
+          ctx.save();
+          ctx.translate(mcx, mcy);
+          ctx.rotate(a + Math.sin(localT + idx) * 0.08);
+          ctx.strokeStyle = idx === 1 ? '#f2c14e' : 'rgba(242, 193, 78, 0.45)';
+          ctx.lineWidth = 1.6;
+          ctx.strokeRect(-32, -32, 64, 64);
+          ctx.restore();
+        });
+      }
+    },
+    {
+      num: 'ENGEL 03', num_en: 'BARRIER 03',
+      title_tr: '2000 Yılı Katalog Yanılgısı (26 Yıllık Kayma!)',
+      title_en: 'The Year-2000 Catalogue Trap (26 Years of Drift!)',
+      desc_tr: 'Kataloglar yıldızların 2000 yılındaki konumunu saklar. Barnard Yıldızı o günden beri 280 yay saniyesi kaymıştır; düz arama onu ıskalar!',
+      desc_en: 'Catalogues store where stars were in the year 2000. Barnard’s Star has moved 280 arcseconds since — a plain search misses it!',
+      c: '#4cc9f0',
+      drawVisual: (vx, vy, vw, vh) => {
+        // J2000 empty circle vs 2026 actual star
+        const x1 = vx + 38, y1 = vy + vh - 34;
+        const x2 = vx + 108, y2 = vy + 36;
+        ctx.beginPath(); ctx.arc(x1, y1, 10, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ff5d8f'; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.font = '600 10px "IBM Plex Mono", monospace';
+        ctx.fillStyle = '#ff5d8f'; ctx.fillText('2000', x1 - 12, y1 + 22);
+
+        ctx.beginPath(); ctx.moveTo(x1 + 7, y1 - 7); ctx.lineTo(x2 - 8, y2 + 8);
+        ctx.strokeStyle = '#4cc9f0'; ctx.lineWidth = 1.8; ctx.stroke();
+
+        ctx.beginPath(); ctx.arc(x2, y2, 6, 0, Math.PI * 2);
+        ctx.fillStyle = '#5fe0b0'; ctx.fill();
+        ctx.fillText('2026', x2 - 14, y2 - 12);
+      }
+    }
+  ];
+
+  barriers.forEach((b, i) => {
+    const by = ry + 112 + i * 180, bh = 162;
+    drawCard(rx + 28, by, rw - 56, bh, { fill: 'rgba(26, 22, 19, 0.88)', border: '#3a322b', r: 14 });
+    b.drawVisual(rx + 36, by + 12, 148, bh - 24);
+
+    const tx = rx + 196, tw = rw - 244;
+    drawBadge(tx, by + 18, lang === 'tr' ? b.num : b.num_en, b.c, 'rgba(255,255,255,0.04)');
+    ctx.font = '600 18px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#f3eee6';
+    ctx.fillText(lang === 'tr' ? b.title_tr : b.title_en, tx, by + 66);
+    ctx.font = '400 14px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#b8afa2';
+    wrapText(ctx, lang === 'tr' ? b.desc_tr : b.desc_en, tx, by + 94, tw, 21);
+  });
+}
+
+// ============================================================================
+// SCENE 4: CHRONOSPHERE ARCHITECTURE — 4-STAGE SERVERLESS PIPELINE
+// ============================================================================
+function renderScene4(localT) {
+  drawSceneHeader(SCENES[3], localT);
+
+  const stages = [
+    {
+      step: 'ADIM 01', step_en: 'STAGE 01',
+      title_tr: '1.6M Gökyüzü Dizini & 2026 Konumu',
+      title_en: '1.6M Sky Index & 2026 Propagation',
+      sub_tr: 'Tıkladığınız anda hangi SPHEREx pozlarının oraya baktığını bulur; 2000 yılı katalog yıldızlarını bugünün tarihine taşır.',
+      sub_en: 'Instantly finds every SPHEREx exposure covering your click, and propagates Year-2000 catalogue stars to today’s date.',
+      c: '#4cc9f0'
+    },
+    {
+      step: 'ADIM 02', step_en: 'STAGE 02',
+      title_tr: 'HTTP Range ile Cerrahi Bayt Kesimi',
+      title_en: 'Surgical Byte-Slicing via HTTP Range',
+      sub_tr: '63 MB’lık dev FITS dosyasını indirmek yerine, doğrudan NASA bulutundan yalnız hedef yıldızın çevresindeki ~200 KB’lık pikseli kesip alır!',
+      sub_en: 'Instead of downloading 63 MB FITS files, slices just the ~200 KB pixel block around your target straight from NASA’s cloud!',
+      c: '#ff7b39'
+    },
+    {
+      step: 'ADIM 03', step_en: 'STAGE 03',
+      title_tr: 'TAN-SIP Kuzey-Yukarı Hizalama',
+      title_en: 'TAN-SIP North-Up Alignment',
+      sub_tr: 'Farklı açılardaki bütün pozları ortak bir Kuzey-Yukarı ızgaraya yeniden çizer, gökyüzü arka plan parıltısını çıkarır.',
+      sub_en: 'Resamples rotated exposures onto one common North-Up grid using TAN-SIP astrometry and subtracts background sky glow.',
+      c: '#f2c14e'
+    },
+    {
+      step: 'ADIM 04', step_en: 'STAGE 04',
+      title_tr: '%100 Tarayıcıda Canlı Bilim (0 Sunucu)',
+      title_en: '100% In-Browser Science (Zero Server)',
+      sub_tr: 'Video döngüsü, 102-bant tayf, molekül çukurları ve komşu yıldız denetimi cihazınızda hesaplanır; çevrimdışı bile çalışır!',
+      sub_en: 'Time-lapse video, 102-band spectrum, molecule dips, and neighbour checks run in your browser — and work offline!',
+      c: '#5fe0b0'
+    }
+  ];
+
+  const cardW = 418, cardH = 545, gap = 28, startX = 80, startY = 170;
+  const activeStage = Math.min(3, Math.floor((localT / 18) * 4));
+
+  stages.forEach((st, i) => {
+    const cx = startX + i * (cardW + gap);
+    const cy = startY;
+    const isAct = i === activeStage;
+    const isPast = i <= activeStage;
+
+    drawCard(cx, cy, cardW, cardH, {
+      accentTop: st.c,
+      border: isAct ? st.c : (isPast ? '#483f36' : '#2a2520'),
+      bw: isAct ? 2.2 : 1.2,
+      fill: isAct ? 'rgba(26, 22, 19, 0.95)' : 'rgba(18, 15, 13, 0.86)'
+    });
+
+    drawBadge(cx + 22, cy + 22, lang === 'tr' ? st.step : st.step_en, st.c);
+    ctx.font = '400 26px "Instrument Serif", Georgia, serif';
+    ctx.fillStyle = '#f3eee6';
+    ctx.fillText(lang === 'tr' ? st.title_tr : st.title_en, cx + 22, cy + 78);
+
+    // Visual Diagram Box inside each stage card
+    const vx = cx + 22, vy = cy + 98, vw = cardW - 44, vh = 275;
+    drawCard(vx, vy, vw, vh, { fill: '#080706', border: '#2f2a25', r: 12 });
+
+    ctx.save();
+    roundRect(ctx, vx, vy, vw, vh, 12);
+    ctx.clip();
+
+    if (i === 0) {
+      // Stage 1 Visual: Sky Index + 2000 -> 2026 Proper Motion & Parallax Ellipse
+      ctx.strokeStyle = 'rgba(76, 201, 240, 0.14)';
+      for (let gx = 40; gx < vw; gx += 45) {
+        ctx.beginPath(); ctx.moveTo(vx + gx, vy); ctx.lineTo(vx + gx, vy + vh); ctx.stroke();
+      }
+      for (let gy = 40; gy < vh; gy += 45) {
+        ctx.beginPath(); ctx.moveTo(vx, vy + gy); ctx.lineTo(vx + vw, vy + gy); ctx.stroke();
+      }
+      const p = (localT * 0.55) % 1;
+      const x0 = vx + 85, y0 = vy + 210;
+      const x1 = vx + 285, y1 = vy + 75;
+      ctx.beginPath(); ctx.arc(x0, y0, 9, 0, Math.PI * 2);
+      ctx.strokeStyle = '#877e72'; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = '600 11px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#877e72'; ctx.fillText('J2000.0', x0 - 22, y0 + 24);
+
+      // Helical parallax + proper motion path
+      ctx.beginPath();
+      for (let s = 0; s <= 60; s++) {
+        const u = s / 60;
+        const px = lerp(x0, x1, u) + Math.sin(u * Math.PI * 6) * 8;
+        const py = lerp(y0, y1, u) + Math.cos(u * Math.PI * 6) * 8;
+        if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#4cc9f0'; ctx.lineWidth = 2; ctx.stroke();
+
+      const curX = lerp(x0, x1, p) + Math.sin(p * Math.PI * 6) * 8;
+      const curY = lerp(y0, y1, p) + Math.cos(p * Math.PI * 6) * 8;
+      ctx.beginPath(); ctx.arc(curX, curY, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#5fe0b0'; ctx.fill();
+      ctx.fillStyle = '#5fe0b0'; ctx.fillText('2026.8 (Bugün)', x1 - 45, y1 - 16);
+      ctx.fillStyle = '#b8afa2';
+      ctx.fillText(lang === 'tr' ? 'Öz Hareket + Paralaks Salınımı' : 'Proper Motion + Parallax Wobble', vx + 18, vy + 28);
+    } else if (i === 1) {
+      // Stage 2 Visual: 63 MB FITS vs ~200 KB Surgical HTTP Range Cutout
+      const fbx = vx + 26, fby = vy + 42, fbw = 155, fbh = 195;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.fillRect(fbx, fby, fbw, fbh);
+      ctx.strokeRect(fbx, fby, fbw, fbh);
+      ctx.font = '600 11.5px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#877e72';
+      ctx.fillText('63 MB FITS (2040×2040)', fbx, fby - 10);
+
+      // Tiny glowing cutout square inside the giant FITS
+      const cutX = fbx + 72, cutY = fby + 82, cutS = 34;
+      ctx.fillStyle = 'rgba(255, 123, 57, 0.32)';
+      ctx.fillRect(cutX, cutY, cutS, cutS);
+      ctx.strokeStyle = '#ff7b39'; ctx.lineWidth = 2.2;
+      ctx.strokeRect(cutX, cutY, cutS, cutS);
+
+      // Animated laser beam transferring ONLY the tiny block to the right
+      const dstX = vx + 235, dstY = vy + 78, dstS = 110;
+      ctx.beginPath();
+      ctx.moveTo(cutX + cutS, cutY); ctx.lineTo(dstX, dstY);
+      ctx.moveTo(cutX + cutS, cutY + cutS); ctx.lineTo(dstX, dstY + dstS);
+      ctx.strokeStyle = 'rgba(255, 123, 57, 0.55)';
+      ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
+
+      // Extracted clean stamp
+      roundRect(ctx, dstX, dstY, dstS, dstS, 8);
+      ctx.fillStyle = 'rgba(255, 123, 57, 0.16)'; ctx.fill();
+      ctx.strokeStyle = '#ff7b39'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(dstX + dstS / 2, dstY + dstS / 2, 8, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.beginPath(); ctx.arc(dstX + dstS / 2, dstY + dstS / 2, 18, 0, Math.PI * 2);
+      ctx.strokeStyle = '#5fe0b0'; ctx.stroke();
+
+      ctx.font = '700 15px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#5fe0b0';
+      ctx.fillText('~200 KB!', dstX + 16, dstY + dstS + 24);
+      ctx.font = '500 11.5px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#ff7b39';
+      ctx.fillText(lang === 'tr' ? '%99.7 Daha Az Veri' : '99.7% Less Data', dstX + 4, dstY + dstS + 44);
+    } else if (i === 2) {
+      // Stage 3 Visual: Tilted exposures rotating into North-Up alignment
+      const alignT = 0.5 - 0.5 * Math.cos(localT * 1.4); // 0 -> tilted, 1 -> aligned!
+      const mcx = vx + vw / 2, mcy = vy + vh / 2 + 8;
+      const baseAngles = [-0.55, 0.42, -0.24, 0.68];
+      baseAngles.forEach((a0, idx) => {
+        const curA = a0 * (1 - alignT);
+        ctx.save();
+        ctx.translate(mcx, mcy);
+        ctx.rotate(curA);
+        ctx.strokeStyle = alignT > 0.85 ? '#5fe0b0' : '#f2c14e';
+        ctx.globalAlpha = 0.35 + idx * 0.15;
+        ctx.lineWidth = 1.8;
+        ctx.strokeRect(-68, -68, 136, 136);
+        // Star pair inside frame
+        ctx.beginPath(); ctx.arc(0, -12, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.beginPath(); ctx.arc(28, 22, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#f2c14e'; ctx.fill();
+        ctx.restore();
+      });
+      ctx.font = '600 12px "IBM Plex Mono", monospace';
+      ctx.fillStyle = alignT > 0.85 ? '#5fe0b0' : '#f2c14e';
+      ctx.fillText(
+        alignT > 0.85
+          ? (lang === 'tr' ? '✓ KUZEY-YUKARI HİZALANDI (TAN-SIP)' : '✓ NORTH-UP ALIGNED (TAN-SIP)')
+          : (lang === 'tr' ? '↻ EĞİK POZLAR DÖNDÜRÜLÜYOR...' : '↻ ROTATING TILTED EXPOSURES...'),
+        vx + 18, vy + 28
+      );
+    } else {
+      // Stage 4 Visual: Live Browser Output (Video + Spectrum + Offline Shield)
+      const bx = vx + 20, by = vy + 24;
+      // Mini spectrum wave
+      ctx.beginPath();
+      for (let k = 0; k <= 36; k++) {
+        const u = k / 36;
+        const px = bx + u * (vw - 40);
+        const dip = (Math.abs(u - 0.3) < 0.08 || Math.abs(u - 0.68) < 0.08) ? 38 : 0;
+        const py = by + 95 - Math.sin(u * Math.PI) * 35 + dip + Math.sin(localT * 4 + k) * 2;
+        if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#5fe0b0'; ctx.lineWidth = 2.5; ctx.stroke();
+
+      // 3 feature pills inside stage 4
+      const feats = lang === 'tr' ? [
+        '⚡ Saniyeler İçinde Video & Tayf',
+        '🛡️ Çökecek Sunucu Yok (Statik Mimari)',
+        '📴 Service Worker ile Çevrimdışı Çalışır'
+      ] : [
+        '⚡ Video & Spectrum in Seconds',
+        '🛡️ Zero Server to Crash (Static Web)',
+        '📴 Works Offline via Service Worker'
+      ];
+      feats.forEach((ft, idx) => {
+        drawCard(bx, by + 125 + idx * 40, vw - 40, 34, { fill: 'rgba(95, 224, 176, 0.1)', border: 'rgba(95, 224, 176, 0.35)', r: 8 });
+        ctx.font = '500 12.5px "IBM Plex Sans", sans-serif';
+        ctx.fillStyle = '#f3eee6';
+        ctx.fillText(ft, bx + 12, by + 147 + idx * 40);
+      });
+    }
+    ctx.restore();
+
+    // Description text under visual box
+    ctx.font = '400 14.5px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#c8bfb2';
+    wrapText(ctx, lang === 'tr' ? st.sub_tr : st.sub_en, cx + 22, cy + 402, cardW - 44, 22);
+
+    // Connecting arrow between stage cards
+    if (i < 3) {
+      const ax = cx + cardW + 4, ay = cy + cardH / 2;
+      ctx.font = '700 20px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#ff7b39';
+      ctx.fillText('→', ax, ay);
+    }
+  });
+
+  // Bottom full-width banner in Scene 4
+  drawCard(80, 735, 1760, 110, { fill: 'rgba(20, 18, 16, 0.92)', border: '#483f36', r: 14 });
+  ctx.font = '400 28px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#ff7b39';
+  ctx.fillText(
+    lang === 'tr'
+      ? 'Sonuç: 63 MB’lık ham uzay teleskobu verisi, 3 saniye içinde herkesin anlayabileceği canlı bir filme dönüşür.'
+      : 'Result: 63 MB raw space telescope files turn into an interactive movie anyone can understand in 3 seconds.',
+    110, 782
+  );
+  ctx.font = '400 15px "IBM Plex Sans", sans-serif';
+  ctx.fillStyle = '#b8afa2';
+  ctx.fillText(
+    lang === 'tr'
+      ? 'Üstelik ilk ziyarette açılış görüntüsü 0,4 saniyede ekrandadır ve hiçbir harita geçişi beyaz ekran parlaması (flash) yapmaz.'
+      : 'Plus, the opening sky view appears in 0.4 seconds on first visit, and seamless canvas veils prevent any white map flashes.',
+    110, 816
+  );
+}
+
+// ============================================================================
+// SCENE 5: 3 PROOFS WITH 100% REAL NASA SPHEREx TELESCOPE DATA
+// ============================================================================
+function renderScene5(localT) {
+  drawSceneHeader(SCENES[4], localT);
+
+  const colW = 566, colH = 685, gap = 31, y0 = 162;
+  // Spotlight progresses across the 3 proofs (0..10s -> Proof 1, 10..20s -> Proof 2, 20..30s -> Proof 3)
+  const focusCol = localT < 10 ? 0 : (localT < 20 ? 1 : 2);
+
+  // --------------------------------------------------------------------------
+  // COLUMN 1: BARNARD'S STAR (REAL SPHEREx DETECTOR 5 PIXELS — MOTION)
+  // --------------------------------------------------------------------------
+  const x1 = 80;
+  drawCard(x1, y0, colW, colH, {
+    accentTop: '#5fe0b0',
+    border: focusCol === 0 ? '#5fe0b0' : '#352f29',
+    bw: focusCol === 0 ? 2.4 : 1.2
+  });
+  drawBadge(x1 + 24, y0 + 20, lang === 'tr' ? 'KANIT 1 · HAREKET (GERÇEK SPHEREx VERİSİ)' : 'PROOF 1 · MOTION (REAL SPHEREx DATA)', '#5fe0b0', 'rgba(95,224,176,0.14)');
+  ctx.font = '400 28px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(lang === 'tr' ? 'Barnard Yıldızı: Kuzeye 10.4″/Yıl Sıçrayış' : 'Barnard’s Star: Hopping 10.4″/Year North', x1 + 24, y0 + 74);
+
+  const bVisits = REAL_DATA.barnard.visits;
+  const vIdx = Math.floor(localT * 1.35) % bVisits.length;
+  const curV = bVisits[vIdx];
+  const stampSize = REAL_DATA.cropSize;
+  const imgX = x1 + 24, imgY = y0 + 96, imgS = 325;
+
+  // Draw real SPHEREx stamp
+  ctx.save();
+  roundRect(ctx, imgX, imgY, imgS, imgS, 10);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(decodeStampCanvas(curV.b64, stampSize, 'gray'), imgX, imgY, imgS, imgS);
+  ctx.imageSmoothingEnabled = true;
+
+  // Overlay Gaia predicted trajectory & green measurement ring on Barnard's Star
+  const scalePx = imgS / stampSize;
+  const p0 = bVisits[0].pos, p2 = bVisits[2].pos, pc = curV.pos;
+
+  // Dashed predicted trajectory line (South to North)
+  ctx.beginPath();
+  ctx.moveTo(imgX + p0[0] * scalePx, imgY + (p0[1] + 4) * scalePx);
+  ctx.lineTo(imgX + p2[0] * scalePx, imgY + (p2[1] - 5) * scalePx);
+  ctx.strokeStyle = '#ff7b39';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Green target ring at current visit centroid
+  ctx.beginPath();
+  ctx.arc(imgX + pc[0] * scalePx, imgY + pc[1] * scalePx, 22, 0, Math.PI * 2);
+  ctx.strokeStyle = '#5fe0b0';
+  ctx.lineWidth = 2.2;
+  ctx.stroke();
+
+  // Visit label badge inside stamp
+  roundRect(ctx, imgX + 10, imgY + 10, 220, 28, 6);
+  ctx.fillStyle = 'rgba(10, 9, 8, 0.85)'; ctx.fill();
+  ctx.font = '600 11.5px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#5fe0b0';
+  ctx.fillText(lang === 'tr' ? curV.label_tr : curV.label_en, imgX + 18, imgY + 28);
+  ctx.restore();
+  ctx.strokeStyle = '#3c342c'; ctx.strokeRect(imgX, imgY, imgS, imgS);
+
+  // Right side of Column 1: "Time as Colour" composite stamp + stats
+  const rgbX = imgX + imgS + 16, rgbW = colW - imgS - 64;
+  const rgbCv = makeTimeColorCanvas(bVisits[0].b64, bVisits[1].b64, bVisits[2].b64, stampSize);
+  ctx.save();
+  roundRect(ctx, rgbX, imgY, rgbW, rgbW, 10);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(rgbCv, rgbX, imgY, rgbW, rgbW);
+  ctx.imageSmoothingEnabled = true;
+  ctx.restore();
+  ctx.strokeStyle = '#483f36'; ctx.strokeRect(rgbX, imgY, rgbW, rgbW);
+
+  ctx.font = '600 11.5px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#ff7b39';
+  ctx.fillText(lang === 'tr' ? 'RENK OLARAK ZAMAN' : 'TIME AS COLOUR', rgbX, imgY + rgbW + 20);
+  ctx.font = '400 12px "IBM Plex Sans", sans-serif';
+  ctx.fillStyle = '#b8afa2';
+  wrapText(
+    ctx,
+    lang === 'tr'
+      ? 'Erken ziyaret Kırmızı, geç ziyaret Mavi: Sabit yıldızlar beyaz kalırken Barnard Yıldızı renkli bir iz bırakır!'
+      : 'Early visit Red, late visit Blue: steady stars stay white while Barnard’s Star leaves a coloured trail!',
+    rgbX, imgY + rgbW + 40, rgbW, 17.5
+  );
+
+  // Measurement verification table at bottom of Column 1
+  const tbY = imgY + imgS + 18;
+  drawCard(x1 + 24, tbY, colW - 48, 224, { fill: 'rgba(12, 10, 9, 0.9)', border: '#2f2a25', r: 12 });
+  ctx.font = '600 12px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#5fe0b0';
+  ctx.fillText(lang === 'tr' ? 'ÖLÇÜLEN HAREKET vs. GAIA KATALOĞU' : 'MEASURED MOTION vs. GAIA CATALOGUE', x1 + 40, tbY + 28);
+
+  const bRows = lang === 'tr' ? [
+    ['Chronosphere Ölçümü (D5 & D6):', '10.4″ / yıl (Kuzeye 1.7 piksel)'],
+    ['Gaia DR3 Katalog Değeri:', '10.4″ / yıl (Tam uyum!)'],
+    ['Aynı Karedeki Komşu Yıldızlar:', '0.3″ içinde sabit (Kamera hatası değil)'],
+    ['Uzaklık:', '5.96 Işık Yılı (En hızlı yıldız)']
+  ] : [
+    ['Chronosphere Measured (D5 & D6):', '10.4″ / yr (1.7 pixels North)'],
+    ['Gaia DR3 Catalogue Value:', '10.4″ / yr (Exact match!)'],
+    ['Neighbour Stars in Same Frame:', 'Steady within 0.3″ (Not camera jitter)'],
+    ['Distance:', '5.96 Light-Years (Fastest star in sky)']
+  ];
+  bRows.forEach((r, idx) => {
+    const ry = tbY + 60 + idx * 38;
+    ctx.font = '400 13px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#b8afa2';
+    ctx.fillText(r[0], x1 + 40, ry);
+    ctx.font = '600 13px "IBM Plex Mono", monospace';
+    ctx.fillStyle = idx < 2 ? '#5fe0b0' : '#f3eee6';
+    ctx.fillText(r[1], x1 + 275, ry);
+  });
+
+  // --------------------------------------------------------------------------
+  // COLUMN 2: WISE 0855 (REAL SPHEREx D1–D6 PIXELS — COLD WORLD EMERGING)
+  // --------------------------------------------------------------------------
+  const x2 = x1 + colW + gap;
+  drawCard(x2, y0, colW, colH, {
+    accentTop: '#ff7b39',
+    border: focusCol === 1 ? '#ff7b39' : '#352f29',
+    bw: focusCol === 1 ? 2.4 : 1.2
+  });
+  drawBadge(x2 + 24, y0 + 20, lang === 'tr' ? 'KANIT 2 · GİZLİ SOĞUK DÜNYA (-23°C)' : 'PROOF 2 · HIDDEN SUB-FREEZING WORLD (-23°C)', '#ff7b39', 'rgba(255,123,57,0.14)');
+  ctx.font = '400 28px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(lang === 'tr' ? 'WISE 0855: 4 Mikron Ötesinde Karanlıktan Çıkan Dünya' : 'WISE 0855: Materializing Out of Darkness Past 4 µm', x2 + 24, y0 + 74);
+
+  const wDets = REAL_DATA.wise0855.dets;
+  // Cycle slower on D5 & D6 so the viewer clearly sees it appear!
+  const detSchedule = [0, 1, 2, 3, 4, 5, 5, 5];
+  const dPick = detSchedule[Math.floor(localT * 1.1) % detSchedule.length];
+  const curD = wDets[dPick];
+  const isVisibleNow = curD.det >= 5;
+
+  const wImgX = x2 + 24, wImgY = y0 + 96, wImgS = 325;
+  ctx.save();
+  roundRect(ctx, wImgX, wImgY, wImgS, wImgS, 10);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(decodeStampCanvas(curD.b64, stampSize, isVisibleNow ? 'ir' : 'gray'), wImgX, wImgY, wImgS, wImgS);
+  ctx.imageSmoothingEnabled = true;
+
+  // Target circle at center (where WISE 0855 sits)
+  const wcx = wImgX + wImgS / 2, wcy = wImgY + wImgS / 2;
+  ctx.beginPath();
+  ctx.arc(wcx, wcy, 24, 0, Math.PI * 2);
+  ctx.strokeStyle = isVisibleNow ? '#ff7b39' : '#877e72';
+  ctx.lineWidth = isVisibleNow ? 2.8 : 1.8;
+  ctx.stroke();
+
+  // Status banner inside WISE 0855 stamp
+  roundRect(ctx, wImgX + 10, wImgY + 10, wImgS - 20, 32, 6);
+  ctx.fillStyle = 'rgba(10, 9, 8, 0.88)'; ctx.fill();
+  ctx.font = '600 12px "IBM Plex Mono", monospace';
+  ctx.fillStyle = isVisibleNow ? '#ff7b39' : '#b8afa2';
+  ctx.fillText(
+    `D${curD.det} (${curD.band[0]}–${curD.band[1]} µm): ` +
+    (isVisibleNow
+      ? (lang === 'tr' ? '★ WISE 0855 BELİRDİ!' : '★ WISE 0855 APPEARS!')
+      : (lang === 'tr' ? 'Halka Boş (Çok Soğuk / Görünmez)' : 'Ring Empty (Too Cold / Invisible)')),
+    wImgX + 18, wImgY + 30
+  );
+  ctx.restore();
+  ctx.strokeStyle = isVisibleNow ? '#ff7b39' : '#3c342c';
+  ctx.strokeRect(wImgX, wImgY, wImgS, wImgS);
+
+  // Right side of Column 2: 6 Detector Selector Strip (vertical ladder D1..D6)
+  const stripX = wImgX + wImgS + 16, stripW = colW - wImgS - 64;
+  wDets.forEach((dObj, idx) => {
+    const sy = wImgY + idx * 54, sh = 46;
+    const act = idx === dPick;
+    drawCard(stripX, sy, stripW, sh, {
+      fill: act ? (dObj.det >= 5 ? 'rgba(255, 123, 57, 0.24)' : 'rgba(255,255,255,0.12)') : 'rgba(20, 18, 16, 0.8)',
+      border: act ? (dObj.det >= 5 ? '#ff7b39' : '#f3eee6') : '#2f2a25',
+      r: 8
+    });
+    ctx.font = '600 12px "IBM Plex Mono", monospace';
+    ctx.fillStyle = dObj.det >= 5 ? '#ff7b39' : '#d5cdc0';
+    ctx.fillText(`D${dObj.det} · ${dObj.band[0]}–${dObj.band[1]} µm`, stripX + 12, sy + 20);
+    ctx.font = '400 11px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = dObj.det >= 5 ? '#5fe0b0' : '#877e72';
+    ctx.fillText(
+      dObj.det >= 5
+        ? (lang === 'tr' ? '● Parlak Kızılötesi Nokta!' : '● Bright IR Detection!')
+        : (lang === 'tr' ? '○ Görünmez (Yalnız komşu parıltısı)' : '○ Invisible (Neighbour glow only)'),
+      stripX + 12, sy + 37
+    );
+  });
+
+  // Bottom explanation box of Column 2
+  drawCard(x2 + 24, tbY, colW - 48, 224, { fill: 'rgba(12, 10, 9, 0.9)', border: '#2f2a25', r: 12 });
+  ctx.font = '600 12px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#ff7b39';
+  ctx.fillText(lang === 'tr' ? 'NEDEN SADECE D5 VE D6’DA GÖRÜNÜYOR?' : 'WHY ONLY VISIBLE IN D5 & D6?', x2 + 40, tbY + 28);
+  ctx.font = '400 14px "IBM Plex Sans", sans-serif';
+  ctx.fillStyle = '#e0d8c8';
+  wrapText(
+    ctx,
+    lang === 'tr'
+      ? 'WISE 0855 bilinen en soğuk kahverengi cücedir (yaklaşık -23°C, Dünya’daki bir kutup kışından bile soğuk!). Yalnızca 7.4 ışık yılı uzaktadır ve yılda 8.2 yay saniyesi hızla kayar. Görünür ışıkta ve Gaia yıldız kataloğunda hiç yoktur; ancak 4 mikronun ötesindeki ısı dalga boylarında (D5 ve D6) saklandığı karanlıktan çıkar.'
+      : 'WISE 0855 is the coldest known brown dwarf (around -23°C, colder than a polar winter on Earth!). Just 7.4 light-years away and moving at 8.2″/yr, it is absent from Gaia and invisible below 4 microns — only emerging past 4 µm in Detectors 5 and 6.',
+    x2 + 40, tbY + 58, colW - 80, 22
+  );
+
+  // --------------------------------------------------------------------------
+  // COLUMN 3: EPSILON INDI B & RW AURIGAE (REAL SPECTRA — CHEMISTRY & FLARES)
+  // --------------------------------------------------------------------------
+  const x3 = x2 + colW + gap;
+  drawCard(x3, y0, colW, colH, {
+    accentTop: '#4cc9f0',
+    border: focusCol === 2 ? '#4cc9f0' : '#352f29',
+    bw: focusCol === 2 ? 2.4 : 1.2
+  });
+  drawBadge(x3 + 24, y0 + 20, lang === 'tr' ? 'KANIT 3 · MOLEKÜL İZLERİ VE PARLAMA' : 'PROOF 3 · MOLECULE BANDS & VARIABILITY', '#4cc9f0', 'rgba(76,201,240,0.14)');
+  ctx.font = '400 28px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(lang === 'tr' ? 'Su, Metan ve Değişen Genç Yıldızlar' : 'Water, Methane & Flaring Newborn Stars', x3 + 24, y0 + 74);
+
+  // TOP PLOT IN COL 3: Epsilon Indi B Real 450-point Spectrum
+  const sp1X = x3 + 24, sp1Y = y0 + 96, sp1W = colW - 48, sp1H = 270;
+  drawCard(sp1X, sp1Y, sp1W, sp1H, { fill: '#080706', border: '#38312b', r: 10 });
+
+  ctx.font = '600 12px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#4cc9f0';
+  ctx.fillText(lang === 'tr' ? 'EPSILON INDI B · 450 GERÇEK SPHEREx POZU (SU & METAN)' : 'EPSILON INDI B · 450 REAL SPHEREx EXPOSURES (H₂O & CH₄)', sp1X + 14, sp1Y + 22);
+
+  const mapLamX = lam => sp1X + 36 + ((lam - 0.75) / (4.95 - 0.75)) * (sp1W - 56);
+  // Log scale for Epsilon Indi B flux (0.3 to 35 mJy)
+  const mapFluxY1 = fl => {
+    const lf = Math.log10( clamp(fl, 0.25, 35) );
+    const u = (lf - Math.log10(0.25)) / (Math.log10(35) - Math.log10(0.25));
+    return sp1Y + sp1H - 28 - u * (sp1H - 64);
+  };
+
+  // Shaded absorption bands on Epsilon Indi B plot
+  const absBands = [
+    [1.34, 1.48, 'H₂O'],
+    [1.80, 1.98, 'H₂O'],
+    [2.55, 2.85, 'H₂O'],
+    [3.15, 3.50, 'CH₄']
+  ];
+  absBands.forEach(([b0, b1, mol]) => {
+    const bx0 = mapLamX(b0), bx1 = mapLamX(b1);
+    ctx.fillStyle = mol === 'CH₄' ? 'rgba(255, 123, 57, 0.14)' : 'rgba(76, 201, 240, 0.12)';
+    ctx.fillRect(bx0, sp1Y + 32, bx1 - bx0, sp1H - 58);
+    ctx.font = '600 10.5px "IBM Plex Mono", monospace';
+    ctx.fillStyle = mol === 'CH₄' ? '#ff7b39' : '#4cc9f0';
+    ctx.fillText(mol, bx0 + 3, sp1Y + 46);
+  });
+
+  // Progressive reveal of real Epsilon Indi B spectrum points
+  const ePts = REAL_DATA.epsindib.pts;
+  const maxLamReveal = 0.75 + 4.3 * ((localT * 0.22) % 1);
+  const epColors = ['#4cc9f0', '#ff5d8f', '#ffd166', '#5fe0b0'];
+  for (let i = 0; i < ePts.length; i++) {
+    const [lam, fl, ep] = ePts[i];
+    const px = mapLamX(lam), py = mapFluxY1(fl);
+    const active = lam <= maxLamReveal;
+    ctx.beginPath();
+    ctx.arc(px, py, active ? 2.4 : 1.6, 0, Math.PI * 2);
+    ctx.fillStyle = active ? epColors[ep % epColors.length] : 'rgba(255,255,255,0.15)';
+    ctx.fill();
+  }
+
+  ctx.font = '400 11.5px "IBM Plex Sans", sans-serif';
+  ctx.fillStyle = '#b8afa2';
+  ctx.fillText(
+    lang === 'tr'
+      ? '1.4, 1.9, 2.7 µm’de Su Buharı (H₂O) ve 3.3 µm’de Metan (CH₄) ışığı soğurarak derin çukurlar açar.'
+      : 'Water vapour (1.4, 1.9, 2.7 µm) and Methane (3.3 µm) absorb infrared light, carving deep valleys.',
+    sp1X + 14, sp1Y + sp1H - 9
+  );
+
+  // BOTTOM PLOT IN COL 3: RW Aurigae Real Spectrum (Visit 1 vs Visit 2 Variability!)
+  const sp2X = x3 + 24, sp2Y = sp1Y + sp1H + 16, sp2W = colW - 48, sp2H = 280;
+  drawCard(sp2X, sp2Y, sp2W, sp2H, { fill: '#080706', border: '#38312b', r: 10 });
+
+  ctx.font = '600 12px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#ff5d8f';
+  ctx.fillText(lang === 'tr' ? 'RW AURIGAE · 1 YIL İÇİNDE DEĞİŞEN BEBEK YILDIZ TAYFI' : 'RW AURIGAE · NEWBORN STAR CHANGING WITHIN 1 YEAR', sp2X + 14, sp2Y + 22);
+
+  // Legend for Visit 1 vs Visit 2
+  ctx.fillStyle = '#4cc9f0'; ctx.fillText(lang === 'tr' ? '● Ziyaret 1 (Eyl 2025)' : '● Visit 1 (Sep 2025)', sp2X + 14, sp2Y + 42);
+  ctx.fillStyle = '#ff5d8f'; ctx.fillText(lang === 'tr' ? '● Ziyaret 2 (Mar 2026)' : '● Visit 2 (Mar 2026)', sp2X + 190, sp2Y + 42);
+
+  const mapFluxY2 = fl => {
+    const lf = Math.log10(clamp(fl, 80, 1400));
+    const u = (lf - Math.log10(80)) / (Math.log10(1400) - Math.log10(80));
+    return sp2Y + sp2H - 36 - u * (sp2H - 88);
+  };
+
+  const rwPts = REAL_DATA.rwaur.pts;
+  for (let i = 0; i < rwPts.length; i++) {
+    const [lam, fl, ep] = rwPts[i];
+    const px = mapLamX(lam), py = mapFluxY2(fl);
+    ctx.beginPath();
+    ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = ep === 0 ? '#4cc9f0' : '#ff5d8f';
+    ctx.fill();
+  }
+
+  // Callout annotations on RW Aurigae plot
+  drawBadge(sp2X + 42, sp2Y + 62, lang === 'tr' ? '<1.6 µm: +%40 Parlaklaştı!' : '<1.6 µm: +40% Brighter!', '#ff5d8f', 'rgba(255,93,143,0.16)');
+  drawBadge(sp2X + sp2W - 235, sp2Y + 185, lang === 'tr' ? '>3.8 µm: -%50 Sönükleşti!' : '>3.8 µm: -50% Faded!', '#4cc9f0', 'rgba(76,201,240,0.16)');
+
+  ctx.font = '400 11.5px "IBM Plex Sans", sans-serif';
+  ctx.fillStyle = '#b8afa2';
+  ctx.fillText(
+    lang === 'tr'
+      ? 'Çevredeki komşu yıldızlar %1–2 içinde sabit kalırken, RW Aurigae bir yılda çarpıcı biçimde değişti.'
+      : 'While neighbour stars stayed flat within 1–2%, RW Aurigae changed dramatically within a year.',
+    sp2X + 14, sp2Y + sp2H - 10
+  );
+}
+
+// ============================================================================
+// SCENE 6: HONEST SCIENCE — THE BRIGHTNESS LADDER & BLIND FIELD VERIFICATION
+// ============================================================================
+function renderScene6(localT) {
+  drawSceneHeader(SCENES[5], localT);
+
+  // LEFT CARD: The Brightness Ladder (Sirius -> Naked Eye -> Barnard -> Pluto -> SPHEREx Limit -> Planet X)
+  const lx = 80, ly = 162, lw = 860, lh = 685;
+  drawCard(lx, ly, lw, lh, { accentTop: '#ff7b39' });
+  drawBadge(lx + 26, ly + 22, lang === 'tr' ? 'PARLAKLIK MERDİVENİ · KADİR (MAGNITUDE) NEDİR?' : 'LADDER OF BRIGHTNESS · WHAT IS A MAGNITUDE?');
+  ctx.font = '400 30px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(lang === 'tr' ? 'SPHEREx Tek Pozda X Gezegeni’ni Görebilir mi?' : 'Could a Single SPHEREx Exposure See Planet X?', lx + 26, ly + 82);
+
+  const rungs = [
+    { mag: '-1.5', tr: 'Sirius (En parlak yıldız)', en: 'Sirius (Brightest star in the sky)', mult: '', r: 13, c: '#ffffff', seen: true },
+    { mag: '6.0', tr: 'Çıplak gözün görebildiği en sönük yıldız', en: 'Faintest star the human eye can see', mult: lang === 'tr' ? '1.000× daha sönük' : '1,000× fainter', r: 10, c: '#f3eee6', seen: true },
+    { mag: '9.5', tr: 'Barnard Yıldızı (Kırmızı cüce)', en: 'Barnard’s Star (Red dwarf)', mult: lang === 'tr' ? '25× daha sönük' : '25× fainter', r: 8, c: '#ffd166', seen: true },
+    { mag: '15.1', tr: 'Plüton (1930’da bulunan cüce gezegen)', en: 'Pluto (Discovered in 1930)', mult: lang === 'tr' ? '170× daha sönük' : '170× fainter', r: 6, c: '#ff9f1c', seen: true },
+    { mag: '19.0', tr: 'Tek bir SPHEREx pozundaki en sönük nokta', en: 'Faintest dot in one SPHEREx exposure', mult: lang === 'tr' ? '36× daha sönük' : '36× fainter', r: 4.2, c: '#ff7b39', seen: true, limitAfter: true },
+    { mag: '22–25', tr: 'X Gezegeni (Öngörülen parlaklık)', en: 'Planet X (Predicted brightness)', mult: lang === 'tr' ? '16 ila 250× daha sönük!' : '16 to 250× fainter!', r: 7, c: '#877e72', seen: false }
+  ];
+
+  let curY = ly + 112;
+  rungs.forEach((rg, idx) => {
+    const appear = easeOutCubic((localT - idx * 0.5) / 0.8);
+    ctx.save();
+    ctx.globalAlpha = clamp(appear, 0.15, 1);
+
+    const rowH = 68;
+    drawCard(lx + 28, curY, lw - 56, rowH, {
+      fill: rg.seen ? 'rgba(24, 20, 17, 0.88)' : 'rgba(15, 13, 11, 0.65)',
+      border: rg.limitAfter ? '#ff7b39' : '#2f2a25',
+      r: 10
+    });
+
+    // Glowing star dot or dashed unseen circle
+    const dotX = lx + 64, dotY = curY + rowH / 2;
+    if (rg.seen) {
+      const g = ctx.createRadialGradient(dotX, dotY, 1, dotX, dotY, rg.r * 2.6);
+      g.addColorStop(0, rg.c);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(dotX, dotY, rg.r * 2.6, 0, Math.PI * 2); ctx.fill();
+
+      ctx.beginPath(); ctx.arc(dotX, dotY, rg.r, 0, Math.PI * 2);
+      ctx.fillStyle = rg.c; ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.arc(dotX, dotY, rg.r, 0, Math.PI * 2);
+      ctx.strokeStyle = '#877e72'; ctx.lineWidth = 1.8;
+      ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // Magnitude badge
+    ctx.font = '700 16px "IBM Plex Mono", monospace';
+    ctx.fillStyle = rg.seen ? '#f3eee6' : '#877e72';
+    ctx.fillText((lang === 'tr' ? 'Kadir ' : 'Mag ') + rg.mag, lx + 98, curY + 40);
+
+    // Label
+    ctx.font = '500 15.5px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = rg.seen ? '#f3eee6' : '#9e9589';
+    ctx.fillText(lang === 'tr' ? rg.tr : rg.en, lx + 225, curY + 40);
+
+    // Multiplier on right
+    if (rg.mult) {
+      ctx.font = '600 13px "IBM Plex Mono", monospace';
+      ctx.fillStyle = rg.seen ? '#ff7b39' : '#ff5d8f';
+      ctx.textAlign = 'right';
+      ctx.fillText(rg.mult, lx + lw - 48, curY + 40);
+      ctx.textAlign = 'left';
+    }
+
+    curY += rowH + 10;
+
+    if (rg.limitAfter) {
+      // Draw the glowing SPHEREx single-exposure limit divider!
+      ctx.beginPath();
+      ctx.moveTo(lx + 36, curY + 8);
+      ctx.lineTo(lx + lw - 36, curY + 8);
+      ctx.strokeStyle = '#ff7b39';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      roundRect(ctx, lx + lw / 2 - 195, curY - 5, 390, 26, 13);
+      ctx.fillStyle = '#1b0b02'; ctx.fill();
+      ctx.strokeStyle = '#ff7b39'; ctx.stroke();
+      ctx.font = '700 11.5px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#ff7b39';
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        lang === 'tr' ? '▲ SPHEREx TEK POZ SINIRI BURADA DURUR (KADİR 19) ▲' : '▲ SPHEREx SINGLE EXPOSURE STOPS HERE (MAG 19) ▲',
+        lx + lw / 2, curY + 12
+      );
+      ctx.textAlign = 'left';
+      curY += 28;
+    }
+    ctx.restore();
+  });
+
+  // Bottom takeaway in Left Card
+  ctx.font = '500 14.5px "IBM Plex Sans", sans-serif';
+  ctx.fillStyle = '#5fe0b0';
+  ctx.fillText(
+    lang === 'tr'
+      ? '★ Ama 19. kadirden parlak olup hareket eden her bilinmeyen cismi SPHEREx kaydeder: Plüton gibi bulunabilir!'
+      : '★ Yet anything brighter than mag 19 that moves is recorded by SPHEREx — and can be found the way Pluto was!',
+    lx + 32, ly + lh - 22
+  );
+
+  // RIGHT CARD: Neighbour Verification & Blind Field Scan
+  const rx = 970, ry = 162, rw = 870, rh = 685;
+  drawCard(rx, ry, rw, rh, { accentTop: '#5fe0b0' });
+  drawBadge(rx + 26, ry + 22, lang === 'tr' ? 'BİLİMSEL DOĞRULAMA · SAHTE ALARMLARA GEÇİT YOK' : 'SCIENTIFIC RIGOUR · ZERO FALSE ALARMS', '#5fe0b0', 'rgba(95,224,176,0.14)');
+  ctx.font = '400 30px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(lang === 'tr' ? 'Gördüğünüz Değişim Gökyüzünde mi, Kamerada mı?' : 'Is What You See in the Sky — or Just in the Camera?', rx + 26, ry + 82);
+
+  // Top visual in Right Card: Blind Field Scan + Neighbour Comparison
+  const bfx = rx + 28, bfy = ry + 104, bfw = rw - 56, bfh = 320;
+  drawCard(bfx, bfy, bfw, bfh, { fill: '#080706', border: '#38312b', r: 12 });
+
+  // Left half of box: Simulated field with blind scan testing every star
+  const fcx = bfx + 185, fcy = bfy + 165;
+  ctx.strokeStyle = '#2f2a25';
+  ctx.strokeRect(bfx + 20, bfy + 24, 330, 272);
+
+  const fieldStars = [
+    [70, 65, false], [150, 55, false], [260, 80, false],
+    [95, 195, false], [240, 215, false], [140, 245, false],
+    [290, 165, false], [185, 138, true] // The real mover!
+  ];
+  const scanIdx = Math.floor(localT * 3.5) % fieldStars.length;
+
+  fieldStars.forEach(([sx, sy, isMover], idx) => {
+    const px = bfx + 20 + sx, py = bfy + 24 + sy;
+    // Scanner reticle testing each star
+    if (idx === scanIdx) {
+      ctx.beginPath(); ctx.arc(px, py, 16, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(76, 201, 240, 0.65)';
+      ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    if (isMover) {
+      // Diamond flag around discovered mover!
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(Math.PI / 4);
+      ctx.strokeStyle = '#ff7b39';
+      ctx.lineWidth = 2.2;
+      ctx.strokeRect(-11, -11, 22, 22);
+      ctx.restore();
+      ctx.font = '600 11.5px "IBM Plex Mono", monospace';
+      ctx.fillStyle = '#ff7b39';
+      ctx.fillText(lang === 'tr' ? '◆ Hareket Yakalandı!' : '◆ Mover Flagged!', px + 16, py + 4);
+    } else {
+      ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(95, 224, 176, 0.35)';
+      ctx.lineWidth = 1; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(px, py, isMover ? 4.5 : 3.2, 0, Math.PI * 2);
+    ctx.fillStyle = isMover ? '#ff7b39' : '#e0d8c8';
+    ctx.fill();
+  });
+
+  ctx.font = '600 11.5px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#5fe0b0';
+  ctx.fillText(lang === 'tr' ? 'KATALOGSUZ KÖR ALAN TARAMASI' : 'CATALOGUE-FREE BLIND FIELD SCAN', bfx + 30, bfy + 44);
+
+  // Right half of box: Target vs Neighbour Stars stability curves
+  const gx = bfx + 375, gy = bfy + 34, gw = bfw - 395, gh = 252;
+  ctx.font = '600 12px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(lang === 'tr' ? 'HEDEF vs. KOMŞU YILDIZLAR (PARLAKLIK)' : 'TARGET vs. NEIGHBOUR STARS (FLUX)', gx, gy + 14);
+
+  // Steady baseline (Neighbour stars = 1.00 ± 0.01)
+  const baseY = gy + 155;
+  ctx.beginPath();
+  ctx.moveTo(gx, baseY); ctx.lineTo(gx + gw, baseY);
+  ctx.strokeStyle = '#5fe0b0'; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.font = '500 12px "IBM Plex Sans", sans-serif';
+  ctx.fillStyle = '#5fe0b0';
+  ctx.fillText(lang === 'tr' ? 'Komşu Yıldızlar: %1–2 içinde dümdüz (Kamera sabit)' : 'Neighbour Stars: Flat within 1–2% (Camera steady)', gx + 8, baseY + 24);
+
+  // Target star curve (dramatic real variability!)
+  ctx.beginPath();
+  for (let k = 0; k <= 40; k++) {
+    const u = k / 40;
+    const px = gx + u * gw;
+    const py = baseY - 35 - Math.sin(u * Math.PI * 2.2 + localT * 2) * 52;
+    if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.strokeStyle = '#ff7b39'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.fillStyle = '#ff7b39';
+  ctx.fillText(lang === 'tr' ? 'Hedef Yıldız: Gerçek Fiziksel Değişim!' : 'Target Star: Real Physical Variability!', gx + 8, gy + 58);
+
+  // Bottom 3 verification pillars in Right Card
+  const pillars = lang === 'tr' ? [
+    ['1. Önce Düz Türkçe Yanıt', 'Karmaşık grafiklerden önce, ölçümlerin ne söylediğini sade cümlelerle en üstte yazar; yalnızca şüphe götürmeyen bulguları belirtir.'],
+    ['2. Python (Astropy) ile Doğrulandı', 'Tarayıcıdaki FITS okuyucu ve paralaks hesabı Astropy ile karşılaştırıldı: konumlar 0.004 yay saniyesi hassasiyetle örtüşür.'],
+    ['3. Tek Tıkla Bağımsız Gözlemevleri', 'Her nokta SIMBAD, WiseView (Backyard Worlds), ESASky, Legacy Survey ve VizieR araçlarına doğrudan bağlanır; CSV olarak indirilir.']
+  ] : [
+    ['1. Plain-Language Answer First', 'Opens with plain sentences stating whether the object moved, changed brightness, or shows molecule bands — only stating what is beyond doubt.'],
+    ['2. Verified Against Python (Astropy)', 'Browser FITS reader and parallax maths match Astropy to 0.004 arcseconds; blind scan finds Barnard’s Star, Eps Ind B, and Luhman 16.'],
+    ['3. One-Click External Observatories', 'Every coordinate links directly to SIMBAD, WiseView, ESASky, Legacy Survey, and VizieR — or exports raw measurements as CSV.']
+  ];
+
+  pillars.forEach((p, idx) => {
+    const py = bfy + bfh + 14 + idx * 76;
+    drawCard(rx + 28, py, rw - 56, 68, { fill: 'rgba(22, 19, 16, 0.88)', border: '#38312b', r: 10 });
+    ctx.font = '600 14.5px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#ff7b39';
+    ctx.fillText(p[0], rx + 44, py + 25);
+    ctx.font = '400 13px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#c8bfb2';
+    ctx.fillText(p[1], rx + 44, py + 48);
+  });
+}
+
+// ============================================================================
+// SCENE 7: GRAND FINALE — THE SKY IS NOT STILL (LAUNCHPAD)
+// ============================================================================
+function renderScene7(localT) {
+  const cx = 960, cy = 385;
+
+  // Radial infrared glow behind the Chronosphere emblem
+  const fg = ctx.createRadialGradient(cx, cy, 10, cx, cy, 460);
+  fg.addColorStop(0, 'rgba(255, 123, 57, 0.25)');
+  fg.addColorStop(0.5, 'rgba(95, 224, 176, 0.07)');
+  fg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = fg;
+  ctx.beginPath(); ctx.arc(cx, cy, 460, 0, Math.PI * 2); ctx.fill();
+
+  // Animated 102-band spectral ring around emblem
+  for (let i = 0; i < 102; i++) {
+    const a = (i / 102) * Math.PI * 2 + localT * 0.18;
+    const r1 = 108, r2 = 124 + Math.sin(localT * 3 + i * 0.3) * 5;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * r1, cy - 115 + Math.sin(a) * r1);
+    ctx.lineTo(cx + Math.cos(a) * r2, cy - 115 + Math.sin(a) * r2);
+    ctx.strokeStyle = wavelengthToColor(0.75 + (i / 101) * 4.25);
+    ctx.lineWidth = 3.2;
+    ctx.stroke();
+  }
+
+  // Chronosphere Two-Circle Logo inside spectral ring
+  const logoY = cy - 115;
+  ctx.beginPath();
+  ctx.arc(cx - 18, logoY + 8, 34, 0, Math.PI * 2);
+  ctx.strokeStyle = '#f3eee6';
+  ctx.lineWidth = 4.5;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(cx + 18, logoY - 8, 34, 0, Math.PI * 2);
+  ctx.fillStyle = '#ff7b39';
+  ctx.fill();
+
+  // Eyebrow & Giant Title
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.font = '600 14px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#ff7b39';
+  ctx.fillText(
+    lang === 'tr'
+      ? 'NASA SPACE APPS CHALLENGE 2026 · PLANET X AND SPHEREx'
+      : 'NASA SPACE APPS CHALLENGE 2026 · PLANET X AND SPHEREx',
+    cx, cy + 52
+  );
+
+  ctx.font = 'italic 82px "Instrument Serif", Georgia, serif';
+  ctx.fillStyle = '#f3eee6';
+  ctx.fillText(
+    lang === 'tr' ? 'Gökyüzü yerinde durmuyor.' : 'The sky is not still.',
+    cx, cy + 132
+  );
+
+  ctx.font = '400 21px "IBM Plex Sans", sans-serif';
+  ctx.fillStyle = '#d5cdc0';
+  ctx.fillText(
+    lang === 'tr'
+      ? 'Yıldızlar kayar. Bazıları yanıp söner. Soğuk dünyalar gözümüzün göremediği kızılötesi renklerde saklanır.'
+      : 'Stars drift. Some flicker. Cold worlds hide in infrared colours our eyes cannot see.',
+    cx, cy + 176
+  );
+
+  // 5 Key Achievement Badges
+  const badges = lang === 'tr' ? [
+    ['102 Bant', '0.75 – 5.0 µm Kızılötesi Harita & Tayf'],
+    ['1.6M Poz', 'Doğrudan NASA Açık Arşivinden Canlı'],
+    ['0 Sunucu', 'Tamamen Tarayıcıda & Çevrimdışı Çalışır'],
+    ['6 Dil', 'TR · EN · DE · ES · FR · PL Desteği'],
+    ['%100 Gerçek', 'Sıfır Yapay Görüntü · Saf Teleskop Verisi']
+  ] : [
+    ['102 Bands', '0.75 – 5.0 µm All-Sky Map & Spectrum'],
+    ['1.6M Exposures', 'Live From NASA Open Cloud Archive'],
+    ['0 Server', '100% In-Browser & Offline Ready'],
+    ['6 Languages', 'EN · TR · DE · ES · FR · PL'],
+    ['100% Real', 'Zero AI Images · Pure Telescope Data']
+  ];
+
+  const bw = 316, bh = 86, bgap = 20, bStart = cx - (5 * bw + 4 * bgap) / 2;
+  badges.forEach((b, i) => {
+    const bx = bStart + i * (bw + bgap), by = cy + 212;
+    drawCard(bx, by, bw, bh, { fill: 'rgba(22, 19, 16, 0.9)', border: '#3d352e', r: 12 });
+    ctx.font = '400 30px "Instrument Serif", Georgia, serif';
+    ctx.fillStyle = i % 2 === 0 ? '#ff7b39' : '#5fe0b0';
+    ctx.fillText(b[0], bx + bw / 2, by + 38);
+    ctx.font = '400 12.5px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#b8afa2';
+    ctx.fillText(b[1], bx + bw / 2, by + 65);
+  });
+
+  // Team Credit Line at bottom
+  ctx.font = '600 14px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#f2c14e';
+  ctx.fillText(
+    'THE BRIGHT NOBLES   ·   Muhammet Mücahit Soylu   ·   Serdar Aydın   ·   Furkan Küpeli',
+    cx, 845
+  );
+  ctx.restore();
+}
+
+// ============================================================================
+// MASTER RENDER FRAME (1920x1080 VIRTUAL CANVAS)
+// ============================================================================
+function getCurrentScene(t) {
+  for (let i = SCENES.length - 1; i >= 0; i--) {
+    if (t >= SCENES[i].t0) return SCENES[i];
+  }
+  return SCENES[0];
+}
+
+function getActiveSubtitle(scene, t) {
+  const list = lang === 'tr' ? scene.subs_tr : scene.subs_en;
+  for (const [s0, s1, txt] of list) {
+    if (t >= s0 && t <= s1) return txt;
+  }
+  return list[list.length - 1][2];
+}
+
+function renderFrame(t) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = window.innerWidth, H = window.innerHeight;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) {
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+  }
+
+  ctx.save();
+  ctx.scale(dpr, dpr);
+
+  // Fill background
+  ctx.fillStyle = '#070605';
+  ctx.fillRect(0, 0, W, H);
+
+  // Compute uniform 16:9 cinema scaling centered in viewport
+  const scale = Math.min(W / 1920, H / 1080);
+  const offX = (W - 1920 * scale) / 2;
+  const offY = (H - 1080 * scale) / 2;
+
+  ctx.translate(offX, offY);
+  ctx.scale(scale, scale);
+
+  // Subtle drifting starfield across entire 1920x1080 stage
+  BG_STARS.forEach(s => {
+    const sx = (s.x + t * (s.warm ? 4.5 : 1.8)) % 1920;
+    const twinkle = 0.65 + 0.35 * Math.sin(t * 2.2 + s.x);
+    ctx.beginPath();
+    ctx.arc(sx, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = s.warm
+      ? `rgba(255, 165, 95, ${(s.a * twinkle).toFixed(3)})`
+      : `rgba(243, 238, 230, ${(s.a * twinkle).toFixed(3)})`;
+    ctx.fill();
+  });
+
+  const scene = getCurrentScene(t);
+  const localT = Math.max(0, t - scene.t0);
+
+  // Render active scene
+  if (scene.id === 1) renderScene1(localT);
+  else if (scene.id === 2) renderScene2(localT);
+  else if (scene.id === 3) renderScene3(localT);
+  else if (scene.id === 4) renderScene4(localT);
+  else if (scene.id === 5) renderScene5(localT);
+  else if (scene.id === 6) renderScene6(localT);
+  else renderScene7(localT);
+
+  // Voiceover Subtitle Bar (y: 868..942)
+  const subText = getActiveSubtitle(scene, t);
+  if (subText) {
+    ctx.save();
+    roundRect(ctx, 180, 868, 1560, 68, 34);
+    ctx.fillStyle = 'rgba(12, 10, 9, 0.92)';
+    ctx.fill();
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = 'rgba(255, 123, 57, 0.45)';
+    ctx.stroke();
+
+    ctx.font = '500 20px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#f3eee6';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(subText, 960, 903);
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// ============================================================================
+// UI CONTROLS, CHAPTER BAR, PRESENTER MODE & KEYBOARD SHORTCUTS
+// ============================================================================
+const chaptersEl = document.getElementById('chapters');
+const playBtn = document.getElementById('playbtn');
+const scrubEl = document.getElementById('scrub');
+const timeReadout = document.getElementById('timereadout');
+const modeBtn = document.getElementById('modebtn');
+const modeIcon = document.getElementById('modeicon');
+const modeLabel = document.getElementById('modelabel');
+const audioBtn = document.getElementById('audiobtn');
+const audioIcon = document.getElementById('audioicon');
+const audioLabel = document.getElementById('audiolabel');
+const notesBtn = document.getElementById('notesbtn');
+const notesCard = document.getElementById('notescard');
+const notesHeadTitle = document.getElementById('notesheadtitle');
+const notesBody = document.getElementById('notesbody');
+const langBtn = document.getElementById('langbtn');
+const langLabel = document.getElementById('langlabel');
+const finaleCta = document.getElementById('finalecta');
+
+function buildChapterButtons() {
+  chaptersEl.innerHTML = '';
+  SCENES.forEach((sc, idx) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chapbtn';
+    btn.innerHTML = `
+      <span class="cnum">${lang === 'tr' ? 'SAHNE' : 'ACT'} 0${sc.id}</span>
+      <span class="ctitle">${lang === 'tr' ? sc.short_tr : sc.short_en}</span>
+      <i class="cbar" id="cbar_${sc.id}"></i>
+    `;
+    btn.addEventListener('click', () => {
+      jumpToScene(idx);
+    });
+    chaptersEl.appendChild(btn);
+  });
+}
+
+function fmtSec(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec < 10 ? '0' : ''}${sec}`;
+}
+
+function updateUI() {
+  const sc = getCurrentScene(currentTime);
+  const chapBtns = chaptersEl.querySelectorAll('.chapbtn');
+  chapBtns.forEach((b, idx) => {
+    const sObj = SCENES[idx];
+    b.classList.toggle('active', sObj.id === sc.id);
+    const bar = b.querySelector('.cbar');
+    if (bar) {
+      let pct = 0;
+      if (currentTime >= sObj.t1) pct = 100;
+      else if (currentTime > sObj.t0) pct = ((currentTime - sObj.t0) / (sObj.t1 - sObj.t0)) * 100;
+      bar.style.width = `${pct.toFixed(1)}%`;
+    }
+  });
+
+  playBtn.textContent = playing
+    ? (lang === 'tr' ? '⏸ Duraklat' : '⏸ Pause')
+    : (lang === 'tr' ? '▶ Oynat' : '▶ Play');
+
+  scrubEl.value = currentTime.toFixed(2);
+  timeReadout.textContent = `${fmtSec(currentTime)} / ${fmtSec(TOTAL_DURATION)}`;
+
+  modeBtn.classList.toggle('active', presenterMode);
+  modeIcon.textContent = presenterMode ? '🎤' : '🎬';
+  modeLabel.textContent = presenterMode
+    ? (lang === 'tr' ? 'Mod: Sunucu (Adım Adım)' : 'Mode: Presenter Hold')
+    : (lang === 'tr' ? 'Akış: Otomatik Film' : 'Flow: Auto Cinema');
+
+  audioBtn.classList.toggle('active', audioEnabled);
+  audioIcon.textContent = audioEnabled ? '🔊' : '🔇';
+  audioLabel.textContent = audioEnabled
+    ? (lang === 'tr' ? 'Ses: Açık' : 'Audio: On')
+    : (lang === 'tr' ? 'Ses: Kapalı' : 'Audio: Muted');
+
+  notesBtn.classList.toggle('active', notesOpen);
+  langLabel.textContent = lang.toUpperCase();
+
+  document.getElementById('topbadge').textContent = lang === 'tr' ? 'SİNEMATİK SUNUM' : 'CINEMATIC EXPLAINER';
+  document.getElementById('noteslabel').textContent = lang === 'tr' ? 'Konuşmacı Notu' : 'Speaker Notes';
+  document.getElementById('fslabel').textContent = lang === 'tr' ? 'Tam Ekran' : 'Fullscreen';
+  const appBtn = document.getElementById('openappbtn');
+  appBtn.textContent = lang === 'tr' ? 'Uygulamayı Aç ↗' : 'Open Live App ↗';
+  appBtn.href = `index.html?lang=${lang}`;
+
+  document.getElementById('ctaTour').textContent = lang === 'tr' ? '🧭 İki Dakikalık Rehberli Turu Başlat' : '🧭 Take the Two-Minute Guided Tour';
+  document.getElementById('ctaTour').href = `index.html?tour&lang=${lang}`;
+  document.getElementById('ctaExplore').textContent = lang === 'tr' ? '🔭 Gökyüzünü Serbestçe Keşfet' : '🔭 Explore the Sky Freely';
+  document.getElementById('ctaExplore').href = `index.html?lang=${lang}`;
+  document.getElementById('ctaReplay').textContent = lang === 'tr' ? '🔄 Animasyonu Baştan Oynat' : '🔄 Replay Film from Start';
+
+  // Finale CTA visibility on Scene 7
+  finaleCta.hidden = sc.id !== 7;
+
+  // Update speaker notes content
+  notesCard.hidden = !notesOpen;
+  if (notesOpen) {
+    notesHeadTitle.textContent = lang === 'tr'
+      ? `KONUŞMACI REHBERİ · SAHNE ${sc.id}/7`
+      : `SPEAKER GUIDE · ACT ${sc.id}/7`;
+    const notesList = lang === 'tr' ? sc.notes_tr : sc.notes_en;
+    notesBody.innerHTML = `<ul>${notesList.map(n => `<li>${n}</li>`).join('')}</ul>`;
+  }
+}
+
+function jumpToScene(idx) {
+  const clamped = clamp(idx, 0, SCENES.length - 1);
+  currentTime = SCENES[clamped].t0 + 0.05;
+  playing = true;
+  playTelemetryPing(580, 0.12, 0.03);
+  updateUI();
+}
+
+playBtn.addEventListener('click', () => {
+  if (currentTime >= TOTAL_DURATION - 0.2) currentTime = 0;
+  playing = !playing;
+  updateUI();
+});
+
+document.getElementById('prevscene').addEventListener('click', () => {
+  const sc = getCurrentScene(currentTime);
+  const idx = currentTime - sc.t0 > 2.5 ? sc.id - 1 : Math.max(0, sc.id - 2);
+  jumpToScene(idx);
+});
+
+document.getElementById('nextscene').addEventListener('click', () => {
+  const sc = getCurrentScene(currentTime);
+  jumpToScene(Math.min(SCENES.length - 1, sc.id));
+});
+
+scrubEl.addEventListener('input', () => {
+  currentTime = parseFloat(scrubEl.value) || 0;
+  updateUI();
+});
+
+modeBtn.addEventListener('click', () => {
+  presenterMode = !presenterMode;
+  updateUI();
+});
+
+audioBtn.addEventListener('click', toggleAudio);
+
+notesBtn.addEventListener('click', () => {
+  notesOpen = !notesOpen;
+  updateUI();
+});
+document.getElementById('notesclose').addEventListener('click', () => {
+  notesOpen = false;
+  updateUI();
+});
+
+langBtn.addEventListener('click', () => {
+  lang = lang === 'tr' ? 'en' : 'tr';
+  buildChapterButtons();
+  updateUI();
+});
+
+document.getElementById('fsbtn').addEventListener('click', () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+  else document.exitFullscreen?.();
+});
+
+document.getElementById('ctaReplay').addEventListener('click', () => {
+  currentTime = 0;
+  playing = true;
+  updateUI();
+});
+
+cv.addEventListener('click', () => {
+  if (currentTime >= TOTAL_DURATION - 0.2) currentTime = 0;
+  playing = !playing;
+  updateUI();
+});
+
+// Auto-hide HUD after 3.2s of mouse inactivity while playing
+let idleTimer = null;
+function wakeHUD() {
+  document.body.classList.remove('idle');
+  clearTimeout(idleTimer);
+  if (playing) {
+    idleTimer = setTimeout(() => {
+      if (playing && !notesOpen) document.body.classList.add('idle');
+    }, 3200);
+  }
+}
+window.addEventListener('mousemove', wakeHUD);
+window.addEventListener('keydown', e => {
+  wakeHUD();
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (currentTime >= TOTAL_DURATION - 0.2) currentTime = 0;
+    playing = !playing;
+    updateUI();
+  } else if (e.code === 'ArrowRight') {
+    e.preventDefault();
+    const sc = getCurrentScene(currentTime);
+    jumpToScene(Math.min(SCENES.length - 1, sc.id));
+  } else if (e.code === 'ArrowLeft') {
+    e.preventDefault();
+    const sc = getCurrentScene(currentTime);
+    const idx = currentTime - sc.t0 > 2.5 ? sc.id - 1 : Math.max(0, sc.id - 2);
+    jumpToScene(idx);
+  } else if (e.key >= '1' && e.key <= '7') {
+    jumpToScene(parseInt(e.key, 10) - 1);
+  } else if (e.key === 'p' || e.key === 'P') {
+    presenterMode = !presenterMode;
+    updateUI();
+  } else if (e.key === 'm' || e.key === 'M') {
+    toggleAudio();
+  } else if (e.key === 'n' || e.key === 'N') {
+    notesOpen = !notesOpen;
+    updateUI();
+  } else if (e.key === 'l' || e.key === 'L') {
+    lang = lang === 'tr' ? 'en' : 'tr';
+    buildChapterButtons();
+    updateUI();
+  } else if (e.key === 'f' || e.key === 'F') {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  }
+});
+
+// Deterministic frame hook for automated video rendering
+window.__setCinemaTime = function(tSec, hideHud = true) {
+  playing = false;
+  currentTime = clamp(tSec, 0, TOTAL_DURATION);
+  if (hideHud) document.body.classList.add('idle');
+  finaleCta.hidden = true;
+  renderFrame(currentTime);
+};
+
+// Main 60 FPS Animation Loop
+function tick(now) {
+  const dt = Math.min(0.1, (now - lastFrameWall) / 1000);
+  lastFrameWall = now;
+
+  if (playing) {
+    const scBefore = getCurrentScene(currentTime);
+    const nextT = currentTime + dt;
+    if (presenterMode && nextT >= scBefore.t1 - 0.12) {
+      // In Presenter Mode, loop seamlessly inside the active scene so visuals stay alive while speaker talks!
+      currentTime = scBefore.t0 + 2.5;
+    } else if (nextT >= TOTAL_DURATION) {
+      currentTime = TOTAL_DURATION;
+      playing = false;
+      document.body.classList.remove('idle');
+    } else {
+      currentTime = nextT;
+    }
+    updateUI();
+  }
+
+  renderFrame(currentTime);
+  requestAnimationFrame(tick);
+}
+
+buildChapterButtons();
+updateUI();
+wakeHUD();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

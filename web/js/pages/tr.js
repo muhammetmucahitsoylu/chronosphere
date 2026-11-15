@@ -30,7 +30,7 @@ export default {
       <li><b>Su ve yaşamın yapı taşları.</b> Yıldızların ve gezegenlerin oluştuğu bulutlardaki donmuş suyu, karbondioksiti ve öteki buzları tarar.</li>
     </ul>
     <h2>Bu arada yaptığı başka bir şey</h2>
-    <p>SPHEREx gökyüzünün her noktasına tekrar tekrar döndüğü için <b>hareket eden ya da değişen</b> her şeyi de kaydeder: asteroitler, kuyruklu yıldızlar, yakından geçen yıldızlar, kahverengi cüceler, atım yapan ya da parlayan yıldızlar. Yüz milyonlarca yıldızı ve gökadayı fotoğraflar; bu, hiçbir ekibin tek tek bakabileceğinden çok fazladır. Bu araç, daha çok insan bakabilsin diye var.</p>
+    <p>SPHEREx gökyüzünün her noktasına tekrar tekrar döndüğü için <b>hareket eden ya da değişen</b> her şeyi de kaydeder: asteroitler, kuyruklu yıldızlar, yakından geçen yıldızlar, kahverengi cüceler, şişip büzülen ya da ani parlamalar yapan yıldızlar. Yüz milyonlarca yıldızı ve gökadayı fotoğraflar; bu, hiçbir ekibin tek tek bakabileceğinden çok fazladır. Bu araç, daha çok insan bakabilsin diye var.</p>
     <p class="fine">Kaynaklar: <a href="https://www.jpl.nasa.gov/missions/spherex/" target="_blank" rel="noopener">NASA/JPL görev sayfası</a> · <a href="https://science.nasa.gov/mission/spherex/" target="_blank" rel="noopener">NASA Science</a> · <a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noopener">NASA/IPAC arşivinde SPHEREx</a></p>`,
 
     how: () => `
@@ -52,7 +52,7 @@ export default {
       <li><b>Ziyaretler.</b> SPHEREx gökyüzünün çoğu bölümüne yaklaşık altı ayda bir geri gelir ve her ziyaret birkaç günden birkaç haftaya kadar sürer. Her ziyaret için üst üste toplanmış tek bir görüntü sırayla gösterilince küçük bir kayma kolayca görülür. Güneş sistemi düzleminin kutuplarına yakın yerlere neredeyse her yörüngede baktığı için orada görüntüler aylara göre gruplanır.</li>
       <li><b>Kayma tablosu.</b> Hareket eden bir cisim için her ziyarette ölçülen konum, kataloğun öngördüğüyle karşılaştırılır: gökyüzündeki düzgün hareketi ve en yakın yıldızlar için Dünya’nın kendi yörüngesinden kaynaklanan yıllık salınım. Hareket, cismi gören her dedektörde ayrı ayrı ölçülür ve dedektörler birbiriyle karşılaştırılır.</li>
       <li><b>Tayf.</b> Her nokta bir pozdur: dalga boyu ve halka içindeki noktanın o pozdaki parlaklığı. Noktalar ziyarete göre renklendirilir.</li>
-      <li><b>Molekül bantları.</b> Gölgeli şeritler yaygın moleküllerin ışığı soğurduğu yerleri gösterir. Tablo, orada ne kadar derin bir çukur ölçüldüğünü bildirir.</li>
+      <li><b>Molekül bantları.</b> Gölgeli şeritler yaygın moleküllerin ışığı soğurduğu yerleri gösterir. Tablo, orada ne kadar soğurma ölçüldüğünü bildirir.</li>
       <li><b>Komşularıyla karşılaştırma.</b> Parlaklık eğrisinin altında, halka içindeki noktanın ziyaretler arasındaki değişimi aynı görüntülerdeki sıradan yıldızlarla karşılaştırılır. Onlar sabit kalmış, nokta kalmamışsa değişim gerçektir, kameranın bir kusuru değildir. Aynısı konumu için de yapılır.</li>
       <li><b>Her yıldız denetlenir.</b> Görüntülerin altında, alandaki her net yıldız hiçbir katalog kullanılmadan hareket ve parlaklık değişimi açısından sınanır. Öne çıkan birkaçı listelenir ve bir baklava işaretiyle gösterilir. İşaret, bakmak için bir nedendir, bir bulgu değil.</li>
     </ul>
@@ -60,7 +60,7 @@ export default {
     <ul>
       <li>Bir SPHEREx pikseli 6,15 yay saniyesi kaplar. Gökyüzünün en hızlı yıldızı bile yılda iki pikselden az yer değiştirir; bu yüzden hareket ziyaretler arasında küçük bir sıçramadır, asla bir çizgi değil.</li>
       <li>Ölçümler basit, sabit bir daire kullanır ve keşif içindir, yayın için değil. Çok parlak yıldızlar dedektörü doyurur; onlarda bunun yerine yıldızın sönük dış ışıması ölçülür ve her dedektör komşusuna eklenir: tayfın genel biçimi doğrudur, düzeyi ve ince ayrıntısı yaklaşıktır.</li>
-      <li>Bir molekülün dalga boyundaki çukur bir ipucudur, bir tespit değil.</li>
+      <li>Bir molekülün dalga boyundaki soğurma izi bir ipucudur, kesin bir tespit değil.</li>
       <li>Sıradan yıldızlarda konumlar yay saniyesinin onda birkaçı kadar bir doğrulukla yinelenir; ama kamerayı doyurmaya yakın bir yıldız tek bir ziyarette bir yay saniyesi ya da daha fazla sapabilir.</li>
       <li>Buradaki hiçbir şey bir keşif iddiası değildir. Yeni görünen bir şey, onu her cisimden bağlantısı verilen öteki araçlarda denetlemek için bir nedendir.</li>
     </ul>`,
