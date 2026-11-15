@@ -3,7 +3,7 @@ import { Plot, dateTicks } from './plot.js';
 import * as Sky from './sky.js';
 import * as Info from './info.js';
 import { buildTour } from './tour.js';
-import { SHEETS } from './pages.js';
+import { SHEETS, NAV } from './pages.js';
 import * as Archive from './archive.js';
 import * as Lang from './lang.js';
 
@@ -1748,6 +1748,30 @@ async function showExample(on) {
   if (!calmMotion()) blinkTimer = setInterval(flip, 850);          // a blink comparator: a hard flip, not a fade
 }
 
+/**
+ * The tour's second example: a ladder of brightness, from the brightest star down to Planet X as
+ * predicted. Magnitudes: Sirius -1.46 and the naked-eye limit of about 6 are textbook values;
+ * Barnard's Star V 9.5 (SIMBAD); Pluto 15.1 at mean opposition (NASA fact sheet); one SPHEREx
+ * exposure reaches about AB 19 in one colour at 5 sigma (SPHEREx sky simulator paper, 2025);
+ * Planet X 22 to 25 (Brown & Batygin 2016), with searches complete to about 21 (Brown, Holman &
+ * Batygin 2024). `times` is how many times fainter a rung is than the one above: 10^(0.4 x the
+ * difference in magnitude), rounded.
+ */
+const RUNGS = [
+  { mag: '−1.5', key: 'r1' }, { mag: '6', key: 'r2', times: [1000] }, { mag: '9.5', key: 'r3', times: [25] }, { mag: '15', key: 'r4', times: [160] },
+  { mag: '19', key: 'r5', times: [40] }, { mag: '22–25', key: 'r6', times: [16, 250], unseen: true },
+];
+function showLadder(on) {
+  const el = $('ladder');
+  el.hidden = !on;
+  if (!on) return;
+  const nf = new Intl.NumberFormat(Lang.locale), point = nf.format(1.5).charAt(1);          // the decimal mark of the language in use
+  $('laddertitle').textContent = T('ladder.title'); $('laddernote').textContent = T('ladder.note');
+  $('rungs').innerHTML = RUNGS.map((r, i) => `${r.unseen ? `<li class="limit">${esc(T('ladder.limit'))}</li>` : ''}<li class="rung${r.unseen ? ' unseen' : ''}"><i style="--s:${i}"></i><b>${r.mag.replace('.', point)}</b><span>${esc(T(`ladder.${r.key}`))}${
+    r.times ? `<small>${esc(T('ladder.times', { x: r.times.map(v => nf.format(v)).join('–') }))}</small>` : ''}</span></li>`).join('');
+  document.body.classList.add('example');
+}
+
 // ------------------------------------------------------------ guided tour
 let tourSteps = [], tourIdx = -1;
 const tourApi = {
@@ -1797,7 +1821,7 @@ function tourGo(i) {
   $('tourback').disabled = i === 0;
   $('tournext').textContent = i === tourSteps.length - 1 ? T('tour.finish') : T('tour.next');
   st.run(tourApi);
-  showExample(st.demo === 'blink');
+  showExample(st.demo === 'blink'); showLadder(st.demo === 'ladder');
   setTimeout(() => { if (tourIdx === i) tourSteps[i + 1]?.prep?.(tourApi); }, 1500);
   renderLook(); relayout();
   if (Sky.isReady()) Sky.reshape();          // the card may have changed the size of the map
@@ -1818,7 +1842,7 @@ const COACH = [          // the part (a CSS selector) and the key of its words i
   { at: '#motion', key: 'motion' },
   { at: '.export', key: 'export' },
 ];
-let coachAt = -1, coachTimer = 0;
+let coachAt = -1, coachTimer = 0, coachThen = null;          // coachThen: what follows when the walk has reached its end
 const onScreen = sel => { const el = document.querySelector(sel); return !!el && el.offsetParent !== null && el.getBoundingClientRect().height > 12; };
 const coachParts = () => COACH.map((s, k) => (onScreen(s.at) ? k : -1)).filter(k => k >= 0);
 function coachSpot() {
@@ -1837,7 +1861,7 @@ function coachGo(dir) {
   if (dir === 0 || coachAt < 0) k = parts[0];
   else if (dir > 0) k = parts.find(x => x > coachAt);
   else k = [...parts].reverse().find(x => x < coachAt) ?? coachAt;
-  if (k === undefined) return coachEnd();
+  if (k === undefined) { const then = coachThen; coachEnd(); then?.(); return; }
   if (coachAt < 0) showGuides([]);                    // the tour's own numbered pointers step aside meanwhile
   coachAt = k;
   const st = COACH[k], pos = Math.max(0, parts.indexOf(k)), last = pos === parts.length - 1;
@@ -1853,6 +1877,7 @@ function coachGo(dir) {
   clearInterval(coachTimer); coachSpot(); coachTimer = setInterval(coachSpot, 200);
 }
 function coachEnd() {
+  coachThen = null;
   if (coachAt < 0) return;
   coachAt = -1; clearInterval(coachTimer);
   $('coach').hidden = true; $('spot').hidden = true; document.body.classList.remove('coaching');
@@ -1905,12 +1930,23 @@ async function openKnown(o) {
 }
 function tourEnd() {
   coachEnd();
-  tourIdx = -1; $('tour').hidden = true; document.body.classList.remove('touring'); showExample(false); showGuides([]);
+  tourIdx = -1; $('tour').hidden = true; document.body.classList.remove('touring'); showExample(false); showLadder(false); showGuides([]);
   sweep(false); renderLook(); relayout();
   if (Sky.isReady()) Sky.reshape();
 }
 $('tourbtn').onclick = $('tourbtn2').onclick = () => tourGo(0);
-$('tournext').onclick = () => tourGo(tourIdx + 1);
+$('tournext').onclick = () => {
+  // At the first object the audience meets the panel: Next walks through its parts once, then goes on.
+  // The walk can be left at any moment with its ×; the next press of Next then goes on with the tour.
+  const st = tourSteps[tourIdx], at = tourIdx;
+  if (st?.points?.length && !st.walked && $('app').dataset.panel === 'open' && coachParts().length) {
+    st.walked = true;
+    coachGo(0);
+    coachThen = () => { if (tourIdx === at) tourGo(at + 1); };
+    return;
+  }
+  tourGo(tourIdx + 1);
+};
 $('tourback').onclick = () => tourGo(tourIdx - 1);
 $('tourclose').onclick = tourEnd;
 $('hidewelcome').onclick = () => { $('welcome').hidden = true; };
@@ -1921,7 +1957,7 @@ function openSheet(id) {
   if (!SHEETS[id]) return;
   sheetOpener = document.activeElement;
   const wrap = $('sheetwrap'), sh = $('sheet');
-  sh.innerHTML = `<button type="button" class="close" aria-label="Close">×</button>${SHEETS[id]()}`;
+  sh.innerHTML = `<button type="button" class="close" aria-label="${NAV ? G('Close') : 'Close'}">×</button>${SHEETS[id]()}`;
   sh.querySelector('.close').onclick = closeSheet;
   wrap.hidden = false; wrap.scrollTop = 0; sh.focus();
 }
@@ -1941,6 +1977,10 @@ $('sheet').addEventListener('keydown', e => {
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 });
 document.querySelectorAll('[data-sheet]').forEach(b => { b.onclick = () => { closeMenu(); openSheet(b.dataset.sheet); }; });
+if (NAV) {          // the three pages are in the language in use: so are their names in the top bar
+  document.querySelectorAll('[data-sheet]').forEach(b => { b.textContent = NAV[b.dataset.sheet] || b.textContent; });
+  $('navlinks').removeAttribute('lang'); $('sheetwrap').removeAttribute('lang');
+}
 function closeMenu() { $('nav').classList.remove('open'); $('menubtn').setAttribute('aria-expanded', 'false'); }
 $('menubtn').onclick = () => { const open = $('nav').classList.toggle('open'); $('menubtn').setAttribute('aria-expanded', String(open)); };
 document.addEventListener('click', e => { if (!e.target.closest('#nav')) closeMenu(); });

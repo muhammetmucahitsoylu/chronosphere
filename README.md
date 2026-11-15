@@ -46,20 +46,25 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   the Legacy Survey viewer and the VizieR photometry viewer.
 - **Take it with you.** Copy a link to the exact view, save the image or a video of the sequence, or download
   every measurement as a CSV file.
-- **Take the guided tour.** Ten short steps, in plain language, from "what is SPHEREx" through the five test
-  objects of the challenge. One step shows two real SPHEREx pictures of the same patch of sky, a year apart,
-  flipping the way Clyde Tombaugh flipped his photographs: one dot moves. At the first object, numbered
-  pointers lead from the tour's card to the parts of the panel: the images, what the measurements say, the
-  spectrum, the links to other tools. The tour is saved on the device and runs without a connection; the
-  four further objects its last step offers are read live from the archive, and one press keeps those too.
+- **Take the guided tour.** Twelve short steps, in plain language, from "what is SPHEREx" through the five
+  test objects of the challenge. One step shows two real SPHEREx pictures of the same patch of sky, a year
+  apart, flipping the way Clyde Tombaugh flipped his photographs: one dot moves. Two steps are about Planet X:
+  what was predicted and why, that nobody has seen it, and a ladder of brightness from Sirius down to the
+  prediction that shows what a magnitude is and why a single SPHEREx exposure stops about 16 to 250 times
+  short of it. At the first object, numbered pointers lead from the tour's card to the parts of the panel,
+  and Next walks through the panel before the tour moves on. The tour is saved on the device and runs
+  without a connection; the four further objects its last step offers are read live from the archive, and
+  one press keeps those too.
 - **Learn the panel.** "How to read this panel", on every object, walks through its nine parts one at a time:
-  the part is lit, the rest dimmed, and a card says what it shows and what can be done with it.
-- **In five languages.** The front page, the guided tour, the walk through the panel and the measurement
-  panel itself, with the sentences it writes from the numbers, are in English, Turkish, German, French and
-  Polish (the picker is in the top bar; `?lang=tr` in an address does the same). Dates, counted nouns and
-  the encyclopedia card follow the language. The three information pages are English. The words live in
-  `web/js/lang.js` and in one file per language under `web/js/lang/`: adding a language is translating those
-  two. The German, French and Polish texts have not yet been read by a native speaker.
+  the part is lit, the rest dimmed, and a card says what it shows and what can be done with it. The tour
+  takes the same walk at its first object.
+- **In six languages.** The front page, the guided tour, the walk through the panel, the measurement panel
+  itself with the sentences it writes from the numbers, and the three information pages are in English,
+  Turkish, Spanish, German, French and Polish (the picker is in the top bar; `?lang=tr` in an address does
+  the same). Dates, counted nouns and the encyclopedia card follow the language. The words live in
+  `web/js/lang.js` and in one file per language under `web/js/lang/` and `web/js/pages/`: adding a language
+  is translating those three. The Spanish, German, French and Polish texts have not yet been read by a
+  native speaker.
 
 ## How the challenge is covered
 
@@ -147,9 +152,9 @@ talking directly to NASA's open data.
   field that a naive position comparison would report as moving.
 - **Sky-map tiles.** The HEALPix code (`web/js/healpix.js`) agrees with `astropy-healpix`, and the tiles it
   predicts for a view include the ones the map goes on to request.
-- **Map transitions.** The guided tour was filmed frame by frame (about 3,800 frames for the ten steps) and
-  every frame measured: none is blown out to white or washed out, where each change of colour used to flash
-  white. A probe inside the page then watched some 35,000 frames while the tour was stepped through at
+- **Map transitions.** The guided tour was filmed frame by frame (about 5,300 frames for the twelve steps
+  and the walk through the panel) and every frame measured: none is blown out to white or washed out, where
+  each change of colour used to flash white. A probe inside the page then watched some 35,000 frames while the tour was stepped through at
   awkward moments (forwards and back in the middle of a change of colour or of place): the blank map was
   never in view. Moving to an object takes about one second.
 - **First visit.** With nothing stored, on eight screen shapes from a small phone to an ultra-wide monitor:
@@ -164,9 +169,10 @@ talking directly to NASA's open data.
 - **Languages.** Making the panel translatable must not change its English: the words of the panel for the
   five test objects, in six views each, were recorded before and after and are identical. A test language
   (`?lang=xx`) puts every translatable text in brackets; what stays outside them on the screen is object
-  names, dates and the encyclopedia text. In each of the four other languages the panel was checked at laptop
-  and phone size for text that spills out of its box (none in 40 views), and the Turkish tour was run from
-  start to end with the network cut.
+  names, dates and the encyclopedia text. In each of the five other languages the panel was checked at laptop
+  and phone size for text that spills out of its box (none in 50 views), and the Turkish and the Spanish tour
+  were run from start to end with the network cut. The information pages have the same build in every
+  language as in English (headings, paragraphs, list items, links), and the top bar holds at nine widths.
 - **Clicks.** Ten well-known stars were clicked dead on and a few arcseconds off, at the tolerance of a wide
   map and of a close view, in empty and in crowded fields: 40 of 40 clicks opened the star that was clicked.
   The earlier catalogue query, which did not ask for the nearest objects first, managed 32.
@@ -179,6 +185,14 @@ talking directly to NASA's open data.
   away does not (12 of 12), and typed coordinates inside the glare are never renamed to the star (6 of 6).
   The catalogue is asked for the bright objects within reach without sorting them: sorted, the same question
   takes it a quarter of a minute in a crowded field.
+- **Planet X.** What the tour says about the hypothetical planet is NASA's account of it ("Hypothetical
+  Planet X", science.nasa.gov): 5 to 10 Earth masses, 20 to 30 times farther from the Sun than Neptune,
+  10,000 to 20,000 years per orbit, not yet seen. The ladder of brightness uses Sirius at magnitude -1.46,
+  the naked-eye limit 6, Barnard's Star 9.5 (SIMBAD), Pluto 15.1 at mean opposition (NASA fact sheet), a
+  single SPHEREx exposure at about AB 19 (5 sigma in one band; the mission's sky-simulator paper, 2025), and
+  Planet X at visual magnitude 22 to 25 (Brown & Batygin 2016), with wide searches complete to about 21
+  (Brown, Holman & Batygin 2024). The "times fainter" between rungs is 10^(0.4 x the difference in
+  magnitude), rounded.
 - **Catalogue facts** shown for the five test objects are curated with their sources: Gaia DR3 parallaxes
   and proper motions, and Kirkpatrick et al. 2021 for WISE 0855. A distance is only shown when the parallax
   is measured to better than 20 per cent.
@@ -217,9 +231,10 @@ web/js/sky.js         the explorable sky map (Aladin Lite + IRSA sky maps)
 web/js/healpix.js     which sky-map tiles a view needs (HEALPix)
 web/js/info.js        identification (SIMBAD), Wikipedia card, links to other tools
 web/js/tour.js        guided tour: the steps and what the map does at each
-web/js/lang.js        the words of the front page, the tour and the walk through the panel, in five languages
-web/js/lang/          the measurement panel in Turkish, German, French and Polish (one file each)
-web/js/pages.js       the "What is SPHEREx?", "How it works" and "About" pages
+web/js/lang.js        the words of the front page, the tour and the walk through the panel, in six languages
+web/js/lang/          the measurement panel in Turkish, Spanish, German, French and Polish (one file each)
+web/js/pages.js       the "What is SPHEREx?", "How it works" and "About" pages, in English
+web/js/pages/         the same three pages in the other five languages (one file each)
 web/sw.js             service worker: offline cache
 web/index/            the sky index (generated)
 web/data/             the five showcase objects (generated)
@@ -253,6 +268,10 @@ No build step: plain HTML, CSS and JavaScript modules.
 - The all-sky map is coarser (about 13 arcseconds per pixel) than the images loaded for a selected spot.
 - Away from the five test objects, the number of exposures is an estimate until they have been read, and the
   WISE overlay is CatWISE2020 when the CDS catalogue service answers and AllWISE otherwise.
+- The ladder of brightness sets visual magnitudes beside SPHEREx's infrared limit, which is on the AB scale.
+  For a body that shines by reflected sunlight the two agree to about 0.3 magnitude between 1.2 and 2.2
+  microns, and the body is 1 to 2 magnitudes fainter beyond 3 microns (the Sun's colours, Willmer 2018), so
+  the conclusion holds; methane, as on Neptune, would make it fainter still.
 - Nothing here claims a discovery. The tool is meant to help more people look.
 
 ## Data and credits

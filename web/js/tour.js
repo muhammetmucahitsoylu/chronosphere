@@ -35,6 +35,17 @@ export function buildTour(targets, t) {
       run: api => { api.closePanel(); api.sweep(false); api.slice(25); },
     },
     {
+      // Planet X: what is predicted and why (NASA's "Hypothetical Planet X" page; Batygin & Brown 2016).
+      title: t('tour.px.title'), text: t('tour.px.text'),
+      run: api => { api.closePanel(); api.sweep(false); api.slice(25); },
+    },
+    {
+      // How faint it would be, on a ladder of magnitudes (see RUNGS in app.js for the numbers and their sources).
+      title: t('tour.faint.title'), text: t('tour.faint.text'),
+      demo: 'ladder',
+      run: api => { api.closePanel(); api.sweep(false); },
+    },
+    {
       title: t('tour.4.title'), text: t('tour.4.text'),
       run: api => { api.closePanel(); api.sweep(false); },
     },

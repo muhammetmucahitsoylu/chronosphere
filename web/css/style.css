@@ -88,8 +88,21 @@ select option { background: var(--surface-2); color: var(--ink); }
 .blinkstage canvas { display: block; width: 100%; height: 100%; }
 .blinkdate { position: absolute; left: 9px; top: 7px; font: 500 12.5px var(--mono); color: var(--ink); text-shadow: 0 1px 3px #000, 0 0 8px #000; }
 .blink figcaption { margin-top: 9px; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
+/* a ladder of brightness: each rung a dot, its magnitude, what it is and how much fainter than the rung above */
+.ladder { width: min(360px, 46cqw); padding: 12px 14px 12px; }
+.ladder figcaption { margin: 0 0 9px; }
+.rungs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rung { display: grid; grid-template-columns: 22px 46px minmax(0, 1fr); gap: 9px; align-items: center; font-size: 13.5px; line-height: 1.3; color: #e2dbcf; }
+.rung i { justify-self: center; border-radius: 50%; background: #fff; width: calc(18px - var(--s) * 3.7px); height: calc(18px - var(--s) * 3.7px); opacity: calc(1 - var(--s) * .12); box-shadow: 0 0 calc(14px - var(--s) * 3px) #fff9; }
+.rung b { font: 500 14px var(--mono); color: var(--ink); text-align: right; white-space: nowrap; }
+.rung small { display: block; font: 11.5px var(--mono); color: var(--ember); }
+.rung.unseen { color: var(--ink-2); }
+.rung.unseen i { width: 12px; height: 12px; background: none; border: 1.5px dashed var(--ink-3); opacity: 1; box-shadow: none; }
+.rungs .limit { display: flex; align-items: center; gap: 8px; font: 500 10.5px var(--mono); letter-spacing: 1px; text-transform: uppercase; color: var(--ember); }
+.rungs .limit::before, .rungs .limit::after { content: ''; flex: 1; height: 1px; background: var(--ember); opacity: .6; }
+.laddernote { margin: 10px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-2); }
 .blink figcaption b { display: block; font: 400 20px/1.15 var(--serif); color: var(--ink); margin-bottom: 2px; }
-@container stage (max-height: 340px) { .blink figcaption span { display: none; } .blink { width: min(250px, 64cqw, calc(100cqh - 84px)); } }      /* a short map: the dates on the pictures say enough */
+@container stage (max-height: 340px) { .blink figcaption span { display: none; } .blink { width: min(250px, 64cqw, calc(100cqh - 84px)); } .blink.ladder { width: min(360px, 92cqw); } .laddernote { display: none; } }      /* a short map: the dates on the pictures say enough */
 @container stage (max-height: 320px) { #map .aladin-logo-container { right: auto !important; left: 14px !important; } }      /* a short map: the zoom buttons reach down to where the badge would sit */
 @container stage (max-height: 215px) { .zoom { display: none; } }      /* a very short map (small phone, object open): no room above the colour bar; pinch still zooms */
 
@@ -330,6 +343,7 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
 .sheet h2 { font: 400 28px/1.1 var(--serif); margin: 34px 0 0; }
 .sheet p, .sheet li { font-size: 16px; line-height: 1.6; color: #d4ccbf; }
 .sheet p { margin: 10px 0 0; }
+.sheet a { overflow-wrap: anywhere; }          /* a long address breaks instead of leaving the page */
 .sheet .eyebrow { color: var(--ember); font-size: 12px; margin: 0 0 10px; }
 .sheet ol, .sheet ul { margin: 10px 0 0; padding-left: 22px; }
 .sheet li { margin: 6px 0; }
@@ -419,6 +433,13 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
   .blink { width: min(250px, 64cqw, calc(100cqh - 124px)); }
   .blink figcaption { font-size: 12.5px; margin-top: 7px; }
   .blink figcaption b { font-size: 18px; }
+  .blink.ladder { width: min(350px, 94cqw); padding: 9px 11px 9px; }
+  .rungs { gap: 5px; }
+  .rung { font-size: 12.5px; grid-template-columns: 18px 40px minmax(0, 1fr); gap: 7px; }
+  .rung b { font-size: 13px; }
+  .rung small { font-size: 11px; }
+  .laddernote { font-size: 12px; margin-top: 7px; }
+  body.example .mapstage:has(.ladder:not([hidden])) { flex-basis: 360px; }
 
   .tour, .app[data-panel=closed] .tour { position: relative; left: auto; bottom: auto; width: auto; border: 0; border-top: 1px solid var(--line-2); border-radius: 0; box-shadow: none; background: var(--surface); padding: 0 16px 14px; }
   .tourbar { margin: 0 -16px 10px; }
