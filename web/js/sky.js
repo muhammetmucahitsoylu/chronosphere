@@ -36,7 +36,12 @@ export const isBlank = z => BLANK.has(z);
 export function fitFov(fov, w = host?.clientWidth, h = host?.clientHeight) {
   if (!w || !h || fov < 30) return fov;
   // The sky is drawn as a globe seen from far away; keep the corners of the view inside its disc.
-  return Math.min(fov, 2 * Math.asin(0.8 / Math.hypot(1, h / w)) * 180 / Math.PI);
+  let f = Math.min(fov, 2 * Math.asin(0.8 / Math.hypot(1, h / w)) * 180 / Math.PI);
+  // Exactly where the map library changes to the next level of tiles (a view 110 degrees wide on a map 1920
+  // pixels wide is such a place) it can end up drawing neither level whole. Step a little to the coarser side.
+  const x = Math.log2(58.6323 * w / (512 * f));
+  if (Math.abs(x - Math.round(x)) < 0.01) f *= 1.03;
+  return f;
 }
 /**
  * Addresses of the SPHEREx map tiles that a view needs: centre and width in degrees, frame of the
@@ -691,7 +696,9 @@ export function flyTo(ra, dec, targetFov = 0.6, { layout = null } = {}) {
   const [ra0, dec0] = al.getRaDec(), f0 = al.getFov()[0], [w0, h0] = copySize();
   const d = sepDeg(ra0, dec0, ra, dec);
   // The width of the view may be given as a function of the map's size, for when the move changes that size too.
-  const want = (w, h) => (typeof targetFov === 'function' ? targetFov(w, h) : targetFov), asIs = want(...boxSize());
+  // A wide view is fitted to the shape of the map here too: a short move must end on the same view as a long one,
+  // which is also the view the saved tour has its tiles for.
+  const want = (w, h) => (typeof targetFov === 'function' ? targetFov(w, h) : targetFov), asIs = fitFov(want(...boxSize()), ...boxSize());
   if (!layout && !veilUp && d < f0 * 0.02 && Math.abs(Math.log(f0 / asIs)) < 0.1) { al.gotoRaDec(ra, dec); return Promise.resolve(true); }
   if (!layout && !veilUp && !calm() && d < f0 * 0.45 && Math.abs(Math.log(f0 / asIs)) < 0.5) return glide(ra, dec, asIs);
   let go; underWay = new Promise(r => { go = r; });
