@@ -242,9 +242,14 @@ The `backend/` folder also contains an optional FastAPI service with the same pi
 ## Layout
 
 ```
+web/index.html        the page itself: the map, the search box and the measurement panel
+web/sunum.html        a seven-scene cinematic presentation of the project with speaker notes, in Turkish and English
+web/config.js         the address of the optional Python API (empty by default: the site needs no server)
+web/css/              style.css (the page) and fonts.css (the self-hosted fonts)
 web/js/archive.js     sky index lookup, FITS range reader, TAN-SIP astrometry, resampling, wavelength
 web/js/app.js         viewer, plots, search, checks against comparison stars, tour wiring, offline store
 web/js/core.js        decoding, sky geometry, stacking, photometry, band depths, joining saturated detectors
+web/js/plot.js        the scatter plots on a canvas: axes, error bars, hover tooltip, click to select
 web/js/sky.js         the explorable sky map (Aladin Lite + IRSA sky maps)
 web/js/rice.js        Rice decompression, for the flags layer of an exposure
 web/js/healpix.js     which sky-map tiles a view needs (HEALPix)
