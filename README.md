@@ -71,7 +71,7 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 | Challenge request | In Chronosphere |
 |---|---|
 | Public web tool | A static site with no server and no login; works on a phone and offline |
-| Enter RA and Dec | Decimal degrees, sexagesimal, or an object name; or just click the map |
+| Enter RA and Dec | Decimal degrees, sexagesimal, or an object name; or just click the map. Coordinates can be pasted with their labels, as the challenge text gives them ("Right Ascension 08h55m10.831s, declination -7d14m42.53s"); for old coordinates of a fast mover the tool offers to jump to where the object is now |
 | Series of images like a little video | Starts playing by itself; pause, step, speed; zoom and pan |
 | Easy to spot moving objects | Visit stacks, time-as-colour, difference images; every clear star in the field is checked for motion and flagged; the shift of any clicked spot is measured and judged against ordinary stars; catalogued movers are compared with their prediction |
 | Tested on Barnard's Star, Epsilon Indi B, WISE 0855, RW Aurigae, R Draconis | On the front page and in the guided tour, each with a note on what to look for |
@@ -173,6 +173,11 @@ talking directly to NASA's open data.
   and phone size for text that spills out of its box (none in 50 views), and the Turkish and the Spanish tour
   were run from start to end with the network cut. The information pages have the same build in every
   language as in English (headings, paragraphs, list items, links), and the top bar holds at nine widths.
+- **Typed coordinates.** 23 ways of writing the same position (degrees, hours and minutes, with colons,
+  with unit letters, with a typeset minus sign, with "RA" and "Dec" or the full words in any of the six
+  languages) all give the position to 0.7 arcseconds or better, and none of 25 object names is mistaken for
+  coordinates. The challenge's own coordinates for WISE 0855, pasted as written, open that spot and offer the
+  jump to where the brown dwarf is today, 2.2 arcminutes away.
 - **Clicks.** Ten well-known stars were clicked dead on and a few arcseconds off, at the tolerance of a wide
   map and of a close view, in empty and in crowded fields: 40 of 40 clicks opened the star that was clicked.
   The earlier catalogue query, which did not ask for the nearest objects first, managed 32.

@@ -126,10 +126,19 @@ export function fmtSex(ra, dec) {
   const p = (v, n = 2) => String(v).padStart(n, '0');
   return `${p(hh)}h${p(mm)}m${p(ss.toFixed(2), 5)}s ${sg}${p(dd)}d${p(dm)}m${p(ds.toFixed(1), 4)}s`;
 }
+// The words people paste along with coordinates: "Right Ascension 08h55m10.831s, declination -7d14m42.53s", "RA=133.8 Dec=-7.2",
+// and the same in the site's other languages.
+const COORD_WORDS = /right\s+ascension|declination|ascensi[oó]n\s+recta|declinaci[oó]n|ascension\s+droite|d[eé]clinaison|rektaszension|deklination|rektascensja|deklinacja|sa[ğg]\s+a[çc][ıi]kl[ıi]k|dik\s+a[çc][ıi]kl[ıi]k|\bra\b|\bdecl?\b|[αδ]/gi;
 /** Parse "ra dec" in decimal degrees or sexagesimal (RA in hours). Returns null for a name. */
 export function parseCoords(text) {
-  const t = text.trim().replace(/,/g, ' ');
-  let m = t.match(/^([+-]?\d+(?:\.\d+)?)\s+([+-]?\d+(?:\.\d+)?)$/);
+  let t = text.trim().replace(/[−–]/g, '-');          // a typeset minus sign is a minus sign
+  if (t.search(COORD_WORDS) >= 0) {
+    // labelled coordinates: drop the labels, the equinox and every other word, keep what holds a number
+    t = t.replace(COORD_WORDS, ' ').replace(/\(?\b[jb]\d{4}(?:\.\d+)?\b\)?/gi, ' ')
+      .split(/[\s,;=()]+/).map(w => w.replace(/^:+|:+$/g, '')).filter(w => /\d/.test(w)).join(' ');
+  }
+  t = t.replace(/,/g, ' ').trim();
+  let m = t.match(/^([+-]?\d+(?:\.\d+)?)\s*(?:°|deg|d)?\s+([+-]?\d+(?:\.\d+)?)\s*(?:°|deg|d)?$/i);
   if (m) { const ra = +m[1], dec = +m[2]; return (ra >= 0 && ra < 360 && Math.abs(dec) <= 90) ? { ra, dec } : null; }
   const num = '(\\d+(?:\\.\\d+)?)', sep = '\\s*[hd:°\\s]\\s*', sep2 = "\\s*[m:'′\\s]\\s*", end = '\\s*(?:s|"|″)?';
   const re = new RegExp(`^${num}${sep}${num}${sep2}${num}${end}\\s*[,\\s]\\s*([+-]?)${num}${sep}${num}${sep2}${num}${end}$`, 'i');
