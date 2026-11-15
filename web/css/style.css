@@ -151,6 +151,9 @@ select option { background: var(--surface-2); color: var(--ink); }
 .coach p { margin: 8px 0 0; font-size: 15px; line-height: 1.5; color: #e2dbcf; }
 .coachnav { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .coachnav button:disabled { opacity: .4; }
+.coach .coachnote { margin-top: 8px; font-size: 13px; color: var(--ink-2); }
+.langpick { font-size: 13.5px; padding: 5px 26px 5px 10px; border-color: var(--line-2); background-color: transparent; color: var(--ink-2); max-width: 118px; }
+.langpick:hover { color: var(--ink); }
 .howto { margin-left: auto; border: 1px solid var(--ember); color: var(--ember); border-radius: 999px; padding: 3px 12px; font-size: 13px; white-space: nowrap; }
 .howto:hover { background: var(--ember); color: var(--ember-ink); }
 .walk { margin-right: auto; }

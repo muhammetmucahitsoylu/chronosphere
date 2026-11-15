@@ -5,6 +5,9 @@ import * as Info from './info.js';
 import { buildTour } from './tour.js';
 import { SHEETS } from './pages.js';
 import * as Archive from './archive.js';
+import * as Lang from './lang.js';
+
+const T = Lang.t;          // the words of the front page, the tour and the walk through the panel, in the language in use
 
 const API = (window.CHRONO_API || '').replace(/\/$/, '');
 const $ = id => document.getElementById(id);
@@ -1088,7 +1091,7 @@ function renderAbout() {
       ${thumb}<button type="button" class="close" id="closepanel" title="Close and return to the map" aria-label="Close">×</button>
     </div>
     <dl class="facts">${facts.join('')}</dl>
-    <div class="links"><span>Check it in</span>${links}${S.embed ? '' : '<button type="button" class="howto" id="howto" title="A short walk through every part of this panel">How to read this panel</button>'}</div>`;
+    <div class="links"><span>Check it in</span>${links}${S.embed ? '' : `<button type="button" class="howto" id="howto" lang="${Lang.lang}" title="${esc(T('coach.openTitle'))}">${esc(T('coach.open'))}</button>`}</div>`;
   $('closepanel').onclick = closePanel;
   if ($('howto')) $('howto').onclick = () => coachGo(0);
   if (mv) $('gomoved').onclick = () => {
@@ -1424,12 +1427,11 @@ async function search(text) {
   const q = text.toLowerCase().replace(/[^a-z0-9]/g, '');
   const preset = S.targets.find(t => [t.label, t.slug, t.query].some(s => { const v = s.toLowerCase().replace(/[^a-z0-9]/g, ''); return v.includes(q) || q.includes(v); }));
   if (preset && size === preset.size) return openTarget(preset);
-  note(`Looking up “${text}”…`);
+  note(T('note.lookingUpName', { name: text }));
   let r = null, reached = true;
   try { r = await resolveName(text); } catch { reached = false; }
   if (!r) {
-    note(reached ? `No object called “${text}” was found. Check the spelling, or use coordinates, for example 269.446 4.771`
-      : 'The name services could not be reached. Coordinates still work, for example 269.446 4.771', 8000);
+    note(reached ? T('note.notFound', { name: text }) : T('note.unreachable'), 8000);
     return;
   }
   note('');
@@ -1440,7 +1442,7 @@ async function search(text) {
 async function openAt(ra, dec, mapFov) {
   S.busyUntil = performance.now() + 9000;
   if (mapFov > 12) {                       // too far out to mean one object: dive in first
-    note('Zooming in. Pick an object when you are closer.', 3500);
+    note(T('note.zoomIn'), 3500);
     Sky.flyTo(ra, dec, Math.max(mapFov / 6, 2));
     return;
   }
@@ -1449,7 +1451,7 @@ async function openAt(ra, dec, mapFov) {
   const tok = ++S.openTok, r = clamp(12 * pixel, 8, 90), aim = clamp(5 * pixel, 5, 200), size = +$('fov').value;
   const preset = S.targets.find(t => sepArcsec(ra, dec, t.ra, t.dec) < Math.max(20, Math.min(aim, 60)));
   if (preset && size === preset.size) return openTarget(preset);
-  note('Looking up what is here…');
+  note(T('note.lookingUp'));
   const info = await Info.identify(ra, dec, r, aim, true).catch(() => null);          // by hand: a click inside a bright star's glare means the star
   if (tok !== S.openTok) return;
   note('');
@@ -1648,7 +1650,7 @@ function setWave(z) {
   r.done.then(ok => {
     if (ok !== 'missing') return;
     showWave(Sky.currentSlice());
-    note(navigator.onLine === false ? 'That colour is not saved on this device.' : 'That colour could not be loaded just now.', 4000);
+    note(navigator.onLine === false ? T('note.colourNotSaved') : T('note.colourFailed'), 4000);
   });
   return r.done;
 }
@@ -1666,7 +1668,7 @@ async function sweep(on, frames = null) {
     const ok = await Sky.setSlice(z, { fade: frames ? 420 : 280, onShow: () => showWave(z) }).done;
     if (!sweeping || my !== sweepTok) break;
     if (ok === 'missing') {
-      if (++misses >= 3) { sweeping = false; $('waveplay').textContent = '▶'; showWave(Sky.currentSlice()); note('These colours are not saved on this device.', 4000); break; }
+      if (++misses >= 3) { sweeping = false; $('waveplay').textContent = '▶'; showWave(Sky.currentSlice()); note(T('note.coloursNotSaved'), 4000); break; }
     } else misses = 0;
     if (ok !== true) await nap(250);
   }
@@ -1733,8 +1735,8 @@ async function showExample(on) {
     x.drawImage(f.canvas, 0, 0); $('blinkdate').textContent = f.label;
   };
   const flip = () => { blinkSide = 1 - blinkSide; draw(); };
-  const byHand = 'Press the picture to flip it.';
-  $('blinkcap').textContent = `Two SPHEREx photographs of the same patch of sky, ${pair[0].label} and ${pair[1].label}. ${calmMotion() ? byHand : ''}`;
+  const byHand = T('blink.flip');
+  $('blinkcap').textContent = `${T('blink.caption', { a: pair[0].label, b: pair[1].label })} ${calmMotion() ? byHand : ''}`;
   $('blinkstage').onclick = () => { if (blinkTimer) { clearInterval(blinkTimer); blinkTimer = 0; $('blinkcap').textContent += ` ${byHand}`; } flip(); };
   blinkSide = 0; draw(); el.hidden = false; document.body.classList.add('example');
   if (!calmMotion()) blinkTimer = setInterval(flip, 850);          // a blink comparator: a hard flip, not a fade
@@ -1765,20 +1767,20 @@ function relayout() {
 }
 function tourGo(i) {
   coachEnd();
-  if (!tourSteps.length) tourSteps = buildTour(S.targets);
+  if (!tourSteps.length) tourSteps = buildTour(S.targets, T);
   if (i < 0) return;
   if (i >= tourSteps.length) return tourEnd();
   tourIdx = i;
   const st = tourSteps[i];
   document.body.classList.add('touring');
   $('welcome').hidden = true; $('tour').hidden = false;
-  $('tourcount').textContent = `Guided tour · ${i + 1} of ${tourSteps.length}`;
+  $('tourcount').textContent = T('tour.count', { i: i + 1, n: tourSteps.length });
   $('tourmini').textContent = `${i + 1} / ${tourSteps.length}`;
   $('tourprog').style.width = `${(i + 1) / tourSteps.length * 100}%`;
   $('tourtitle').textContent = st.title;
   $('tourtext').innerHTML = esc(st.text).replace(/\*([^*]+)\*/g, '<em>$1</em>');          // *words between asterisks* in italics
   const links = $('tourlinks');
-  links.hidden = !st.tryNext; links.textContent = st.tryNext ? 'Try next: ' : '';
+  links.hidden = !st.tryNext; links.textContent = st.tryNext ? `${T('tour.try')} ` : '';
   for (const o of st.tryNext || []) {
     const b = document.createElement('button');
     b.type = 'button'; b.textContent = o.name;
@@ -1787,7 +1789,7 @@ function tourGo(i) {
   }
   showGuides(st.points || []);
   $('tourback').disabled = i === 0;
-  $('tournext').textContent = i === tourSteps.length - 1 ? 'Finish' : 'Next';
+  $('tournext').textContent = i === tourSteps.length - 1 ? T('tour.finish') : T('tour.next');
   st.run(tourApi);
   showExample(st.demo === 'blink');
   setTimeout(() => { if (tourIdx === i) tourSteps[i + 1]?.prep?.(tourApi); }, 1500);
@@ -1799,25 +1801,16 @@ function tourGo(i) {
 // For whoever wants to learn the tool: the parts of the panel, one at a time. The part is lit, the
 // rest of the panel dimmed, and a card says what the part shows and what can be done with it.
 // Parts that are not on screen for this object (nothing to say yet, no motion table) are passed over.
-const COACH = [
-  { at: '#about', title: 'What it is',
-    text: 'Name and type come from the SIMBAD catalogue. The row of facts gives where the object is today and, when catalogues know them, how fast it moves and how far away it is, then how many SPHEREx exposures cover this spot. “Check it in” opens the same position in other observatories’ tools.' },
-  { at: '#findings', title: 'The answer first',
-    text: 'What the tool measured, in a few words: did it move, did its brightness change, does its spectrum show the marks of molecules. Each line comes from the numbers further down; press one to go to them.' },
-  { at: '.viewer .stage', title: 'The images',
-    text: 'Every SPHEREx exposure of this spot, lined up on the sky and played in a loop with the controls underneath. The green ring is the spot being measured; the circles are Gaia catalogue stars, drawn where they were on the date shown; an arrow gives the motion the catalogue knows. Scroll to zoom, drag to pan, and click any star to measure that one instead.' },
-  { at: '#modes', title: 'Six ways to compare',
-    text: 'Visits: one combined image per visit of SPHEREx, the best view for motion. Exposures: every single exposure. Time as colour: anything that moved or changed shows up coloured. Difference: a later visit minus an earlier one. Wavelengths: the same sky in each of the six detectors. Deep: all exposures added together.' },
-  { at: '.detwrap', title: 'Six detectors',
-    text: 'SPHEREx has six detectors, D1 to D6, each covering its own band of infrared light between 0.75 and 5 microns. Pick one: the images and the brightness curve switch to that band.' },
-  { at: '.stack > section:nth-child(1)', title: 'Spectrum',
-    text: 'The brightness of the ringed spot at each wavelength. In every exposure the spot falls on a different part of the detector’s filter and is seen in a different colour, so the exposures add up to a spectrum: each point is one exposure, coloured by visit. Shaded bands mark where common molecules absorb light, and the table underneath says whether a dip was measured there.' },
-  { at: '.stack > section:nth-child(2)', title: 'Brightness over time',
-    text: 'The same measurements in time order, for the detector chosen, each divided by the spot’s own average at that wavelength: a steady star stays near 1. Underneath, the change between visits is compared with the stars around it, which tells a real change from an effect of the instrument.' },
-  { at: '#motion', title: 'Did it move?',
-    text: 'How far the light has shifted since the first visit, measured in these images. For an object with a catalogued motion the table sets that beside what the catalogue predicts; for any other spot the tool says whether it stayed in place.' },
-  { at: '.export', title: 'Take it with you',
-    text: 'Copy link reopens exactly this view on any device. Save the image or a video of the loop, or download every measurement of the ringed spot as a CSV file and check the numbers yourself.' },
+const COACH = [          // the part (a CSS selector) and the key of its words in lang.js
+  { at: '#about', key: 'about' },
+  { at: '#findings', key: 'findings' },
+  { at: '.viewer .stage', key: 'images' },
+  { at: '#modes', key: 'modes' },
+  { at: '.detwrap', key: 'dets' },
+  { at: '.stack > section:nth-child(1)', key: 'spectrum' },
+  { at: '.stack > section:nth-child(2)', key: 'lc' },
+  { at: '#motion', key: 'motion' },
+  { at: '.export', key: 'export' },
 ];
 let coachAt = -1, coachTimer = 0;
 const onScreen = sel => { const el = document.querySelector(sel); return !!el && el.offsetParent !== null && el.getBoundingClientRect().height > 12; };
@@ -1842,9 +1835,10 @@ function coachGo(dir) {
   if (coachAt < 0) showGuides([]);                    // the tour's own numbered pointers step aside meanwhile
   coachAt = k;
   const st = COACH[k], pos = Math.max(0, parts.indexOf(k)), last = pos === parts.length - 1;
-  $('coachcount').textContent = `Reading the panel · ${pos + 1} of ${parts.length}`;
-  $('coachtitle').textContent = st.title; $('coachtext').textContent = st.text;
-  $('coachback').disabled = pos === 0; $('coachnext').textContent = last ? 'Done' : 'Next';
+  $('coachcount').textContent = T('coach.count', { i: pos + 1, n: parts.length });
+  $('coachtitle').textContent = T(`coach.${st.key}.title`); $('coachtext').textContent = T(`coach.${st.key}.text`);
+  $('coachnote').textContent = pos === 0 ? T('coach.note') : ''; $('coachnote').hidden = !$('coachnote').textContent;
+  $('coachback').disabled = pos === 0; $('coachnext').textContent = last ? T('coach.done') : T('tour.next');
   $('coach').hidden = false; document.body.classList.add('coaching');
   // Bring the part into view: the panel scrolls by itself on a wide screen, the page does on a phone.
   const t = document.querySelector(st.at), r = t.getBoundingClientRect(), panel = $('panel'), behavior = calmMotion() ? 'auto' : 'smooth';
@@ -1897,7 +1891,7 @@ const TRY_SIZE = 5;          // the field, in arcminutes, at which the tour's la
 async function openKnown(o) {
   const r = placeNow(o);
   if (navigator.onLine === false && !(await Store.has(liveKey(r.ra, r.dec, TRY_SIZE, S.det))) && !(await Store.has(liveKey(r.ra, r.dec, TRY_SIZE, 'kept')))) {
-    note(`${o.name} is read live from NASA’s archive, which needs a connection. Objects already opened on this device work without one.`, 9000);
+    note(T('note.needsConnection', { name: o.name }), 9000);
     return;
   }
   tourEnd(); $('q').value = o.name;
@@ -2008,37 +2002,37 @@ async function saveTourOffline(full) {
       const f = files[next++];
       try { const r = await Sky.quietFetch(f, { mode: 'cors', priority: 'low' }); if (r.ok) await r.arrayBuffer(); else failed++; } catch { failed++; }
       done++;
-      if (done % 3 === 0 || done === files.length) say(`Saving the tour for offline use: ${Math.round(done / files.length * 100)}%`);
+      if (done % 3 === 0 || done === files.length) say(esc(T('off.saving', { p: Math.round(done / files.length * 100) })));
     }
   };
   await Promise.all([worker(), worker(), worker()]);
   const ok = failed <= files.length * 0.02;
   try { localStorage.setItem('chrono-offline', ok ? (full ? 'full' : 'lite') : ''); } catch { /* private mode */ }
   if (full && ok) { say(TOUR_SAVED); offerLastObjects(say); }
-  else if (full) say(`Some of the tour could not be saved (${failed} of ${files.length} files). <button type="button" id="savetour">Try again</button>`);
-  else say('The tour objects are saved on this device. <button type="button" id="savetour">Save the whole tour for offline use (about 90 MB)</button>');
+  else if (full) say(`${esc(T('off.some', { failed, n: files.length }))} <button type="button" id="savetour">${esc(T('off.retry'))}</button>`);
+  else say(`${esc(T('off.lite'))} <button type="button" id="savetour">${esc(T('off.full'))}</button>`);
   const btn = $('savetour'); if (btn) btn.onclick = () => saveTourOffline(true);
 }
 const savingMustWait = () => performance.now() < S.busyUntil || sweeping || Object.values(S.dets).some(d => d.loading);
-const TOUR_SAVED = 'The guided tour is saved on this device and works offline.';
+const TOUR_SAVED = esc(T('off.saved'));
 /**
  * The objects offered at the end of the tour are read live from NASA's archive: some 400 exposures
  * each, about a megabyte apiece. That is too much to fetch unasked, so it is offered: once read, they
  * are kept on this device like any position already opened, and open without a connection too.
  */
 async function offerLastObjects(say) {
-  if (!tourSteps.length) tourSteps = buildTour(S.targets);          // the tour may not have been started yet
+  if (!tourSteps.length) tourSteps = buildTour(S.targets, T);          // the tour may not have been started yet
   const list = (tourSteps.at(-1)?.tryNext || []).map(placeNow);
   if (!list.length || !('caches' in window)) return;
   const kept = await Promise.all(list.map(o => Store.has(liveKey(o.ra, o.dec, TRY_SIZE, 'kept'))));
-  if (kept.every(Boolean)) return say(`${TOUR_SAVED.slice(0, -1)}, with the ${list.length} objects of its last step.`);
-  say(`${TOUR_SAVED} <button type="button" id="savelast">Keep the ${list.length} objects of its last step too</button> (read live from NASA: about 1 GB of downloads, several minutes)`);
+  if (kept.every(Boolean)) return say(esc(T('off.savedWith', { n: list.length })));
+  say(`${TOUR_SAVED} <button type="button" id="savelast">${esc(T('off.keep', { n: list.length }))}</button> ${esc(T('off.keepNote'))}`);
   $('savelast').onclick = () => keepLastObjects(list, say);
 }
 async function keepLastObjects(list, say) {
   let failed = 0;
   for (const [i, o] of list.entries()) {
-    const tell = what => say(`${TOUR_SAVED} Keeping the objects of its last step: ${esc(o.name)} (${i + 1} of ${list.length})${what ? `, ${what}` : ''}…`);
+    const tell = what => say(`${TOUR_SAVED} ${esc(T('off.keeping', { name: o.name, i: i + 1, n: list.length }))}${what ? `, ${esc(what)}` : ''}…`);
     if (await Store.has(liveKey(o.ra, o.dec, TRY_SIZE, 'kept'))) continue;
     tell('');
     try {
@@ -2059,7 +2053,7 @@ async function keepLastObjects(list, say) {
         const key = liveKey(o.ra, o.dec, TRY_SIZE, det);
         if (await Store.has(key)) continue;
         while (savingMustWait()) await nap(600);
-        tell(`detector ${det} of 6`);
+        tell(T('off.det', { d: det }));
         const lines = [];
         await Archive.stream(o.ra, o.dec, TRY_SIZE, det, line => lines.push(line), undefined, frames);
         const end = lines.find(l => l.t === 'done');
@@ -2068,9 +2062,9 @@ async function keepLastObjects(list, say) {
       if (whole) await Store.put(liveKey(o.ra, o.dec, TRY_SIZE, 'kept'), [{ t: 'kept', name: o.name, at: Date.now() }]); else failed++;
     } catch { failed++; }
   }
-  if (!failed) say(`${TOUR_SAVED.slice(0, -1)}, with the ${list.length} objects of its last step.`);
+  if (!failed) say(esc(T('off.savedWith', { n: list.length })));
   else {
-    say(`${TOUR_SAVED} ${failed} of the ${list.length} objects of its last step could not be read just now. <button type="button" id="savelast">Try again</button>`);
+    say(`${TOUR_SAVED} ${esc(T('off.failed', { failed, n: list.length }))} <button type="button" id="savelast">${esc(T('off.retry'))}</button>`);
     $('savelast').onclick = () => keepLastObjects(list, say);
   }
 }
@@ -2102,6 +2096,10 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   S.embed = q.has('embed');
   if (q.has('debug')) window.__app = { S, C, findComparisons, usable, gEpoch, scan: () => scanResult };      // for inspection from the console
   if (S.embed) document.body.classList.add('embed');
+  Lang.applyStatic();
+  const pick = $('lang');
+  pick.innerHTML = Object.entries(Lang.LANGS).map(([code, name]) => `<option value="${code}"${code === Lang.lang ? ' selected' : ''}>${name}</option>`).join('');
+  pick.onchange = () => Lang.choose(pick.value);
   renderModes(); renderDets();
   try { S.targets = await (await fetch('data/targets.json')).json(); } catch { S.targets = []; }
   renderChips();
@@ -2111,8 +2109,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       await Sky.init('#map', { still: !(q.has('target') || (q.has('ra') && q.has('dec'))), onClick: openAt, onFov: f => { $('fovlabel').textContent = f >= 10 ? `${Math.round(f)}°` : f >= 1 ? `${f.toFixed(1)}°` : `${Math.round(f * 60)}′`; } });
       setWave(25);
       // On a slow connection the first picture takes a few seconds: say so, instead of an empty map.
-      const slow = setTimeout(() => { if ($('mapnote').hidden) note('Loading the sky map…'); }, 1800);
-      Sky.firstPicture().then(() => { clearTimeout(slow); if ($('mapnote').textContent === 'Loading the sky map…') note(''); });
+      const loading = T('note.loadingMap'), slow = setTimeout(() => { if ($('mapnote').hidden) note(loading); }, 1800);
+      Sky.firstPicture().then(() => { clearTimeout(slow); if ($('mapnote').textContent === loading) note(''); });
     } catch (e) {
       console.error(e);
       $('welcome').innerHTML = '<h1>The sky map could not start here.</h1><p class="lede">It needs WebGL 2. Search still works, and so does the guided tour.</p>';

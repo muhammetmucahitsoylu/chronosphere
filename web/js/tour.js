@@ -1,62 +1,54 @@
 // The guided tour: a short, plain-language walk from "what is SPHEREx" to the five test
 // objects. Each step may move the map or open an object through the small api it is given.
-
-// What the presenter says while each test object is on screen. Kept short: the panel shows the rest.
-const STORY = {
-  barnard: 'The dot that moved in the two photographs: the fastest-moving star in the whole sky. The numbers show what the tool makes of it.',
-  epsindib: 'Two brown dwarfs, objects too small to shine like stars, orbiting a star 12 light-years away. That star, Epsilon Indi A, is the bright one beside the ring on the map; the pair in the ring is about 4,000 times fainter. SPHEREx sees the pair as one dot sliding south-east. Its spectrum has deep gaps near 1.4, 1.9 and 2.7 microns, where water vapour absorbs the light, and near 3.3 microns, where methane does.',
-  wise0855: 'The coldest brown dwarf known, only 7 light-years away and too cold to shine in visible light. The images step through the wavelengths: at first the circle holds only the glow of a neighbouring star. Beyond 4 microns a new dot appears that is not in the Gaia star catalogue. In the colour picture it is the red one.',
-  rwaur: 'A newborn star still wrapped in dust. It does not move, and the images stay steady. But look at the spectrum, where each colour is one visit: within a year the star grew brighter below 1.6 microns and lost almost half its brightness beyond 4 microns, while the stars around it did not change.',
-  rdra: 'A red giant near the end of its life, swelling and shrinking every 245 days. Each image covers about one month. The star is so bright that it overloads the detectors, so the tool measures its outer glow instead. The brightness curve rises and falls with the pulse.',
-};
+// The words of the steps live in lang.js, one block per language; this file is the order of the
+// steps and what the map does at each.
 
 // The first object is where the audience meets the panel: numbered pointers lead from the card to its
-// parts. `at` names the part (a CSS selector), `label` and `text` are what the card says about it; `dx` and `dy` move a pointer a little.
+// parts. `at` names the part (a CSS selector), `key` the words the card says about it; `dx` and `dy` move a pointer a little.
 const POINTS = {
   barnard: [
-    { at: '.viewer .blocktitle', label: 'Images', text: 'three visits in a loop. The star hops north, along the dotted line that catalogues predict.' },
-    { at: '#findings', label: 'What the measurements say', text: 'the hop measured in these images, beside the catalogue’s value.' },
-    { at: '.stack .blocktitle', label: 'Spectrum', text: 'the star’s light in 102 colours, one point for each exposure.' },
-    { at: '#about .links', dx: -9, dy: 10, label: 'Check it in', text: 'the same spot in other observatories’ tools.' },
+    { at: '.viewer .blocktitle', key: 'tour.p1' },
+    { at: '#findings', key: 'tour.p2' },
+    { at: '.stack .blocktitle', key: 'tour.p3' },
+    { at: '#about .links', dx: -9, dy: 10, key: 'tour.p4' },
   ],
 };
+// What the presenter says while each test object is on screen is under `tour.<object>` in lang.js.
+const STORIES = ['barnard', 'epsindib', 'wise0855', 'rwaur', 'rdra'];
 
-export function buildTour(targets) {
+/** `t(key)` gives the words for a key in the language in use. */
+export function buildTour(targets, t) {
   // In the texts of the steps, *words between asterisks* are set in italics.
   const steps = [
     {
-      title: 'SPHEREx',
-      text: 'The *Spectro-Photometer for the History of the Universe, Epoch of Reionization and Ices Explorer (SPHEREx)* will survey the entire sky in infrared light. During its planned two-year mission, it will collect data on more than 450 million galaxies and over 100 million stars in the Milky Way to explore the origins of the universe.',
+      title: t('tour.1.title'), text: t('tour.1.text'),
       run: api => { api.closePanel(); api.layer('spherex'); api.slice(25); api.fly(266.4, -29.0, 110); },
     },
     {
-      title: 'What is SPHEREx looking for?',
-      text: 'SPHEREx maps the sky in 102 infrared bands. By measuring galaxy distances and the light they emit, it helps astronomers investigate the universe’s early expansion. It also studies water and other ices in cold, star-forming clouds across the Milky Way.',
+      title: t('tour.2.title'), text: t('tour.2.text'),
       run: api => { api.closePanel(); api.sweep(true); },                 // the map steps through the bands meanwhile
     },
     {
-      title: 'Why look at the same place twice?',
-      text: 'Because objects can move or change. In 1930, Clyde Tombaugh discovered Pluto by comparing two photographs of the same patch of sky and spotting a dot that had shifted. SPHEREx repeatedly observes hundreds of millions of stars and galaxies, far too many for one team to inspect. The more people who help compare the images, the more likely we are to spot something interesting.',
+      title: t('tour.3.title'), text: t('tour.3.text'),
       demo: 'blink',                                    // the worked example shown with this step: two real SPHEREx pictures, flipping
       prep: api => api.example(),                       // made ready while the step before is on screen
       run: api => { api.closePanel(); api.sweep(false); api.slice(25); },
     },
     {
-      title: 'What does Chronosphere do?',
-      text: 'Choose any point in the sky. Chronosphere finds every SPHEREx exposure of that spot in NASA’s open archive, lines up the images, and plays them as a short video. It also identifies the object and builds its spectrum. *Let’s try it with five test objects.*',
+      title: t('tour.4.title'), text: t('tour.4.text'),
       run: api => { api.closePanel(); api.sweep(false); },
     },
   ];
-  for (const t of targets) {
+  for (const o of targets) {
     steps.push({
-      title: t.label, text: STORY[t.slug] || `${t.blurb} ${t.look || ''}`, points: POINTS[t.slug] || null,
-      prep: api => { api.warm(t.ra, t.dec, w => api.viewFov(t.size, w)); api.preload(t); },      // made ready while the previous step is on screen
-      run: api => { api.sweep(false); api.open(t); },
+      title: o.label, text: STORIES.includes(o.slug) ? t(`tour.${o.slug}`) : `${o.blurb} ${o.look || ''}`,
+      points: (POINTS[o.slug] || []).map(p => ({ ...p, label: t(`${p.key}.label`), text: t(`${p.key}.text`) })),
+      prep: api => { api.warm(o.ra, o.dec, w => api.viewFov(o.size, w)); api.preload(o); },      // made ready while the previous step is on screen
+      run: api => { api.sweep(false); api.open(o); },
     });
   }
   steps.push({
-    title: 'Now it is your turn',
-    text: 'Every point of the sky works the same way: search a name, type coordinates, or just click. Each object links to independent tools so anyone can check what they see. Nothing here claims a discovery. It helps more people look.',
+    title: t('tour.last.title'), text: t('tour.last.text'),
     // Objects outside the test list on which the tool has been checked: each is read live from NASA's archive,
     // and kept on the device once read. Their year-2000 positions and yearly motions (milliarcseconds) come
     // with the tour, from SIMBAD (Gaia DR3; Luhman 16: Lazorenko & Sahlmann 2018; NGC 7027: UCAC4), so that

@@ -24,18 +24,19 @@
     <span>Chronosphere</span>
   </a>
   <form id="search" autocomplete="off" role="search">
-    <label class="sr" for="q">Object name or coordinates</label>
-    <input id="q" type="text" inputmode="search" enterkeyhint="search" list="suggest" placeholder="Search the sky: a name, or RA and Dec">
+    <label class="sr" for="q" data-t="search.label">Object name or coordinates</label>
+    <input id="q" type="text" inputmode="search" enterkeyhint="search" list="suggest" placeholder="Search the sky: a name, or RA and Dec" data-t-placeholder="search.placeholder">
     <datalist id="suggest"></datalist>
-    <button type="submit" aria-label="Search">Go</button>
+    <button type="submit" aria-label="Search" data-t="search.go">Go</button>
   </form>
   <nav class="nav" id="nav" aria-label="About this site">
-    <div class="navlinks" id="navlinks">
+    <div class="navlinks" id="navlinks" lang="en">
       <button type="button" data-sheet="spherex">What is SPHEREx?</button>
       <button type="button" data-sheet="how">How it works</button>
       <button type="button" data-sheet="about">About</button>
+      <select id="lang" class="langpick" aria-label="Language" data-t-label="nav.language" title="Language of the tour and the explanations"></select>
     </div>
-    <button id="tourbtn" type="button" class="cta">Guided tour</button>
+    <button id="tourbtn" type="button" class="cta" data-t="nav.tour">Guided tour</button>
     <button id="menubtn" type="button" class="menubtn" aria-label="Menu" aria-expanded="false" aria-controls="navlinks"><span></span><span></span><span></span></button>
   </nav>
 </header>
@@ -56,14 +57,14 @@
       </div>
 
       <div class="hero" id="welcome">
-        <p class="eyebrow">NASA SPHEREx · 102 infrared colours · the whole sky, twice a year</p>
-        <h1>The sky is not still.</h1>
-        <p class="lede">Stars drift. Some flicker. Cold worlds hide in colours our eyes cannot see. Pick any point of this map to watch that spot change over time, and find out what it is.</p>
+        <p class="eyebrow" data-t="hero.eyebrow">NASA SPHEREx · 102 infrared colours · the whole sky, twice a year</p>
+        <h1 data-t="hero.title">The sky is not still.</h1>
+        <p class="lede" data-t="hero.lede">Stars drift. Some flicker. Cold worlds hide in colours our eyes cannot see. Pick any point of this map to watch that spot change over time, and find out what it is.</p>
         <div class="herobtns">
-          <button type="button" class="cta" id="tourbtn2">Take the two-minute tour</button>
-          <button type="button" class="ghost" id="hidewelcome">Explore freely</button>
+          <button type="button" class="cta" id="tourbtn2" data-t="hero.tour">Take the two-minute tour</button>
+          <button type="button" class="ghost" id="hidewelcome" data-t="hero.explore">Explore freely</button>
         </div>
-        <p class="startwith">Or start with <span id="examples"></span></p>
+        <p class="startwith"><span data-t="hero.start">Or start with</span> <span id="examples"></span></p>
         <p class="offline" id="offline"></p>
       </div>
 
@@ -87,21 +88,21 @@
 
     <div class="tour" id="tour" hidden role="region" aria-label="Guided tour" aria-live="polite">
       <div class="tourbar"><i id="tourprog"></i></div>
-      <div class="tourstep"><span id="tourcount"></span><button type="button" id="tourclose" aria-label="End tour">×</button></div>
+      <div class="tourstep"><span id="tourcount"></span><button type="button" id="tourclose" aria-label="End tour" data-t-label="tour.end">×</button></div>
       <h2 id="tourtitle"></h2>
       <p id="tourtext"></p>
       <ol class="tourpoints" id="tourpoints" hidden></ol>
       <p class="tourlinks" id="tourlinks" hidden></p>
       <div class="tourbtns">
-        <button type="button" class="ghost walk" id="tourwalk" hidden><span class="long">Walk through the panel</span><span class="short">Panel guide</span></button>
+        <button type="button" class="ghost walk" id="tourwalk" hidden><span class="long" data-t="tour.walk">Walk through the panel</span><span class="short" data-t="tour.walkShort">Panel guide</span></button>
         <span class="tourmini" id="tourmini"></span>
-        <button type="button" class="ghost" id="tourback">Back</button>
+        <button type="button" class="ghost" id="tourback" data-t="tour.back">Back</button>
         <button type="button" id="tournext" class="cta">Next</button>
       </div>
     </div>
   </section>
 
-  <aside class="panel" id="panel" aria-label="Selected object">
+  <aside class="panel" id="panel" lang="en" aria-label="Selected object">
     <div class="guides" id="guides" hidden aria-hidden="true"></div>
     <div class="spot" id="spot" hidden aria-hidden="true"></div>
     <header id="about" class="ohead"></header>
@@ -213,16 +214,17 @@
 </div>
 
 <div class="coach" id="coach" hidden role="region" aria-label="A walk through the panel" aria-live="polite">
-  <div class="coachhead"><span id="coachcount"></span><button type="button" id="coachclose" aria-label="End the walk through the panel">×</button></div>
+  <div class="coachhead"><span id="coachcount"></span><button type="button" id="coachclose" aria-label="End the walk through the panel" data-t-label="coach.close">×</button></div>
   <h2 id="coachtitle"></h2>
   <p id="coachtext"></p>
+  <p id="coachnote" class="coachnote" hidden></p>
   <div class="coachnav">
-    <button type="button" class="ghost" id="coachback">Back</button>
+    <button type="button" class="ghost" id="coachback" data-t="tour.back">Back</button>
     <button type="button" class="cta" id="coachnext">Next</button>
   </div>
 </div>
 
-<div class="sheetwrap" id="sheetwrap" hidden>
+<div class="sheetwrap" id="sheetwrap" hidden lang="en">
   <article class="sheet" id="sheet" role="dialog" aria-modal="true" tabindex="-1"></article>
 </div>
 

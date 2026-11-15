@@ -54,6 +54,11 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   four further objects its last step offers are read live from the archive, and one press keeps those too.
 - **Learn the panel.** "How to read this panel", on every object, walks through its nine parts one at a time:
   the part is lit, the rest dimmed, and a card says what it shows and what can be done with it.
+- **In five languages.** The front page, the guided tour, the walk through the panel and the notes on the map
+  are in English, Turkish, German, French and Polish (the picker is in the top bar; `?lang=tr` in an address
+  does the same). The measurement panel itself is English. All the words live in one file, `web/js/lang.js`:
+  adding a language is adding one block. The German, French and Polish texts have not yet been read by a
+  native speaker.
 
 ## How the challenge is covered
 
@@ -204,7 +209,8 @@ web/js/core.js        decoding, sky geometry, stacking, photometry, band depths,
 web/js/sky.js         the explorable sky map (Aladin Lite + IRSA sky maps)
 web/js/healpix.js     which sky-map tiles a view needs (HEALPix)
 web/js/info.js        identification (SIMBAD), Wikipedia card, links to other tools
-web/js/tour.js        guided tour text
+web/js/tour.js        guided tour: the steps and what the map does at each
+web/js/lang.js        the words of the front page, the tour and the walk through the panel, in five languages
 web/js/pages.js       the "What is SPHEREx?", "How it works" and "About" pages
 web/sw.js             service worker: offline cache
 web/index/            the sky index (generated)
