@@ -5,9 +5,9 @@ anything, and watch that spot change over time. Chronosphere tells you what the 
 exposure of it like a little video so that motion and brightness changes stand out, builds its 102-band
 spectrum on the spot, and checks whether what you see is real.
 
-Live: https://muhammetmucahitsoylu.github.io/chronosphere/ · guided tour: add `?tour`
+Live: https://chronospherex.com/ · guided tour: add `?tour`
 
-Seven slides about it: https://muhammetmucahitsoylu.github.io/chronosphere/chronosphere-slides.pdf
+Seven slides about it: https://chronospherex.com/chronosphere-slides.pdf
 
 ![Epsilon Indi B in Chronosphere: the sky map, the image sequence, and a spectrum showing water and methane](web/preview.png)
 
