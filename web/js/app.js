@@ -1902,8 +1902,10 @@ async function saveTourOffline(full) {
 function startOfflineSave() {
   const c = navigator.connection;
   if (c?.saveData) return;
-  // Laptops and desktops on a normal connection take everything; phones take the light part and offer the rest.
-  const roomy = !isNarrow() && (!c || !c.effectiveType || c.effectiveType === '4g');
+  // Laptops and desktops take everything; phones take the light part and offer the rest, and so does any
+  // device on a very slow connection. (The browser's estimate drops to "3g" on a fast line too, because
+  // the archive itself answers slowly: that alone must not hold the save back.)
+  const roomy = !isNarrow() && !(c && (c.effectiveType === '2g' || c.effectiveType === 'slow-2g'));
   saveTourOffline(roomy);
 }
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
