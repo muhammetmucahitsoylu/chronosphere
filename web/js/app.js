@@ -71,6 +71,7 @@ const Store = {
 };
 
 async function go({ ra, dec, size, target = null, track = null, det, mode, info = null, fly = true, keepZoom = false }) {
+  coachEnd();
   S.abort?.abort(); S.abort = new AbortController();
   const gen = ++S.gen;
   stop();
@@ -86,7 +87,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
     // The panel opens (which changes the size of the map) and the map goes to the object, as one move.
     const opening = $('app').dataset.panel !== 'open';
     // A visitor who has zoomed in closer than the usual view of an object and clicks a star stays that close.
-    const wide = Sky.objectFov(S.size), width = keepZoom ? clamp(Sky.fov(), 0.12, wide) : wide;
+    const zoomNow = Sky.fov(), width = w => (keepZoom ? clamp(zoomNow, 0.12, Sky.objectFov(S.size, w)) : Sky.objectFov(S.size, w));
     if (fly) Sky.flyTo(ra, dec, width, { layout: opening ? openPanel : null });
     else if (opening) Sky.reshape(openPanel);
     Sky.mark(ra, dec, S.size, target ? target.label : info ? info.name : track?.name || '');
@@ -995,6 +996,7 @@ function openPanel() {
   requestAnimationFrame(() => { paint(); specPlot.draw(); lcPlot.draw(); });
 }
 function closePanel() {
+  coachEnd();
   S.abort?.abort(); S.gen++; stop();
   const shut = () => { $('app').dataset.panel = 'closed'; if (Sky.isReady()) { Sky.clearMark(); Sky.resize(); } };
   if (Sky.isReady()) Sky.reshape(shut); else shut();
@@ -1086,8 +1088,9 @@ function renderAbout() {
       ${thumb}<button type="button" class="close" id="closepanel" title="Close and return to the map" aria-label="Close">×</button>
     </div>
     <dl class="facts">${facts.join('')}</dl>
-    <div class="links"><span>Check it in</span>${links}</div>`;
+    <div class="links"><span>Check it in</span>${links}${S.embed ? '' : '<button type="button" class="howto" id="howto" title="A short walk through every part of this panel">How to read this panel</button>'}</div>`;
   $('closepanel').onclick = closePanel;
+  if ($('howto')) $('howto').onclick = () => coachGo(0);
   if (mv) $('gomoved').onclick = () => {
     const preset = S.targets.find(x => sepArcsec(mv.ra, mv.dec, x.ra, x.dec) < 20);
     if (preset && +$('fov').value === preset.size) openTarget(preset);
@@ -1496,6 +1499,7 @@ document.addEventListener('keydown', e => {
   if (tourIdx >= 0 && (e.key === 'PageUp' || e.key === 'b')) { e.preventDefault(); return tourGo(tourIdx - 1); }
   if (!$('sheetwrap').hidden && e.key === 'Escape') return closeSheet();
   if (e.key === 'Escape' && $('nav').classList.contains('open')) return closeMenu();
+  if (coachAt >= 0 && e.key === 'Escape') return coachEnd();
   if (tourIdx >= 0 && e.key === 'Escape') return tourEnd();
   if (e.key === ' ') { e.preventDefault(); S.wantPlay = false; S.playing ? stop() : play(); }
   else if (e.key === 'ArrowRight') { S.wantPlay = false; stop(); step(1); }
@@ -1750,7 +1754,7 @@ const tourApi = {
   warm: (ra, dec, fov, layout = 'open') => {
     if (!Sky.isReady() || !Sky.isSpherex()) return;
     const [w, h] = tourSizes()[layout];                    // the size the map will have at that step, not the size it has now
-    warm(Sky.tiles({ ra, dec, fov: Sky.fitFov(fov, w, h), w, h, coarse: true }));
+    warm(Sky.tiles({ ra, dec, fov: Sky.fitFov(typeof fov === 'function' ? fov(w) : fov, w, h), w, h, coarse: true }));
   },
   preload: t => { fetch(dataUrl(t, `d${t.view?.det || 2}.ndjson`), { priority: 'low' }).then(r => r.arrayBuffer()).catch(() => {}); },
   example: () => { blinkFrames(); },
@@ -1760,6 +1764,7 @@ function relayout() {
   requestAnimationFrame(() => { if (Sky.isReady()) Sky.resize(); paint(); specPlot.draw(); lcPlot.draw(); });
 }
 function tourGo(i) {
+  coachEnd();
   if (!tourSteps.length) tourSteps = buildTour(S.targets);
   if (i < 0) return;
   if (i >= tourSteps.length) return tourEnd();
@@ -1790,6 +1795,74 @@ function tourGo(i) {
   if (Sky.isReady()) Sky.reshape();          // the card may have changed the size of the map
   if (isNarrow()) window.scrollTo({ top: 0, behavior: calmMotion() ? 'auto' : 'smooth' });
 }
+// ------------------------------------------------------------ a walk through the panel
+// For whoever wants to learn the tool: the parts of the panel, one at a time. The part is lit, the
+// rest of the panel dimmed, and a card says what the part shows and what can be done with it.
+// Parts that are not on screen for this object (nothing to say yet, no motion table) are passed over.
+const COACH = [
+  { at: '#about', title: 'What it is',
+    text: 'Name and type come from the SIMBAD catalogue. The row of facts gives where the object is today and, when catalogues know them, how fast it moves and how far away it is, then how many SPHEREx exposures cover this spot. “Check it in” opens the same position in other observatories’ tools.' },
+  { at: '#findings', title: 'The answer first',
+    text: 'What the tool measured, in a few words: did it move, did its brightness change, does its spectrum show the marks of molecules. Each line comes from the numbers further down; press one to go to them.' },
+  { at: '.viewer .stage', title: 'The images',
+    text: 'Every SPHEREx exposure of this spot, lined up on the sky and played in a loop with the controls underneath. The green ring is the spot being measured; the circles are Gaia catalogue stars, drawn where they were on the date shown; an arrow gives the motion the catalogue knows. Scroll to zoom, drag to pan, and click any star to measure that one instead.' },
+  { at: '#modes', title: 'Six ways to compare',
+    text: 'Visits: one combined image per visit of SPHEREx, the best view for motion. Exposures: every single exposure. Time as colour: anything that moved or changed shows up coloured. Difference: a later visit minus an earlier one. Wavelengths: the same sky in each of the six detectors. Deep: all exposures added together.' },
+  { at: '.detwrap', title: 'Six detectors',
+    text: 'SPHEREx has six detectors, D1 to D6, each covering its own band of infrared light between 0.75 and 5 microns. Pick one: the images and the brightness curve switch to that band.' },
+  { at: '.stack > section:nth-child(1)', title: 'Spectrum',
+    text: 'The brightness of the ringed spot at each wavelength. In every exposure the spot falls on a different part of the detector’s filter and is seen in a different colour, so the exposures add up to a spectrum: each point is one exposure, coloured by visit. Shaded bands mark where common molecules absorb light, and the table underneath says whether a dip was measured there.' },
+  { at: '.stack > section:nth-child(2)', title: 'Brightness over time',
+    text: 'The same measurements in time order, for the detector chosen, each divided by the spot’s own average at that wavelength: a steady star stays near 1. Underneath, the change between visits is compared with the stars around it, which tells a real change from an effect of the instrument.' },
+  { at: '#motion', title: 'Did it move?',
+    text: 'How far the light has shifted since the first visit, measured in these images. For an object with a catalogued motion the table sets that beside what the catalogue predicts; for any other spot the tool says whether it stayed in place.' },
+  { at: '.export', title: 'Take it with you',
+    text: 'Copy link reopens exactly this view on any device. Save the image or a video of the loop, or download every measurement of the ringed spot as a CSV file and check the numbers yourself.' },
+];
+let coachAt = -1, coachTimer = 0;
+const onScreen = sel => { const el = document.querySelector(sel); return !!el && el.offsetParent !== null && el.getBoundingClientRect().height > 12; };
+const coachParts = () => COACH.map((s, k) => (onScreen(s.at) ? k : -1)).filter(k => k >= 0);
+function coachSpot() {
+  const st = COACH[coachAt], t = st && document.querySelector(st.at), spot = $('spot'), panel = $('panel');
+  if (!t || !onScreen(st.at)) { spot.hidden = true; return; }
+  const r = t.getBoundingClientRect(), pr = panel.getBoundingClientRect(), pad = 7;
+  Object.assign(spot.style, { left: `${Math.round(r.left - pr.left + panel.scrollLeft - pad)}px`, top: `${Math.round(r.top - pr.top + panel.scrollTop - pad)}px`,
+    width: `${Math.round(r.width + 2 * pad)}px`, height: `${Math.round(r.height + 2 * pad)}px` });
+  spot.hidden = false;
+}
+/** Show the part before (-1), after (+1) or, to begin, the first part (0). */
+function coachGo(dir) {
+  const parts = coachParts();
+  if (!parts.length || $('app').dataset.panel !== 'open') return;
+  let k;
+  if (dir === 0 || coachAt < 0) k = parts[0];
+  else if (dir > 0) k = parts.find(x => x > coachAt);
+  else k = [...parts].reverse().find(x => x < coachAt) ?? coachAt;
+  if (k === undefined) return coachEnd();
+  if (coachAt < 0) showGuides([]);                    // the tour's own numbered pointers step aside meanwhile
+  coachAt = k;
+  const st = COACH[k], pos = Math.max(0, parts.indexOf(k)), last = pos === parts.length - 1;
+  $('coachcount').textContent = `Reading the panel · ${pos + 1} of ${parts.length}`;
+  $('coachtitle').textContent = st.title; $('coachtext').textContent = st.text;
+  $('coachback').disabled = pos === 0; $('coachnext').textContent = last ? 'Done' : 'Next';
+  $('coach').hidden = false; document.body.classList.add('coaching');
+  // Bring the part into view: the panel scrolls by itself on a wide screen, the page does on a phone.
+  const t = document.querySelector(st.at), r = t.getBoundingClientRect(), panel = $('panel'), behavior = calmMotion() ? 'auto' : 'smooth';
+  if (isNarrow()) window.scrollTo({ top: Math.max(0, window.scrollY + r.top - 14), behavior });
+  else panel.scrollTo({ top: Math.max(0, panel.scrollTop + r.top - panel.getBoundingClientRect().top - 18), behavior });
+  clearInterval(coachTimer); coachSpot(); coachTimer = setInterval(coachSpot, 200);
+}
+function coachEnd() {
+  if (coachAt < 0) return;
+  coachAt = -1; clearInterval(coachTimer);
+  $('coach').hidden = true; $('spot').hidden = true; document.body.classList.remove('coaching');
+  if (tourIdx >= 0) showGuides(tourSteps[tourIdx]?.points || []);
+  if (!isNarrow()) $('panel').scrollTo({ top: 0, behavior: calmMotion() ? 'auto' : 'smooth' });
+}
+$('coachnext').onclick = () => coachGo(1);
+$('coachback').onclick = () => coachGo(-1);
+$('coachclose').onclick = coachEnd;
+$('tourwalk').onclick = () => coachGo(0);
 /**
  * Numbered pointers from the tour's card to parts of the panel: the card lists what each number is,
  * and the same number sits on the part itself. The parts are redrawn and move as data arrives, so the
@@ -1800,6 +1873,7 @@ function showGuides(points) {
   clearInterval(guideTimer);
   const list = $('tourpoints'), layer = $('guides'), panel = $('panel');
   list.hidden = layer.hidden = !points.length;
+  $('tourwalk').hidden = !points.length;
   list.innerHTML = points.map((p, i) => `<li><i class="guide">${i + 1}</i><span><b>${esc(p.label)}</b> ${esc(p.text)}</span></li>`).join('');
   layer.innerHTML = points.map((p, i) => `<i class="guide" data-at="${esc(p.at)}" data-dx="${+p.dx || 0}" data-dy="${+p.dy || 0}" hidden>${i + 1}</i>`).join('');
   if (!points.length) return;
@@ -1830,6 +1904,7 @@ async function openKnown(o) {
   go({ ra: r.ra, dec: r.dec, size: TRY_SIZE, track: r });
 }
 function tourEnd() {
+  coachEnd();
   tourIdx = -1; $('tour').hidden = true; document.body.classList.remove('touring'); showExample(false); showGuides([]);
   sweep(false); renderLook(); relayout();
   if (Sky.isReady()) Sky.reshape();
@@ -1902,7 +1977,7 @@ function tourTiles() {
     for (const z of TOUR_FRAMES) add(266.4, -29.0, 110, size, z);
     add(83.82, -5.39, 60, size);
   }
-  for (const t of S.targets) { add(t.ra, t.dec, Sky.objectFov(t.size), open); add(t.ra, t.dec, Sky.objectFov(t.size), wide); }
+  for (const t of S.targets) { add(t.ra, t.dec, Sky.objectFov(t.size, open[0]), open); add(t.ra, t.dec, Sky.objectFov(t.size, wide[0]), wide); }
   return [...urls];
 }
 /**

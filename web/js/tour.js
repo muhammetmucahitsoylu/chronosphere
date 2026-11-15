@@ -4,7 +4,7 @@
 // What the presenter says while each test object is on screen. Kept short: the panel shows the rest.
 const STORY = {
   barnard: 'The dot that moved in the two photographs: the fastest-moving star in the whole sky. The numbers show what the tool makes of it.',
-  epsindib: 'Two brown dwarfs, objects too small to shine like stars, orbiting a star 12 light-years away. SPHEREx sees the pair as one dot sliding south-east. Its spectrum has deep gaps near 1.4, 1.9 and 2.7 microns, where water vapour absorbs the light, and near 3.3 microns, where methane does.',
+  epsindib: 'Two brown dwarfs, objects too small to shine like stars, orbiting a star 12 light-years away. That star, Epsilon Indi A, is the bright one beside the ring on the map; the pair in the ring is about 4,000 times fainter. SPHEREx sees the pair as one dot sliding south-east. Its spectrum has deep gaps near 1.4, 1.9 and 2.7 microns, where water vapour absorbs the light, and near 3.3 microns, where methane does.',
   wise0855: 'The coldest brown dwarf known, only 7 light-years away and too cold to shine in visible light. The images step through the wavelengths: at first the circle holds only the glow of a neighbouring star. Beyond 4 microns a new dot appears that is not in the Gaia star catalogue. In the colour picture it is the red one.',
   rwaur: 'A newborn star still wrapped in dust. It does not move, and the images stay steady. But look at the spectrum, where each colour is one visit: within a year the star grew brighter below 1.6 microns and lost almost half its brightness beyond 4 microns, while the stars around it did not change.',
   rdra: 'A red giant near the end of its life, swelling and shrinking every 245 days. Each image covers about one month. The star is so bright that it overloads the detectors, so the tool measures its outer glow instead. The brightness curve rises and falls with the pulse.',
@@ -50,7 +50,7 @@ export function buildTour(targets) {
   for (const t of targets) {
     steps.push({
       title: t.label, text: STORY[t.slug] || `${t.blurb} ${t.look || ''}`, points: POINTS[t.slug] || null,
-      prep: api => { api.warm(t.ra, t.dec, api.viewFov(t.size)); api.preload(t); },      // made ready while the previous step is on screen
+      prep: api => { api.warm(t.ra, t.dec, w => api.viewFov(t.size, w)); api.preload(t); },      // made ready while the previous step is on screen
       run: api => { api.sweep(false); api.open(t); },
     });
   }

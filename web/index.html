@@ -93,6 +93,7 @@
       <ol class="tourpoints" id="tourpoints" hidden></ol>
       <p class="tourlinks" id="tourlinks" hidden></p>
       <div class="tourbtns">
+        <button type="button" class="ghost walk" id="tourwalk" hidden><span class="long">Walk through the panel</span><span class="short">Panel guide</span></button>
         <span class="tourmini" id="tourmini"></span>
         <button type="button" class="ghost" id="tourback">Back</button>
         <button type="button" id="tournext" class="cta">Next</button>
@@ -102,6 +103,7 @@
 
   <aside class="panel" id="panel" aria-label="Selected object">
     <div class="guides" id="guides" hidden aria-hidden="true"></div>
+    <div class="spot" id="spot" hidden aria-hidden="true"></div>
     <header id="about" class="ohead"></header>
 
     <div class="cols">
@@ -208,6 +210,16 @@
 
     <p class="credits">Images: NASA SPHEREx, served by NASA/IPAC (IRSA). Catalogues: Gaia DR3, CatWISE2020, SIMBAD. Sky atlas: Aladin Lite. Encyclopedia cards: Wikipedia.</p>
   </aside>
+</div>
+
+<div class="coach" id="coach" hidden role="region" aria-label="A walk through the panel" aria-live="polite">
+  <div class="coachhead"><span id="coachcount"></span><button type="button" id="coachclose" aria-label="End the walk through the panel">×</button></div>
+  <h2 id="coachtitle"></h2>
+  <p id="coachtext"></p>
+  <div class="coachnav">
+    <button type="button" class="ghost" id="coachback">Back</button>
+    <button type="button" class="cta" id="coachnext">Next</button>
+  </div>
 </div>
 
 <div class="sheetwrap" id="sheetwrap" hidden>

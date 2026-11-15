@@ -38,7 +38,7 @@ TARGETS = [
      "type": "Pair of brown dwarfs", "sp": "T1 + T6",
      "dist": {"plx": 274.8431, "err": 0.0956, "src": "Gaia DR3 parallax of its host star"},
      "blurb": "Two brown dwarfs orbiting a nearby star, moving 4.7 arcseconds per year. SPHEREx sees the pair as one dot.",
-     "look": "Watch it slide to the south-east from visit to visit. Then look at the spectrum: the deep dips near "
+     "look": "The bright star 6.7 arcminutes to the west is Epsilon Indi A, the star this pair orbits; the pair, in the ring, is about 4,000 times fainter. Watch it slide to the south-east from visit to visit. Then look at the spectrum: the deep dips near "
              "1.4, 1.9 and 2.7 microns are water vapour and the one near 3.3 microns is methane, in the "
              "atmospheres of the brown dwarfs."},
     {"slug": "wise0855", "wiki": "WISE 0855−0714", "query": "WISE J085510.83-071442.5", "label": "WISE 0855", "kind": "motion",

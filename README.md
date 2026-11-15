@@ -52,6 +52,8 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   pointers lead from the tour's card to the parts of the panel: the images, what the measurements say, the
   spectrum, the links to other tools. The tour is saved on the device and runs without a connection; the
   four further objects its last step offers are read live from the archive, and one press keeps those too.
+- **Learn the panel.** "How to read this panel", on every object, walks through its nine parts one at a time:
+  the part is lit, the rest dimmed, and a card says what it shows and what can be done with it.
 
 ## How the challenge is covered
 
@@ -207,7 +209,7 @@ web/js/pages.js       the "What is SPHEREx?", "How it works" and "About" pages
 web/sw.js             service worker: offline cache
 web/index/            the sky index (generated)
 web/data/             the five showcase objects (generated)
-web/vendor/aladin.js  Aladin Lite 3.8.2 (CDS, LGPL-3.0-or-later), unmodified
+web/vendor/aladin.js  Aladin Lite 3.8.2 (CDS, GPL-3.0), unmodified
 web/fonts/            IBM Plex and Instrument Serif (SIL Open Font License)
 scripts/              build_index.py, prebuild.py
 backend/              Python reference pipeline and optional API
@@ -248,9 +250,19 @@ No build step: plain HTML, CSS and JavaScript modules.
   for the test objects and through VizieR (CDS and its mirror at Harvard) everywhere else.
 - Object identification and name resolution: SIMBAD and Sesame, CDS, Strasbourg, and their mirrors at the
   Center for Astrophysics, Harvard & Smithsonian.
-- Sky atlas component: Aladin Lite, CDS (LGPL-3.0-or-later).
+- Sky atlas component: Aladin Lite, CDS (GPL-3.0).
 - Encyclopedia text and thumbnails: Wikipedia (CC BY-SA), shown with a link to the article.
 - Software: Astropy, NumPy, SciPy, PyVO, FastAPI.
+
+## Licence
+
+Chronosphere's own code (everything in this repository except `web/vendor/` and `web/fonts/`) is free software
+under the GNU General Public License, version 3: see [LICENSE](LICENSE). Copyright (C) 2026 The Bright Nobles.
+
+It is distributed together with Aladin Lite (CDS, GPL-3.0) and the IBM Plex and Instrument Serif fonts (SIL
+Open Font License). The data it shows are not covered by this licence: SPHEREx images are public NASA data
+served by NASA/IPAC (IRSA), and catalogues, encyclopedia text and the encyclopedia pictures kept in `web/data/`
+belong to the sources named above, under their own terms.
 
 ## Use of AI
 

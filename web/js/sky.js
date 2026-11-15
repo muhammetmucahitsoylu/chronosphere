@@ -517,6 +517,27 @@ export async function init(selector, { onClick, onFov, still: wanted = true } = 
     tag = A.catalog({ name: 'Selected object', shape: 'circle', sourceSize: 22, color: '#06d6a0', displayLabel: true,
       labelColumn: 'name', labelColor: '#f3eee6', labelFont: '600 13px "IBM Plex Sans", system-ui, sans-serif' });
     al.addCatalog(tag);
+    // The library writes a label to the right of its ring, at the ring's height: over whatever lies
+    // there, which next to a bright star reads as that star's name. The name goes above the square of
+    // the image field instead (below it near the top of the map), on a dark ground of its own.
+    tag.drawSourceLabel = function (s, ctx) {
+      const text = String(s?.data?.name || '').trim();
+      if (!text || !s.isShowing || !s.x || !s.y) return;
+      let up = 17;
+      try {
+        const c = al.world2pix(s.ra, s.dec), top = al.world2pix(s.ra, s.dec + markSize / 120), k = (ctx.canvas.width / al.view.width) / (ctx.getTransform().a || 1);
+        if (c && top) up = Math.max(up, Math.abs(c[1] - top[1]) * k + 7);
+      } catch { /* the ring alone sets the distance */ }
+      ctx.save();
+      ctx.font = this.labelFont; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const w = ctx.measureText(text).width, wide = ctx.canvas.width / (ctx.getTransform().a || 1);
+      const x = clamp(s.x, w / 2 + 10, Math.max(w / 2 + 10, wide - w / 2 - 10)), y = s.y - up - 11 > 58 ? s.y - up - 11 : s.y + up + 11;
+      ctx.fillStyle = '#0a0908d9';
+      ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x - w / 2 - 7, y - 11, w + 14, 22, 6); else ctx.rect(x - w / 2 - 7, y - 11, w + 14, 22); ctx.fill();
+      ctx.fillStyle = this.labelColor || '#f3eee6';
+      ctx.fillText(text, x, y + 1);
+      ctx.restore();
+    };
   } catch { tag = null; }
   // The library's own right-click menu (add a layer, load a file…) and its right-button drag (which
   // changes the brightness of the map) do not belong to this site: both are switched off. A long press
@@ -626,11 +647,12 @@ export function setLayer(id) {
 
 export const fov = () => (al ? al.getFov()[0] : 60);
 /**
- * How wide the map is, in degrees, when it shows a selected object: eight times the field of the
- * images beside it (5 arcminutes: a view 37 arcminutes wide). The object's ring and the square of
- * that field are then large enough to see what is in them, with the neighbourhood around.
+ * How wide the map is, in degrees, when it shows a selected object, on a map `widthPx` wide: so
+ * wide that the square marking the field of the images beside it is about 72 pixels across. The
+ * ring and the square are then large enough to see what is in them, on a phone as on a projector,
+ * and the sky map (13 arcseconds a pixel at its finest) is never blown up into blocks.
  */
-export const objectFov = sizeArcmin => Math.max(0.5, sizeArcmin / 8);
+export const objectFov = (sizeArcmin, widthPx = host?.clientWidth || 500) => clamp(sizeArcmin / 60 * widthPx / 72, 0.3, 10);
 /** Zoom in (factor below 1) or out (above 1) around the centre of the view. */
 export function zoomBy(factor) {
   if (!al) return Promise.resolve(false);
@@ -668,12 +690,14 @@ export function flyTo(ra, dec, targetFov = 0.6, { layout = null } = {}) {
   if (!al) { layout?.(); return Promise.resolve(false); }
   const [ra0, dec0] = al.getRaDec(), f0 = al.getFov()[0], [w0, h0] = copySize();
   const d = sepDeg(ra0, dec0, ra, dec);
-  if (!layout && !veilUp && d < f0 * 0.02 && Math.abs(Math.log(f0 / targetFov)) < 0.1) { al.gotoRaDec(ra, dec); return Promise.resolve(true); }
-  if (!layout && !veilUp && !calm() && d < f0 * 0.45 && Math.abs(Math.log(f0 / targetFov)) < 0.5) return glide(ra, dec, targetFov);
+  // The width of the view may be given as a function of the map's size, for when the move changes that size too.
+  const want = (w, h) => (typeof targetFov === 'function' ? targetFov(w, h) : targetFov), asIs = want(...boxSize());
+  if (!layout && !veilUp && d < f0 * 0.02 && Math.abs(Math.log(f0 / asIs)) < 0.1) { al.gotoRaDec(ra, dec); return Promise.resolve(true); }
+  if (!layout && !veilUp && !calm() && d < f0 * 0.45 && Math.abs(Math.log(f0 / asIs)) < 0.5) return glide(ra, dec, asIs);
   let go; underWay = new Promise(r => { go = r; });
   return change(async () => {
     layout?.();
-    const [w1, h1] = boxSize(), f = fitFov(targetFov, w1, h1);
+    const [w1, h1] = boxSize(), f = fitFov(want(w1, h1), w1, h1);
     // The copy starts moving with the click; the map itself jumps there out of sight.
     moved = true; drift(cameraMove({ ra: ra0, dec: dec0, fov: f0, w: w0, h: h0 }, { ra, dec, fov: f, w: w1, h: h1 }));
     // Before the map's first picture the copy is the opening picture, and the wait can be long:
@@ -701,7 +725,9 @@ function glide(ra, dec, targetFov) {
 }
 
 /** Mark the selected spot: a named ring that stays visible at any zoom, and the footprint of the SPHEREx stamp. */
+let markSize = 5;                    // the field marked on the map, in arcminutes
 export function mark(ra, dec, sizeArcmin, label = '') {
+  markSize = sizeArcmin || 5;
   try {
     overlay?.removeAll();
     const h = sizeArcmin / 120, cd = Math.max(Math.cos(dec * Math.PI / 180), 0.05);
