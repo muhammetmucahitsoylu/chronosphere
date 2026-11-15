@@ -2,6 +2,7 @@
 // one-click links that open the same coordinates in independent tools.
 
 import { propagate, epochNow } from './core.js';
+import { G } from './lang.js';
 
 const SIMBAD_TAP = [
   'https://simbad.cds.unistra.fr/simbad/sim-tap/sync',
@@ -178,6 +179,22 @@ async function wikiSummary(title) {
   return { title: js.title, extract: js.extract, thumb: js.thumbnail?.source || null, url: js.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(js.title)}`, description: js.description || '' };
 }
 
+/** The same article in another language (a card found by wikipedia() or kept with a showcase object), or null if that Wikipedia has none. */
+export async function wikipediaIn(lang, card) {
+  try {
+    const title = decodeURIComponent((card.url || '').split('/wiki/')[1] || card.title).replace(/_/g, ' ');
+    const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&prop=langlinks&lllang=${lang}&redirects=1&titles=${encodeURIComponent(title)}&format=json&origin=*`);
+    const local = Object.values((await r.json()).query?.pages || {})[0]?.langlinks?.[0]?.['*'];
+    if (!local) return null;
+    const s = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(local.replace(/ /g, '_'))}?redirect=true`);
+    if (!s.ok) return null;
+    const js = await s.json();
+    if (js.type !== 'standard' || !js.extract) return null;
+    return { title: js.title, extract: js.extract, thumb: card.thumb || js.thumbnail?.source || null, description: js.description || '', lang,
+      url: js.content_urls?.desktop?.page || `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(js.title)}` };
+  } catch { return null; }
+}
+
 /** Wikipedia card for an object, or null. Only pages that are clearly about astronomy are accepted. */
 export async function wikipedia(titles) {
   for (const t of titles.slice(0, 6)) {
@@ -191,46 +208,46 @@ export async function wikipedia(titles) {
 export function externalLinks(ra, dec, info) {
   const c = `${ra.toFixed(5)}%20${dec >= 0 ? '%2B' : ''}${dec.toFixed(5)}`, host = simbadHost();
   const links = [];
-  if (info?.mainId) links.push({ label: 'SIMBAD', title: 'Catalogue entry: names, type, measurements, references', url: `${host}/simbad/sim-id?Ident=${encodeURIComponent(info.mainId)}` });
-  else links.push({ label: 'SIMBAD', title: 'Everything catalogued within 1 arcminute', url: `${host}/simbad/sim-coo?Coord=${c}&CooFrame=ICRS&Radius=1&Radius.unit=arcmin` });
+  if (info?.mainId) links.push({ label: 'SIMBAD', title: G`Catalogue entry: names, type, measurements, references`, url: `${host}/simbad/sim-id?Ident=${encodeURIComponent(info.mainId)}` });
+  else links.push({ label: 'SIMBAD', title: G`Everything catalogued within 1 arcminute`, url: `${host}/simbad/sim-coo?Coord=${c}&CooFrame=ICRS&Radius=1&Radius.unit=arcmin` });
   links.push(
-    { label: 'WiseView', title: 'Backyard Worlds blink tool: the same spot in 15 years of WISE images', url: `http://byw.tools/wiseview#ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&size=300&band=3&speed=20&zoom=9` },
-    { label: 'ESASky', title: 'ESA sky viewer, 2MASS infrared', url: `https://sky.esa.int/esasky/?target=${c}&hips=2MASS+color+JHK&fov=0.15&cooframe=J2000&sci=true` },
-    { label: 'Legacy Survey', title: 'unWISE deep infrared image', url: `https://www.legacysurvey.org/viewer?ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&layer=unwise-neo7&zoom=13` },
-    { label: 'VizieR', title: 'Published brightness measurements at every wavelength', url: `https://vizier.cds.unistra.fr/vizier/sed/?submitSimbad=Photometry&-c=${c}&-c.r=5&-c.u=arcsec` },
+    { label: 'WiseView', title: G`Backyard Worlds blink tool: the same spot in 15 years of WISE images`, url: `http://byw.tools/wiseview#ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&size=300&band=3&speed=20&zoom=9` },
+    { label: 'ESASky', title: G`ESA sky viewer, 2MASS infrared`, url: `https://sky.esa.int/esasky/?target=${c}&hips=2MASS+color+JHK&fov=0.15&cooframe=J2000&sci=true` },
+    { label: 'Legacy Survey', title: G`unWISE deep infrared image`, url: `https://www.legacysurvey.org/viewer?ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&layer=unwise-neo7&zoom=13` },
+    { label: 'VizieR', title: G`Published brightness measurements at every wavelength`, url: `https://vizier.cds.unistra.fr/vizier/sed/?submitSimbad=Photometry&-c=${c}&-c.r=5&-c.u=arcsec` },
   );
   return links;
 }
 
 // ---------------------------------------------------------------- plain-language types
 const GLOSS = [
-  [/^(BD\*|BD\?)$/, 'A brown dwarf: too big to be a planet, too small to shine like a star. It glows faintly in infrared from leftover heat.'],
-  [/^Mi\*/, 'A Mira variable: a swollen red giant near the end of its life, pulsing brighter and fainter over months.'],
-  [/^(TT\*|Or\*|Y\*O|Y\*\?|Ae\*)/, 'A newborn star, still gathering material from the cloud around it. Dust drifting past makes its light flicker.'],
-  [/^BY\*/, 'A cool dwarf star with dark spots. As it spins, the spots turn in and out of view and its brightness changes a little.'],
-  [/^PM\*/, 'A star close enough to us that its motion across the sky can be seen within a few years.'],
-  [/^(LM\*|dM\*)/, 'A low-mass star: small, cool and dim, the most common kind of star in our galaxy.'],
-  [/^(RG\*|AB\*|C\*|S\*|LP\*|sr\*|OH\*)/, 'A giant star late in its life: cool, swollen and very bright in infrared, often changing in brightness.'],
-  [/^(RR\*|Ce\*|cC\*|dS\*|Pu\*)/, 'A pulsating star: it swells and shrinks in a regular rhythm, and its brightness follows.'],
-  [/^(EB\*|El\*)/, 'Two stars orbiting each other so that one regularly passes in front of the other and dims the pair.'],
-  [/^(SB\*|\*\*)/, 'Two stars bound together, orbiting each other.'],
-  [/^WD\*/, 'A white dwarf: the hot, Earth-sized core left behind when a star like the Sun runs out of fuel.'],
-  [/^(Er\*|Fl\*|RS\*|Ro\*)/, 'A magnetically active star whose brightness changes through flares or spots.'],
-  [/^(No\*|CV\*)/, 'A pair of stars in which one feeds on the other, with occasional outbursts.'],
-  [/^(SN\*|SNR)/, 'The site of an exploded star.'],
-  [/^(Em\*|Be\*)/, 'A star surrounded by glowing gas.'],
-  [/^V\*/, 'A variable star: its brightness changes over time.'],
-  [/^(QSO|BLL|Bla|AGN|Sy1|Sy2|SyG|LIN)/, 'An active galaxy: the surroundings of a giant black hole at its centre shine across billions of light-years.'],
-  [/^(G|GiG|GiP|GiC|BiC|IG|PaG|LSB|EmG|SBG|H2G|rG|bCG)$/, 'A galaxy: a distant island of billions of stars.'],
-  [/^(ClG|GrG|CGG|SCG)/, 'A group or cluster of galaxies held together by gravity.'],
-  [/^GlC/, 'A globular cluster: hundreds of thousands of ancient stars packed into a ball.'],
-  [/^(OpC|Cl\*|As\*)/, 'A cluster of stars born together from the same cloud.'],
-  [/^PN/, 'A planetary nebula: the glowing shell thrown off by a dying Sun-like star.'],
-  [/^(HII|RNe|GNe|MoC|DNe|Cld|SFR|ISM)/, 'A cloud of gas and dust between the stars, often a place where new stars are forming.'],
-  [/^Psr/, 'A pulsar: the dense, spinning remnant of an exploded star.'],
-  [/^(Pl|Pl\?)$/, 'A planet orbiting another star.'],
-  [/^(IR|NIR|MIR|FIR)$/, 'A source first noticed in infrared light; what it is has not been settled.'],
-  [/^\*$/, 'A star.'],
+  [/^(BD\*|BD\?)$/, G`A brown dwarf: too big to be a planet, too small to shine like a star. It glows faintly in infrared from leftover heat.`],
+  [/^Mi\*/, G`A Mira variable: a swollen red giant near the end of its life, pulsing brighter and fainter over months.`],
+  [/^(TT\*|Or\*|Y\*O|Y\*\?|Ae\*)/, G`A newborn star, still gathering material from the cloud around it. Dust drifting past makes its light flicker.`],
+  [/^BY\*/, G`A cool dwarf star with dark spots. As it spins, the spots turn in and out of view and its brightness changes a little.`],
+  [/^PM\*/, G`A star close enough to us that its motion across the sky can be seen within a few years.`],
+  [/^(LM\*|dM\*)/, G`A low-mass star: small, cool and dim, the most common kind of star in our galaxy.`],
+  [/^(RG\*|AB\*|C\*|S\*|LP\*|sr\*|OH\*)/, G`A giant star late in its life: cool, swollen and very bright in infrared, often changing in brightness.`],
+  [/^(RR\*|Ce\*|cC\*|dS\*|Pu\*)/, G`A pulsating star: it swells and shrinks in a regular rhythm, and its brightness follows.`],
+  [/^(EB\*|El\*)/, G`Two stars orbiting each other so that one regularly passes in front of the other and dims the pair.`],
+  [/^(SB\*|\*\*)/, G`Two stars bound together, orbiting each other.`],
+  [/^WD\*/, G`A white dwarf: the hot, Earth-sized core left behind when a star like the Sun runs out of fuel.`],
+  [/^(Er\*|Fl\*|RS\*|Ro\*)/, G`A magnetically active star whose brightness changes through flares or spots.`],
+  [/^(No\*|CV\*)/, G`A pair of stars in which one feeds on the other, with occasional outbursts.`],
+  [/^(SN\*|SNR)/, G`The site of an exploded star.`],
+  [/^(Em\*|Be\*)/, G`A star surrounded by glowing gas.`],
+  [/^V\*/, G`A variable star: its brightness changes over time.`],
+  [/^(QSO|BLL|Bla|AGN|Sy1|Sy2|SyG|LIN)/, G`An active galaxy: the surroundings of a giant black hole at its centre shine across billions of light-years.`],
+  [/^(G|GiG|GiP|GiC|BiC|IG|PaG|LSB|EmG|SBG|H2G|rG|bCG)$/, G`A galaxy: a distant island of billions of stars.`],
+  [/^(ClG|GrG|CGG|SCG)/, G`A group or cluster of galaxies held together by gravity.`],
+  [/^GlC/, G`A globular cluster: hundreds of thousands of ancient stars packed into a ball.`],
+  [/^(OpC|Cl\*|As\*)/, G`A cluster of stars born together from the same cloud.`],
+  [/^PN/, G`A planetary nebula: the glowing shell thrown off by a dying Sun-like star.`],
+  [/^(HII|RNe|GNe|MoC|DNe|Cld|SFR|ISM)/, G`A cloud of gas and dust between the stars, often a place where new stars are forming.`],
+  [/^Psr/, G`A pulsar: the dense, spinning remnant of an exploded star.`],
+  [/^(Pl|Pl\?)$/, G`A planet orbiting another star.`],
+  [/^(IR|NIR|MIR|FIR)$/, G`A source first noticed in infrared light; what it is has not been settled.`],
+  [/^\*$/, G`A star.`],
 ];
 /** One plain sentence for a SIMBAD object type code. */
 export function gloss(otype, sptype = '') {
@@ -239,10 +256,11 @@ export function gloss(otype, sptype = '') {
   const sp = (sptype || '').trim(), pair = /\+\s*[LTY]\d/.test(sp);
   if (/^[LTY]\d/.test(sp) && !/^(BD\*|BD\?)$/.test(otype || '')) {
     if (/[TY]\d/.test(sp)) {
-      return pair ? 'A pair of brown dwarfs: objects too big to be planets and too small to shine like stars, orbiting each other.'
-        : 'A brown dwarf: too big to be a planet, too small to shine like a star. It glows faintly in infrared from leftover heat.';
+      return pair ? G`A pair of brown dwarfs: objects too big to be planets and too small to shine like stars, orbiting each other.`
+        : G`A brown dwarf: too big to be a planet, too small to shine like a star. It glows faintly in infrared from leftover heat.`;
     }
-    return `${pair ? 'A pair of very cool dwarfs' : 'A very cool dwarf'} on the borderline between the smallest stars and brown dwarfs, brightest in infrared.`;
+    return pair ? G`A pair of very cool dwarfs on the borderline between the smallest stars and brown dwarfs, brightest in infrared.`
+      : G`A very cool dwarf on the borderline between the smallest stars and brown dwarfs, brightest in infrared.`;
   }
   for (const [re, text] of GLOSS) if (re.test(otype || '')) return text;
   return '';

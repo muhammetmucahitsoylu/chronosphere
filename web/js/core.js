@@ -1,5 +1,6 @@
 // Data loading, sky geometry and image maths. No DOM in here.
 
+import { locale } from './lang.js';
 export const ARCSEC = 206264.806;
 export const EPOCH_COLORS = ['#4cc9f0', '#ff5d8f', '#ffd166', '#06d6a0', '#b388ff', '#ff9f1c', '#9ef01a', '#f4a261'];
 export const DET_BANDS = { 1: [0.75, 1.11], 2: [1.11, 1.64], 3: [1.64, 2.42], 4: [2.42, 3.82], 5: [3.82, 4.42], 6: [4.42, 5.0] };
@@ -59,15 +60,18 @@ export function fmtDate(mjd, withTime = false) {
   const d = mjdToDate(mjd).toISOString();
   return withTime ? d.slice(0, 16).replace('T', ' ') + ' UTC' : d.slice(0, 10);
 }
+// Month names in the language of the page. English keeps its own fixed list.
+const MONTHS = locale === 'en' ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  : Array.from({ length: 12 }, (_, m) => new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2021, m, 15))));
 /** A short date range: "21–30 Aug 2025", "21 Aug – 3 Sep 2025", "21 Dec 2025 – 3 Jan 2026". */
 export function fmtRange(mjd0, mjd1) {
-  const a = mjdToDate(mjd0), b = mjdToDate(mjd1), M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const a = mjdToDate(mjd0), b = mjdToDate(mjd1), M = MONTHS;
   const d = x => x.getUTCDate(), m = x => M[x.getUTCMonth()], y = x => x.getUTCFullYear();
   if (y(a) !== y(b)) return `${d(a)} ${m(a)} ${y(a)} – ${d(b)} ${m(b)} ${y(b)}`;
   if (m(a) !== m(b)) return `${d(a)} ${m(a)} – ${d(b)} ${m(b)} ${y(b)}`;
   return d(a) === d(b) ? `${d(a)} ${m(a)} ${y(a)}` : `${d(a)}–${d(b)} ${m(b)} ${y(b)}`;
 }
-const MONTH_YEAR = new Intl.DateTimeFormat('en', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+const MONTH_YEAR = new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric', timeZone: 'UTC' });
 export function fmtMonth(mjd) {
   return MONTH_YEAR.format(mjdToDate(mjd));
 }

@@ -2,11 +2,11 @@
 // are served from this device, so a poor connection does not stop a demonstration.
 
 // VERSION is replaced with the commit id when the site is published, so every release is its own set.
-const VERSION = 'dev-95';
+const VERSION = 'dev-102';
 const SHELL = `chrono-shell-${VERSION}`, DATA = 'chrono-data-v2', TILES = 'chrono-tiles-v1', LOOKUP = 'chrono-lookup-v1';
 const KEEP = new Set([SHELL, DATA, TILES, LOOKUP, 'chrono-live-v1']);
 const SHELL_FILES = ['./', 'opening.jpg', 'css/style.css', 'css/fonts.css', 'config.js', 'vendor/aladin.js', 'data/targets.json',
-  'js/app.js', 'js/lang.js', 'js/core.js', 'js/plot.js', 'js/sky.js', 'js/info.js', 'js/tour.js', 'js/pages.js', 'js/archive.js', 'js/healpix.js',
+  'js/app.js', 'js/lang.js', 'js/lang/tr.js', 'js/lang/de.js', 'js/lang/fr.js', 'js/lang/pl.js', 'js/core.js', 'js/plot.js', 'js/sky.js', 'js/info.js', 'js/tour.js', 'js/pages.js', 'js/archive.js', 'js/healpix.js',
   'fonts/IBMPlexMono-400-latin-ext.woff2', 'fonts/IBMPlexMono-400-latin.woff2', 'fonts/IBMPlexMono-500-latin-ext.woff2', 'fonts/IBMPlexMono-500-latin.woff2', 'fonts/IBMPlexSans-400-latin-ext.woff2', 'fonts/IBMPlexSans-400-latin.woff2', 'fonts/IBMPlexSans-500-latin-ext.woff2', 'fonts/IBMPlexSans-500-latin.woff2', 'fonts/IBMPlexSans-600-latin-ext.woff2', 'fonts/IBMPlexSans-600-latin.woff2', 'fonts/InstrumentSerif-400-latin-ext.woff2', 'fonts/InstrumentSerif-400-latin.woff2', 'fonts/InstrumentSerif-400i-latin-ext.woff2', 'fonts/InstrumentSerif-400i-latin.woff2'];
 
 // The sky maps describe themselves in a small "properties" file that the map asks for before anything

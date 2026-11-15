@@ -54,11 +54,12 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   four further objects its last step offers are read live from the archive, and one press keeps those too.
 - **Learn the panel.** "How to read this panel", on every object, walks through its nine parts one at a time:
   the part is lit, the rest dimmed, and a card says what it shows and what can be done with it.
-- **In five languages.** The front page, the guided tour, the walk through the panel and the notes on the map
-  are in English, Turkish, German, French and Polish (the picker is in the top bar; `?lang=tr` in an address
-  does the same). The measurement panel itself is English. All the words live in one file, `web/js/lang.js`:
-  adding a language is adding one block. The German, French and Polish texts have not yet been read by a
-  native speaker.
+- **In five languages.** The front page, the guided tour, the walk through the panel and the measurement
+  panel itself, with the sentences it writes from the numbers, are in English, Turkish, German, French and
+  Polish (the picker is in the top bar; `?lang=tr` in an address does the same). Dates, counted nouns and
+  the encyclopedia card follow the language. The three information pages are English. The words live in
+  `web/js/lang.js` and in one file per language under `web/js/lang/`: adding a language is translating those
+  two. The German, French and Polish texts have not yet been read by a native speaker.
 
 ## How the challenge is covered
 
@@ -160,6 +161,12 @@ talking directly to NASA's open data.
   in 21 runs the live map matched the still picture each time. Without the repair the holes stay; an
   earlier form of the repair, which did not wait for the library to be idle, left the map scrambled in one
   run of four.
+- **Languages.** Making the panel translatable must not change its English: the words of the panel for the
+  five test objects, in six views each, were recorded before and after and are identical. A test language
+  (`?lang=xx`) puts every translatable text in brackets; what stays outside them on the screen is object
+  names, dates and the encyclopedia text. In each of the four other languages the panel was checked at laptop
+  and phone size for text that spills out of its box (none in 40 views), and the Turkish tour was run from
+  start to end with the network cut.
 - **Clicks.** Ten well-known stars were clicked dead on and a few arcseconds off, at the tolerance of a wide
   map and of a close view, in empty and in crowded fields: 40 of 40 clicks opened the star that was clicked.
   The earlier catalogue query, which did not ask for the nearest objects first, managed 32.
@@ -211,6 +218,7 @@ web/js/healpix.js     which sky-map tiles a view needs (HEALPix)
 web/js/info.js        identification (SIMBAD), Wikipedia card, links to other tools
 web/js/tour.js        guided tour: the steps and what the map does at each
 web/js/lang.js        the words of the front page, the tour and the walk through the panel, in five languages
+web/js/lang/          the measurement panel in Turkish, German, French and Polish (one file each)
 web/js/pages.js       the "What is SPHEREx?", "How it works" and "About" pages
 web/sw.js             service worker: offline cache
 web/index/            the sky index (generated)

@@ -1,5 +1,6 @@
 // Minimal scatter plot on a canvas: axes, error bars, hover tooltip, click-to-select.
 
+import { G, locale } from './lang.js';
 function niceTicks(lo, hi, target = 5) {
   const span = hi - lo || 1, raw = span / target, mag = Math.pow(10, Math.floor(Math.log10(raw)));
   const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => span / s <= target + 1) || raw;
@@ -54,7 +55,7 @@ export class Plot {
     c.font = '12px system-ui, sans-serif';
     if (!pts.length) {
       c.fillStyle = ink; c.textAlign = 'center';
-      c.fillText(o.empty || 'No data', W / 2, H / 2); return;
+      c.fillText(o.empty || G`No data`, W / 2, H / 2); return;
     }
     let [x0, x1] = o.xlim || [Math.min(...pts.map(p => p.x)), Math.max(...pts.map(p => p.x))];
     let [y0, y1] = o.ylim || [Math.min(...pts.map(p => p.y)), Math.max(...pts.map(p => p.y))];
@@ -97,7 +98,7 @@ export class Plot {
 }
 
 // One formatter for all labels: making a new one for every label is slow enough to be felt.
-const MONTH = new Intl.DateTimeFormat('en', { month: 'short', year: '2-digit', timeZone: 'UTC' });
+const MONTH = new Intl.DateTimeFormat(locale, { month: 'short', year: '2-digit', timeZone: 'UTC' });
 export function dateTicks(x0, x1) {
   // x in MJD; label every N months
   const d0 = new Date((x0 - 40587) * 864e5), d1 = new Date((x1 - 40587) * 864e5);

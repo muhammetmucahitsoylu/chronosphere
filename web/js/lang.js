@@ -1,9 +1,16 @@
-// The words of the site that explain: the front page, the guided tour, the walk through the panel,
-// and the notes on the map. One block per language; a key missing from a block falls back to English.
-// The measurement panel itself (its labels and the sentences it writes from the numbers) is English.
+// The words of the site, in every language it speaks.
 //
-// To add a language: copy the `en` block, translate the values, and add its name to LANGS.
-// In tour texts, *words between asterisks* are set in italics; {name} is filled in by the page.
+// 1. The front page, the guided tour, the walk through the panel and the notes on the map are in
+//    this file: one block per language under TEXT, read with t('key'). A key missing from a block
+//    falls back to English. In tour texts, *words between asterisks* are set in italics; {name} is
+//    filled in by the page.
+// 2. The measurement panel writes its sentences from the numbers, so its English lives in the code,
+//    next to the logic, written G`…`. In another language G looks that English up in the language's
+//    own file (lang/tr.js and so on, fetched only when that language is picked) and fills the
+//    measured values in at {0}, {1}… A text the file lacks stays English.
+//
+// To add a language: copy the `en` block below and translate its values; copy lang/tr.js and
+// translate its values; add the language's name to LANGS.
 
 export const LANGS = { en: 'English', tr: 'Türkçe', de: 'Deutsch', fr: 'Français', pl: 'Polski' };
 
@@ -163,15 +170,15 @@ const TEXT = {
     'coach.count': 'Paneli okumak · {i} / {n}',
     'coach.done': 'Tamam',
     'coach.close': 'Panel gezintisini bitir',
-    'coach.note': 'Panelin kendisi şimdilik İngilizce; tırnak içindeki adlar ekranda yazdığı gibidir.',
+    'coach.note': '',
     'coach.about.title': 'Bu nedir',
-    'coach.about.text': 'Ad ve tür SIMBAD kataloğundan gelir. Bilgi satırı nesnenin bugün nerede olduğunu, kataloglar biliyorsa ne kadar hızlı hareket ettiğini ve ne kadar uzakta olduğunu, ardından bu noktayı kaç SPHEREx pozunun kapsadığını verir. “Check it in” aynı konumu başka gözlemevlerinin araçlarında açar.',
+    'coach.about.text': 'Ad ve tür SIMBAD kataloğundan gelir. Bilgi satırı nesnenin bugün nerede olduğunu, kataloglar biliyorsa ne kadar hızlı hareket ettiğini ve ne kadar uzakta olduğunu, ardından bu noktayı kaç SPHEREx pozunun kapsadığını verir. “Başka araçlarda bakın” aynı konumu başka gözlemevlerinin araçlarında açar.',
     'coach.findings.title': 'Önce yanıt',
     'coach.findings.text': 'Aracın ölçtükleri, birkaç sözcükle: hareket etti mi, parlaklığı değişti mi, tayfında moleküllerin izi var mı. Her satır aşağıdaki sayılardan gelir; birine basınca o sayılara gidersiniz.',
     'coach.images.title': 'Görüntüler',
     'coach.images.text': 'Bu noktanın bütün SPHEREx pozları, gökyüzünde hizalanmış ve alttaki düğmelerle döngü hâlinde oynatılıyor. Yeşil halka ölçülen noktadır; daireler Gaia kataloğundaki yıldızlardır ve görüntünün tarihinde bulundukları yere çizilir; ok, kataloğun bildiği hareketi gösterir. Yakınlaştırmak için kaydırın, gezinmek için sürükleyin; başka bir yıldızı ölçmek için ona tıklayın.',
     'coach.modes.title': 'Karşılaştırmanın altı yolu',
-    'coach.modes.text': '“Visits”: SPHEREx’in her ziyareti için birleştirilmiş tek görüntü; hareket için en iyi görünüm. “Exposures”: pozların her biri. “Time as colour”: hareket eden ya da değişen her şey renkli görünür. “Difference”: sonraki bir ziyaret eksi önceki bir ziyaret. “Wavelengths”: aynı gökyüzü, altı dedektörün her birinde. “Deep”: bütün pozların toplamı.',
+    'coach.modes.text': '“Ziyaretler”: SPHEREx’in her ziyareti için birleştirilmiş tek görüntü; hareket için en iyi görünüm. “Pozlar”: pozların her biri. “Renk olarak zaman”: hareket eden ya da değişen her şey renkli görünür. “Fark”: sonraki bir ziyaret eksi önceki bir ziyaret. “Dalga boyları”: aynı gökyüzü, altı dedektörün her birinde. “Derin”: bütün pozların toplamı.',
     'coach.dets.title': 'Altı dedektör',
     'coach.dets.text': 'SPHEREx’in D1’den D6’ya altı dedektörü vardır; her biri 0,75 ile 5 mikron arasında kendi kızılötesi bandını kapsar. Birini seçin: görüntüler ve parlaklık eğrisi o banda geçer.',
     'coach.spectrum.title': 'Tayf',
@@ -181,7 +188,7 @@ const TEXT = {
     'coach.motion.title': 'Hareket etti mi?',
     'coach.motion.text': 'Işığın ilk ziyaretten bu yana ne kadar kaydığı, bu görüntülerden ölçülür. Katalogda hareketi bulunan bir nesne için tablo bunu kataloğun öngördüğüyle yan yana koyar; başka her nokta için araç, yerinde kalıp kalmadığını söyler.',
     'coach.export.title': 'Yanınıza alın',
-    'coach.export.text': '“Copy link” tam olarak bu görünümü herhangi bir cihazda yeniden açar. Görüntüyü ya da döngünün videosunu kaydedin ya da halkadaki noktanın bütün ölçümlerini CSV dosyası olarak indirip sayıları kendiniz denetleyin.',
+    'coach.export.text': '“Bağlantıyı kopyala” tam olarak bu görünümü herhangi bir cihazda yeniden açar. Görüntüyü ya da döngünün videosunu kaydedin ya da halkadaki noktanın bütün ölçümlerini CSV dosyası olarak indirip sayıları kendiniz denetleyin.',
 
     'note.loadingMap': 'Gökyüzü haritası yükleniyor…',
     'note.zoomIn': 'Yakınlaşılıyor. Daha yakına gelince bir nesne seçin.',
@@ -262,15 +269,15 @@ const TEXT = {
     'coach.count': 'Das Panel lesen · {i} von {n}',
     'coach.done': 'Fertig',
     'coach.close': 'Gang durch das Panel beenden',
-    'coach.note': 'Das Panel selbst ist vorerst englisch; die Bezeichnungen in Anführungszeichen stehen so auf dem Bildschirm.',
+    'coach.note': '',
     'coach.about.title': 'Was es ist',
-    'coach.about.text': 'Name und Typ stammen aus dem SIMBAD-Katalog. Die Zeile mit den Fakten nennt, wo das Objekt heute steht und, soweit Kataloge es wissen, wie schnell es sich bewegt und wie weit es entfernt ist, dann wie viele SPHEREx-Aufnahmen diese Stelle abdecken. „Check it in“ öffnet dieselbe Position in den Werkzeugen anderer Observatorien.',
+    'coach.about.text': 'Name und Typ stammen aus dem SIMBAD-Katalog. Die Zeile mit den Fakten nennt, wo das Objekt heute steht und, soweit Kataloge es wissen, wie schnell es sich bewegt und wie weit es entfernt ist, dann wie viele SPHEREx-Aufnahmen diese Stelle abdecken. „Woanders prüfen“ öffnet dieselbe Position in den Werkzeugen anderer Observatorien.',
     'coach.findings.title': 'Zuerst die Antwort',
     'coach.findings.text': 'Was das Werkzeug gemessen hat, in wenigen Worten: Hat es sich bewegt, hat sich seine Helligkeit geändert, zeigt sein Spektrum die Spuren von Molekülen. Jede Zeile stammt aus den Zahlen weiter unten; ein Druck darauf führt dorthin.',
     'coach.images.title': 'Die Bilder',
     'coach.images.text': 'Jede SPHEREx-Aufnahme dieser Stelle, am Himmel ausgerichtet und mit den Bedienelementen darunter in einer Schleife abgespielt. Der grüne Ring ist die gemessene Stelle; die Kreise sind Sterne des Gaia-Katalogs, eingezeichnet dort, wo sie am angezeigten Datum standen; ein Pfeil zeigt die Bewegung, die der Katalog kennt. Scrollen zoomt, Ziehen verschiebt, und ein Klick auf einen Stern misst stattdessen diesen.',
     'coach.modes.title': 'Sechs Arten zu vergleichen',
-    'coach.modes.text': '„Visits“: ein kombiniertes Bild je Besuch von SPHEREx, die beste Ansicht für Bewegung. „Exposures“: jede einzelne Aufnahme. „Time as colour“: alles, was sich bewegt oder verändert hat, erscheint farbig. „Difference“: ein späterer Besuch minus ein früherer. „Wavelengths“: derselbe Himmel in jedem der sechs Detektoren. „Deep“: alle Aufnahmen aufaddiert.',
+    'coach.modes.text': '„Besuche“: ein kombiniertes Bild je Besuch von SPHEREx, die beste Ansicht für Bewegung. „Aufnahmen“: jede einzelne Aufnahme. „Zeit als Farbe“: alles, was sich bewegt oder verändert hat, erscheint farbig. „Differenz“: ein späterer Besuch minus ein früherer. „Wellenlängen“: derselbe Himmel in jedem der sechs Detektoren. „Tief“: alle Aufnahmen aufaddiert.',
     'coach.dets.title': 'Sechs Detektoren',
     'coach.dets.text': 'SPHEREx hat sechs Detektoren, D1 bis D6; jeder deckt sein eigenes Band des Infrarotlichts zwischen 0,75 und 5 Mikrometern ab. Wählen Sie einen: Die Bilder und die Helligkeitskurve wechseln zu diesem Band.',
     'coach.spectrum.title': 'Spektrum',
@@ -280,7 +287,7 @@ const TEXT = {
     'coach.motion.title': 'Hat es sich bewegt?',
     'coach.motion.text': 'Wie weit sich das Licht seit dem ersten Besuch verschoben hat, gemessen in diesen Bildern. Für ein Objekt mit katalogisierter Bewegung stellt die Tabelle das neben die Vorhersage des Katalogs; für jede andere Stelle sagt das Werkzeug, ob sie an ihrem Platz geblieben ist.',
     'coach.export.title': 'Zum Mitnehmen',
-    'coach.export.text': '„Copy link“ öffnet genau diese Ansicht auf jedem Gerät wieder. Speichern Sie das Bild oder ein Video der Schleife, oder laden Sie alle Messungen der eingekreisten Stelle als CSV-Datei herunter und prüfen Sie die Zahlen selbst.',
+    'coach.export.text': '„Link kopieren“ öffnet genau diese Ansicht auf jedem Gerät wieder. Speichern Sie das Bild oder ein Video der Schleife, oder laden Sie alle Messungen der eingekreisten Stelle als CSV-Datei herunter und prüfen Sie die Zahlen selbst.',
 
     'note.loadingMap': 'Die Himmelskarte wird geladen…',
     'note.zoomIn': 'Es wird herangezoomt. Wählen Sie ein Objekt, wenn Sie näher sind.',
@@ -361,15 +368,15 @@ const TEXT = {
     'coach.count': 'Lire le panneau · {i} sur {n}',
     'coach.done': 'Terminé',
     'coach.close': 'Quitter le parcours du panneau',
-    'coach.note': 'Le panneau lui-même est en anglais pour l’instant ; les noms entre guillemets sont ceux affichés à l’écran.',
+    'coach.note': '',
     'coach.about.title': 'Ce que c’est',
-    'coach.about.text': 'Le nom et le type viennent du catalogue SIMBAD. La ligne de faits indique où se trouve l’objet aujourd’hui et, quand les catalogues le savent, à quelle vitesse il se déplace et à quelle distance il est, puis combien de poses SPHEREx couvrent cet endroit. « Check it in » ouvre la même position dans les outils d’autres observatoires.',
+    'coach.about.text': 'Le nom et le type viennent du catalogue SIMBAD. La ligne de faits indique où se trouve l’objet aujourd’hui et, quand les catalogues le savent, à quelle vitesse il se déplace et à quelle distance il est, puis combien de poses SPHEREx couvrent cet endroit. « Vérifier ailleurs » ouvre la même position dans les outils d’autres observatoires.',
     'coach.findings.title': 'La réponse d’abord',
     'coach.findings.text': 'Ce que l’outil a mesuré, en quelques mots : a-t-il bougé, son éclat a-t-il changé, son spectre porte-t-il la marque de molécules. Chaque ligne vient des chiffres plus bas ; appuyez sur l’une d’elles pour y aller.',
     'coach.images.title': 'Les images',
     'coach.images.text': 'Toutes les poses SPHEREx de cet endroit, alignées sur le ciel et jouées en boucle avec les commandes situées dessous. L’anneau vert est l’endroit mesuré ; les cercles sont des étoiles du catalogue Gaia, dessinées là où elles se trouvaient à la date affichée ; une flèche indique le mouvement connu du catalogue. Faites défiler pour zoomer, glissez pour déplacer, et cliquez sur une étoile pour mesurer celle-ci à la place.',
     'coach.modes.title': 'Six façons de comparer',
-    'coach.modes.text': '« Visits » : une image combinée par visite de SPHEREx, la meilleure vue pour le mouvement. « Exposures » : chaque pose. « Time as colour » : tout ce qui a bougé ou changé apparaît en couleur. « Difference » : une visite plus tardive moins une plus ancienne. « Wavelengths » : le même ciel dans chacun des six détecteurs. « Deep » : toutes les poses additionnées.',
+    'coach.modes.text': '« Visites » : une image combinée par visite de SPHEREx, la meilleure vue pour le mouvement. « Poses » : chaque pose. « Le temps en couleur » : tout ce qui a bougé ou changé apparaît en couleur. « Différence » : une visite plus tardive moins une plus ancienne. « Longueurs d’onde » : le même ciel dans chacun des six détecteurs. « Profond » : toutes les poses additionnées.',
     'coach.dets.title': 'Six détecteurs',
     'coach.dets.text': 'SPHEREx a six détecteurs, D1 à D6, chacun couvrant sa propre bande de lumière infrarouge entre 0,75 et 5 microns. Choisissez-en un : les images et la courbe de luminosité passent à cette bande.',
     'coach.spectrum.title': 'Spectre',
@@ -379,7 +386,7 @@ const TEXT = {
     'coach.motion.title': 'A-t-il bougé ?',
     'coach.motion.text': 'De combien la lumière s’est déplacée depuis la première visite, mesuré sur ces images. Pour un objet au mouvement catalogué, le tableau place cette mesure à côté de la prédiction du catalogue ; pour tout autre endroit, l’outil dit s’il est resté en place.',
     'coach.export.title': 'À emporter',
-    'coach.export.text': '« Copy link » rouvre exactement cette vue sur n’importe quel appareil. Enregistrez l’image ou une vidéo de la boucle, ou téléchargez toutes les mesures de l’endroit entouré au format CSV et vérifiez les chiffres vous-même.',
+    'coach.export.text': '« Copier le lien » rouvre exactement cette vue sur n’importe quel appareil. Enregistrez l’image ou une vidéo de la boucle, ou téléchargez toutes les mesures de l’endroit entouré au format CSV et vérifiez les chiffres vous-même.',
 
     'note.loadingMap': 'Chargement de la carte du ciel…',
     'note.zoomIn': 'Zoom en cours. Choisissez un objet quand vous serez plus près.',
@@ -460,15 +467,15 @@ const TEXT = {
     'coach.count': 'Czytanie panelu · {i} z {n}',
     'coach.done': 'Gotowe',
     'coach.close': 'Zakończ przegląd panelu',
-    'coach.note': 'Sam panel jest na razie po angielsku; nazwy w cudzysłowach są takie jak na ekranie.',
+    'coach.note': '',
     'coach.about.title': 'Co to jest',
-    'coach.about.text': 'Nazwa i typ pochodzą z katalogu SIMBAD. Wiersz z faktami podaje, gdzie obiekt znajduje się dzisiaj oraz, jeśli katalogi to wiedzą, jak szybko się porusza i jak daleko jest, a następnie ile ekspozycji SPHEREx obejmuje to miejsce. „Check it in” otwiera tę samą pozycję w narzędziach innych obserwatoriów.',
+    'coach.about.text': 'Nazwa i typ pochodzą z katalogu SIMBAD. Wiersz z faktami podaje, gdzie obiekt znajduje się dzisiaj oraz, jeśli katalogi to wiedzą, jak szybko się porusza i jak daleko jest, a następnie ile ekspozycji SPHEREx obejmuje to miejsce. „Sprawdź gdzie indziej” otwiera tę samą pozycję w narzędziach innych obserwatoriów.',
     'coach.findings.title': 'Najpierw odpowiedź',
     'coach.findings.text': 'Co zmierzyło narzędzie, w kilku słowach: czy obiekt się poruszył, czy zmieniła się jego jasność, czy w jego widmie widać ślady cząsteczek. Każdy wiersz wynika z liczb poniżej; naciśnij go, aby do nich przejść.',
     'coach.images.title': 'Obrazy',
     'coach.images.text': 'Każda ekspozycja SPHEREx tego miejsca, wyrównana na niebie i odtwarzana w pętli za pomocą przycisków poniżej. Zielony pierścień to mierzone miejsce; okręgi to gwiazdy z katalogu Gaia, narysowane tam, gdzie były w pokazanym dniu; strzałka pokazuje ruch znany z katalogu. Przewijaj, aby powiększyć, przeciągaj, aby przesunąć, i kliknij dowolną gwiazdę, aby zmierzyć właśnie ją.',
     'coach.modes.title': 'Sześć sposobów porównywania',
-    'coach.modes.text': '„Visits”: jeden połączony obraz na każdą wizytę SPHEREx, najlepszy widok do śledzenia ruchu. „Exposures”: każda pojedyncza ekspozycja. „Time as colour”: wszystko, co się poruszyło lub zmieniło, jest kolorowe. „Difference”: późniejsza wizyta minus wcześniejsza. „Wavelengths”: to samo niebo w każdym z sześciu detektorów. „Deep”: wszystkie ekspozycje zsumowane.',
+    'coach.modes.text': '„Wizyty”: jeden połączony obraz na każdą wizytę SPHEREx, najlepszy widok do śledzenia ruchu. „Ekspozycje”: każda pojedyncza ekspozycja. „Czas jako kolor”: wszystko, co się poruszyło lub zmieniło, jest kolorowe. „Różnica”: późniejsza wizyta minus wcześniejsza. „Długości fali”: to samo niebo w każdym z sześciu detektorów. „Głęboki”: wszystkie ekspozycje zsumowane.',
     'coach.dets.title': 'Sześć detektorów',
     'coach.dets.text': 'SPHEREx ma sześć detektorów, od D1 do D6; każdy obejmuje własne pasmo podczerwieni między 0,75 a 5 mikronów. Wybierz jeden: obrazy i krzywa jasności przełączą się na to pasmo.',
     'coach.spectrum.title': 'Widmo',
@@ -478,7 +485,7 @@ const TEXT = {
     'coach.motion.title': 'Czy się poruszył?',
     'coach.motion.text': 'O ile przesunęło się światło od pierwszej wizyty, zmierzone na tych obrazach. Dla obiektu o skatalogowanym ruchu tabela zestawia to z przewidywaniem katalogu; dla każdego innego miejsca narzędzie mówi, czy pozostało ono na swoim miejscu.',
     'coach.export.title': 'Weź to ze sobą',
-    'coach.export.text': '„Copy link” otwiera dokładnie ten widok na dowolnym urządzeniu. Zapisz obraz lub film z pętli albo pobierz wszystkie pomiary zaznaczonego miejsca jako plik CSV i sprawdź liczby samodzielnie.',
+    'coach.export.text': '„Kopiuj odnośnik” otwiera dokładnie ten widok na dowolnym urządzeniu. Zapisz obraz lub film z pętli albo pobierz wszystkie pomiary zaznaczonego miejsca jako plik CSV i sprawdź liczby samodzielnie.',
 
     'note.loadingMap': 'Wczytywanie mapy nieba…',
     'note.zoomIn': 'Przybliżanie. Wybierz obiekt, gdy będziesz bliżej.',
@@ -508,17 +515,58 @@ const TEXT = {
 
 const STORE = 'chrono-lang';
 function chosen() {
+  try { if (new URLSearchParams(location.search).get('lang') === 'xx') return 'xx'; } catch { /* no address */ }      // a test language, see PSEUDO
   try { const q = new URLSearchParams(location.search).get('lang'); if (q && TEXT[q]) { try { localStorage.setItem(STORE, q); } catch { /* private mode */ } return q; } } catch { /* no address */ }
   try { const s = localStorage.getItem(STORE); if (s && TEXT[s]) return s; } catch { /* private mode */ }
   return 'en';          // English unless a language was picked: the same page for everyone who follows a link
 }
 /** The language in use, fixed for the life of the page (picking another one reloads it). */
 export const lang = chosen();
+/** For dates and numbers: the language in use. */
+export const locale = lang === 'xx' ? 'en' : lang;
+// A test language (?lang=xx): every text that goes through t, G or N comes out in ⟦brackets⟧, so
+// that whatever on the screen is not in brackets is a text that cannot yet be translated.
+const PSEUDO = lang === 'xx';
+const mark = s => (PSEUDO && s ? `⟦${s}⟧` : s);
+
 /** The words for a key in the language in use, with {name} places filled in. */
 export function t(key, vars) {
-  let s = TEXT[lang][key] ?? TEXT.en[key] ?? key;
+  let s = (TEXT[lang] || TEXT.en)[key] ?? TEXT.en[key] ?? key;
   if (vars) for (const k of Object.keys(vars)) s = s.split(`{${k}}`).join(String(vars[k]));
-  return s;
+  return mark(s);
+}
+
+// ---------------------------------------------------------------- the measurement panel
+let DICT = {};
+if (lang !== 'en' && !PSEUDO) {
+  try { DICT = (await import(`./lang/${lang}.js`)).default || {}; } catch { DICT = {}; }      // not to be had (no connection): the panel stays English
+}
+/** True when the panel has its own words in the language in use. */
+export const panelTranslated = PSEUDO || Object.keys(DICT).length > 0;
+/**
+ * The panel's words. As a tag: G`Moving ${rate}″ a year` gives the English as written, or the
+ * translation with the values filled in at {0}, {1}… For a text held in a variable: G(text).
+ */
+export function G(strings, ...values) {
+  if (typeof strings === 'string' || strings == null) return strings ? mark(DICT[strings] ?? strings) : '';
+  let key = strings[0];
+  for (let i = 1; i < strings.length; i++) key += `{${i - 1}}${strings[i]}`;
+  const tr = DICT[key];
+  if (tr === undefined) { let out = strings[0]; for (let i = 0; i < values.length; i++) out += values[i] + strings[i + 1]; return mark(out); }
+  return mark(tr.replace(/\{(\d+)\}/g, (m, i) => (+i < values.length ? values[+i] : m)));
+}
+// Counted things: languages disagree on how many forms a noun has (English two, Turkish one, Polish three).
+const EN_FORMS = {
+  exposure: { one: '{n} exposure', other: '{n} exposures' },
+  'ordinary star': { one: '{n} ordinary star', other: '{n} ordinary stars' },
+  visit: { one: '{n} visit', other: '{n} visits' },
+  'time slice': { one: '{n} time slice', other: '{n} time slices' },
+};
+const RULES = new Intl.PluralRules(locale), COUNT = new Intl.NumberFormat(locale);
+/** "1 exposure", "360 exposures", in the language in use. A language file gives its forms under '#exposure'. */
+export function N(n, noun) {
+  const forms = DICT[`#${noun}`] || EN_FORMS[noun] || { other: `{n} ${noun}` };
+  return mark((forms[RULES.select(+n)] ?? forms.other).replace('{n}', COUNT.format(+n)));
 }
 /** Switch to another language: remembered on this device, and the page starts afresh in it. */
 export function choose(code) {
@@ -530,7 +578,28 @@ export function choose(code) {
 }
 /** Put the words into the parts of the page that are written in its HTML. */
 export function applyStatic(root = document) {
-  document.documentElement.lang = lang;
+  document.documentElement.lang = locale;
+  if (panelTranslated) {
+    // The panel's fixed words are plain text in the HTML: each is looked up as it stands.
+    for (const el of root.querySelectorAll('#panel[lang]')) el.removeAttribute('lang');      // they speak the page's language now
+    const has = v => v && /[A-Za-z]{3}/.test(v), say = v => (PSEUDO ? `⟦${v}⟧` : DICT[v]);
+    const walk = document.createTreeWalker(root.body, NodeFilter.SHOW_TEXT), nodes = [];
+    while (walk.nextNode()) nodes.push(walk.currentNode);
+    for (const node of nodes) {
+      const p = node.parentElement, text = node.nodeValue, key = text.trim();
+      if (!p || /^(SCRIPT|STYLE)$/.test(p.tagName) || p.closest('[data-t]') || !has(key)) continue;
+      const tr = say(key);
+      if (tr !== undefined) node.nodeValue = text.replace(key, tr);
+    }
+    for (const el of root.body.querySelectorAll('[title], [aria-label], [placeholder]')) {
+      for (const a of ['title', 'aria-label', 'placeholder']) {
+        const v = el.getAttribute(a);
+        if (!has(v) || el.hasAttribute('data-t-label') || el.hasAttribute('data-t-placeholder')) continue;
+        const tr = say(v);
+        if (tr !== undefined) el.setAttribute(a, tr);
+      }
+    }
+  }
   for (const el of root.querySelectorAll('[data-t]')) el.textContent = t(el.dataset.t);
   for (const el of root.querySelectorAll('[data-t-placeholder]')) el.placeholder = t(el.dataset.tPlaceholder);
   for (const el of root.querySelectorAll('[data-t-label]')) el.setAttribute('aria-label', t(el.dataset.tLabel));
