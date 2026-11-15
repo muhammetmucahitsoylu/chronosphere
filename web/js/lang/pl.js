@@ -336,7 +336,7 @@ export default {
   "Images: NASA SPHEREx, served by NASA/IPAC (IRSA). Catalogues: Gaia DR3, CatWISE2020, SIMBAD. Sky atlas: Aladin Lite. Encyclopedia cards: Wikipedia.": "Obrazy: NASA SPHEREx, udostępniane przez NASA/IPAC (IRSA). Katalogi: Gaia DR3, CatWISE2020, SIMBAD. Atlas nieba: Aladin Lite. Karty encyklopedyczne: Wikipedia.",
   "A walk through the panel": "Przegląd panelu",
   "Red dwarf star": "Czerwony karzeł",
-  "The fastest-moving star in the sky: 10.4 arcseconds per year, about 1.7 SPHEREx pixels.": "Gwiazda o najszybszym ruchu na niebie: 10.4 sekundy łuku na rok, około 1.7 piksela SPHEREx.",
+  "The star whose place in the sky changes fastest: 10.4 arcseconds per year, about 1.7 SPHEREx pixels.": "Gwiazda, której położenie na niebie zmienia się najszybciej: 10.4 sekundy łuku na rok, około 1.7 piksela SPHEREx.",
   "The images loop through three visits: the star hops north by roughly a pixel each time, following the dotted line. Its core is bright enough to saturate the shorter-wavelength detectors, so D5 gives the cleanest view. The table compares the shift measured from these images with the catalogue prediction.": "Obrazy przechodzą w pętli przez trzy wizyty: gwiazda za każdym razem przeskakuje mniej więcej o piksel na północ, wzdłuż kropkowanej linii. Jej jądro jest dość jasne, by przesycić detektory krótszych fal, dlatego najczystszy widok daje D5. Tabela porównuje przesunięcie zmierzone na tych obrazach z przewidywaniem katalogu.",
   "Gaia DR3 parallax": "Paralaksa z Gaia DR3",
   "BY Dra Variable": "Zmienna typu BY Draconis",

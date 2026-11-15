@@ -4,7 +4,7 @@
   "query": "Barnard's Star",
   "label": "Barnard's Star",
   "kind": "motion",
-  "blurb": "The fastest-moving star in the sky: 10.4 arcseconds per year, about 1.7 SPHEREx pixels.",
+  "blurb": "The star whose place in the sky changes fastest: 10.4 arcseconds per year, about 1.7 SPHEREx pixels.",
   "ra": 269.446074,
   "dec": 4.770706,
   "size": 5.0,

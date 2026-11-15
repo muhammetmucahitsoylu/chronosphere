@@ -336,7 +336,7 @@ export default {
   "Images: NASA SPHEREx, served by NASA/IPAC (IRSA). Catalogues: Gaia DR3, CatWISE2020, SIMBAD. Sky atlas: Aladin Lite. Encyclopedia cards: Wikipedia.": "Bilder: NASA SPHEREx, bereitgestellt von NASA/IPAC (IRSA). Kataloge: Gaia DR3, CatWISE2020, SIMBAD. Himmelsatlas: Aladin Lite. Enzyklopädie-Karten: Wikipedia.",
   "A walk through the panel": "Ein Gang durch das Panel",
   "Red dwarf star": "Roter Zwergstern",
-  "The fastest-moving star in the sky: 10.4 arcseconds per year, about 1.7 SPHEREx pixels.": "Der Stern mit der schnellsten Bewegung am Himmel: 10.4 Bogensekunden pro Jahr, etwa 1.7 SPHEREx-Pixel.",
+  "The star whose place in the sky changes fastest: 10.4 arcseconds per year, about 1.7 SPHEREx pixels.": "Der Stern, dessen Ort am Himmel sich am schnellsten ändert: 10.4 Bogensekunden pro Jahr, etwa 1.7 SPHEREx-Pixel.",
   "The images loop through three visits: the star hops north by roughly a pixel each time, following the dotted line. Its core is bright enough to saturate the shorter-wavelength detectors, so D5 gives the cleanest view. The table compares the shift measured from these images with the catalogue prediction.": "Die Bilder durchlaufen drei Besuche: Der Stern springt jedes Mal um etwa ein Pixel nach Norden, entlang der gepunkteten Linie. Sein Kern ist hell genug, um die kurzwelligen Detektoren zu sättigen; deshalb liefert D5 die sauberste Ansicht. Die Tabelle vergleicht die in diesen Bildern gemessene Verschiebung mit der Vorhersage des Katalogs.",
   "Gaia DR3 parallax": "Parallaxe aus Gaia DR3",
   "BY Dra Variable": "BY-Draconis-Veränderlicher",

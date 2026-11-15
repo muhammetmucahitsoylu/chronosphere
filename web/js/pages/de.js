@@ -58,7 +58,7 @@ export default {
     </ul>
     <h2>Was es Ihnen nicht sagen kann</h2>
     <ul>
-      <li>Ein SPHEREx-Pixel deckt 6,15 Bogensekunden ab. Selbst der schnellste Stern am Himmel bewegt sich weniger als zwei Pixel pro Jahr; Bewegung ist deshalb ein kleiner Sprung zwischen den Besuchen, nie eine Spur.</li>
+      <li>Ein SPHEREx-Pixel deckt 6,15 Bogensekunden ab. Selbst der Stern, dessen Ort am Himmel sich am schnellsten ändert, bewegt sich weniger als zwei Pixel pro Jahr; Bewegung ist deshalb ein kleiner Sprung zwischen den Besuchen, nie eine Spur.</li>
       <li>Die Messungen verwenden einen einfachen festen Kreis und sind zum Erkunden gedacht, nicht zur Veröffentlichung. Sehr helle Sterne übersteuern den Detektor; bei ihnen wird stattdessen das schwache äußere Leuchten des Sterns gemessen und jeder Detektor an seinen Nachbarn angeschlossen: Die Gesamtform des Spektrums stimmt, sein Niveau und die feinen Einzelheiten sind Näherungen.</li>
       <li>Eine Senke bei der Wellenlänge eines Moleküls ist ein Hinweis, kein Nachweis.</li>
       <li>Positionen wiederholen sich bei gewöhnlichen Sternen auf wenige Zehntel Bogensekunden, aber ein Stern nahe der Übersteuerung der Kamera kann in einem einzelnen Besuch um eine Bogensekunde oder mehr abweichen.</li>

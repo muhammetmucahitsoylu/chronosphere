@@ -83,7 +83,7 @@ const ENGLISH = {
     </ul>
     <h2>What it cannot tell you</h2>
     <ul>
-      <li>One SPHEREx pixel covers 6.15 arcseconds. Even the fastest star in the sky moves less than two pixels a year, so motion is a small hop between visits, never a streak.</li>
+      <li>One SPHEREx pixel covers 6.15 arcseconds. Even the star whose place in the sky changes fastest moves less than two pixels a year, so motion is a small hop between visits, never a streak.</li>
       <li>Measurements use a simple fixed circle and are meant for exploring, not for publication. Very bright stars overload the detector; for those, the star's faint outer glow is measured instead and each detector is joined to its neighbour: the overall shape of the spectrum is right, its level and fine detail are approximate.</li>
       <li>A dip at a molecule's wavelength is a hint, not a detection.</li>
       <li>Positions repeat to a few tenths of an arcsecond for ordinary stars, but a star close to overloading the camera can be off by an arcsecond or more in a single visit.</li>

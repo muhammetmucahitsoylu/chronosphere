@@ -58,7 +58,7 @@ export default {
     </ul>
     <h2>Ce qu’il ne peut pas vous dire</h2>
     <ul>
-      <li>Un pixel de SPHEREx couvre 6,15 secondes d’arc. Même l’étoile la plus rapide du ciel se déplace de moins de deux pixels par an : le mouvement est donc un petit saut entre les visites, jamais une traînée.</li>
+      <li>Un pixel de SPHEREx couvre 6,15 secondes d’arc. Même l’étoile dont la position dans le ciel change le plus vite se déplace de moins de deux pixels par an : le mouvement est donc un petit saut entre les visites, jamais une traînée.</li>
       <li>Les mesures utilisent un simple cercle fixe et servent à explorer, pas à publier. Les étoiles très brillantes saturent le détecteur ; pour elles, on mesure à la place la faible lueur extérieure de l’étoile et chaque détecteur est raccordé à son voisin : la forme générale du spectre est juste, son niveau et le détail fin sont approximatifs.</li>
       <li>Un creux à la longueur d’onde d’une molécule est un indice, pas une détection.</li>
       <li>Les positions se répètent à quelques dixièmes de seconde d’arc pour les étoiles ordinaires, mais une étoile proche de la saturation de la caméra peut s’écarter d’une seconde d’arc ou plus lors d’une seule visite.</li>

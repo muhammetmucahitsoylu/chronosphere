@@ -58,7 +58,7 @@ export default {
     </ul>
     <h2>Czego ci nie powie</h2>
     <ul>
-      <li>Jeden piksel SPHEREx obejmuje 6,15 sekundy łuku. Nawet najszybsza gwiazda na niebie przesuwa się o mniej niż dwa piksele rocznie, więc ruch to mały skok między wizytami, nigdy smuga.</li>
+      <li>Jeden piksel SPHEREx obejmuje 6,15 sekundy łuku. Nawet gwiazda, której położenie na niebie zmienia się najszybciej, przesuwa się o mniej niż dwa piksele rocznie, więc ruch to mały skok między wizytami, nigdy smuga.</li>
       <li>Pomiary używają prostego, stałego koła i służą do poznawania, a nie do publikacji. Bardzo jasne gwiazdy nasycają detektor; dla nich mierzy się zamiast tego słabą zewnętrzną poświatę gwiazdy, a każdy detektor dołącza się do sąsiedniego: ogólny kształt widma jest poprawny, jego poziom i drobne szczegóły są przybliżone.</li>
       <li>Spadek na długości fali cząsteczki to wskazówka, a nie wykrycie.</li>
       <li>Położenia zwykłych gwiazd powtarzają się z dokładnością do kilku dziesiątych sekundy łuku, ale gwiazda bliska nasycenia kamery może w pojedynczej wizycie odbiegać o sekundę łuku lub więcej.</li>

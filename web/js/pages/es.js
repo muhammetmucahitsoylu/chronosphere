@@ -58,7 +58,7 @@ export default {
     </ul>
     <h2>Lo que no puede decirte</h2>
     <ul>
-      <li>Un píxel de SPHEREx cubre 6,15 segundos de arco. Incluso la estrella más rápida del cielo se mueve menos de dos píxeles al año, así que el movimiento es un pequeño salto entre visitas, nunca un trazo.</li>
+      <li>Un píxel de SPHEREx cubre 6,15 segundos de arco. Incluso la estrella que cambia de posición en el cielo más deprisa se mueve menos de dos píxeles al año, así que el movimiento es un pequeño salto entre visitas, nunca un trazo.</li>
       <li>Las medidas usan un círculo fijo sencillo y sirven para explorar, no para publicar. Las estrellas muy brillantes saturan el detector; en ellas se mide en su lugar el débil resplandor exterior de la estrella y cada detector se une a su vecino: la forma general del espectro es correcta, su nivel y el detalle fino son aproximados.</li>
       <li>Una caída en la longitud de onda de una molécula es un indicio, no una detección.</li>
       <li>Las posiciones se repiten con una precisión de unas décimas de segundo de arco en las estrellas corrientes, pero una estrella cerca de saturar la cámara puede desviarse un segundo de arco o más en una sola visita.</li>

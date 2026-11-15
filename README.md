@@ -116,7 +116,7 @@ talking directly to NASA's open data.
    tour, every other tile already seen and every position already opened on the device. Each release of the
    site is stored as one set, so a poor connection can never mix new files with old ones. A moving star's
    place "today" is worked out for the middle of the current month, so that what is kept for a position is
-   found again all month (the price: under half an arcsecond for the fastest star in the sky).
+   found again all month (the price: under half an arcsecond for the star with the largest proper motion in the sky).
 8. **No flashes.** The map library repaints from nothing when its picture changes: a new colour of the cube
    is blank white until its tiles arrive, and a new place starts as empty sky. So every such change is made
    behind a still copy of the map (`web/js/sky.js`). The copy starts moving with the click, towards the

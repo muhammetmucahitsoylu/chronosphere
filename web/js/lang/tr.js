@@ -336,7 +336,7 @@ export default {
   "Images: NASA SPHEREx, served by NASA/IPAC (IRSA). Catalogues: Gaia DR3, CatWISE2020, SIMBAD. Sky atlas: Aladin Lite. Encyclopedia cards: Wikipedia.": "Görüntüler: NASA SPHEREx; NASA/IPAC (IRSA) sunuyor. Kataloglar: Gaia DR3, CatWISE2020, SIMBAD. Gökyüzü atlası: Aladin Lite. Ansiklopedi kartları: Wikipedia.",
   "A walk through the panel": "Panel rehberi",
   "Red dwarf star": "Kırmızı cüce yıldız",
-  "The fastest-moving star in the sky: 10.4 arcseconds per year, about 1.7 SPHEREx pixels.": "Gökyüzünün en hızlı hareket eden yıldızı: yılda 10.4 yay saniyesi, yaklaşık 1.7 SPHEREx pikseli.",
+  "The star whose place in the sky changes fastest: 10.4 arcseconds per year, about 1.7 SPHEREx pixels.": "Gökyüzündeki yeri en hızlı değişen yıldız: yılda 10.4 yay saniyesi, yaklaşık 1.7 SPHEREx pikseli.",
   "The images loop through three visits: the star hops north by roughly a pixel each time, following the dotted line. Its core is bright enough to saturate the shorter-wavelength detectors, so D5 gives the cleanest view. The table compares the shift measured from these images with the catalogue prediction.": "Görüntüler üç ziyaret arasında döner: yıldız her seferinde kesikli çizgiyi izleyerek kuzeye kabaca bir piksel sıçrar. Merkezi kısa dalga boylu dedektörleri doyuracak kadar parlaktır; bu yüzden en temiz görünümü D5 verir. Tablo, bu görüntülerden ölçülen kaymayı kataloğun öngörüsüyle karşılaştırır.",
   "Gaia DR3 parallax": "Gaia DR3 paralaksı",
   "BY Dra Variable": "BY Dra türü değişen",

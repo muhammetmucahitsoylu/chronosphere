@@ -58,7 +58,7 @@ export default {
     </ul>
     <h2>Size söyleyemeyecekleri</h2>
     <ul>
-      <li>Bir SPHEREx pikseli 6,15 yay saniyesi kaplar. Gökyüzünün en hızlı yıldızı bile yılda iki pikselden az yer değiştirir; bu yüzden hareket ziyaretler arasında küçük bir sıçramadır, asla bir çizgi değil.</li>
+      <li>Bir SPHEREx pikseli 6,15 yay saniyesi kaplar. Gökyüzündeki yeri en hızlı değişen yıldız bile yılda iki pikselden az yer değiştirir; bu yüzden hareket ziyaretler arasında küçük bir sıçramadır, asla bir çizgi değil.</li>
       <li>Ölçümler basit, sabit bir daire kullanır ve keşif içindir, yayın için değil. Çok parlak yıldızlar dedektörü doyurur; onlarda bunun yerine yıldızın sönük dış ışıması ölçülür ve her dedektör komşusuna eklenir: tayfın genel biçimi doğrudur, düzeyi ve ince ayrıntısı yaklaşıktır.</li>
       <li>Bir molekülün dalga boyundaki soğurma izi bir ipucudur, kesin bir tespit değil.</li>
       <li>Sıradan yıldızlarda konumlar yay saniyesinin onda birkaçı kadar bir doğrulukla yinelenir; ama kamerayı doyurmaya yakın bir yıldız tek bir ziyarette bir yay saniyesi ya da daha fazla sapabilir.</li>
