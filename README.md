@@ -7,6 +7,8 @@ spectrum on the spot, and checks whether what you see is real.
 
 Live: https://muhammetmucahitsoylu.github.io/chronosphere/ · guided tour: add `?tour`
 
+Seven slides about it: https://muhammetmucahitsoylu.github.io/chronosphere/chronosphere-slides.pdf
+
 ![Epsilon Indi B in Chronosphere: the sky map, the image sequence, and a spectrum showing water and methane](web/preview.png)
 
 Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHEREx*) by team The Bright Nobles.
@@ -244,6 +246,7 @@ The `backend/` folder also contains an optional FastAPI service with the same pi
 ```
 web/index.html        the page itself: the map, the search box and the measurement panel
 web/sunum.html        a seven-scene cinematic presentation of the project with speaker notes, in Turkish and English
+web/chronosphere-slides.pdf   the seven-slide demonstration handed in with the project
 web/config.js         the address of the optional Python API (empty by default: the site needs no server)
 web/css/              style.css (the page) and fonts.css (the self-hosted fonts)
 web/js/archive.js     sky index lookup, FITS range reader, TAN-SIP astrometry, resampling, wavelength
