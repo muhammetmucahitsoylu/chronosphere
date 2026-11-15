@@ -225,7 +225,7 @@ body.idle .topbar, body.idle .bottomhud {
 
 /* Finale CTA Overlay */
 .finalecta {
-  position: fixed; left: 50%; top: 75%; transform: translate(-50%, -50%);
+  position: fixed; left: 50%; top: 71.5%; transform: translate(-50%, -50%);
   z-index: 25; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
@@ -1106,8 +1106,8 @@ function renderScene2(localT) {
   ctx.stroke();
   ctx.clip();
 
-  // Animated scanline position (sweeps left-right smoothly)
-  const splitFrac = 0.18 + 0.68 * (0.5 - 0.5 * Math.cos(localT * 0.65));
+  // Animated scanline position (sweeps across the right half so Infrared discoveries stay prominently visible)
+  const splitFrac = 0.54 + 0.32 * (0.5 - 0.5 * Math.cos(localT * 0.85));
   const splitX = vx + vw * splitFrac;
 
   // Ordinary white stars visible on BOTH sides
@@ -1257,8 +1257,8 @@ function renderScene2(localT) {
   });
 
   // 8 animated exposures stepping across the filter!
-  const stepCycle = (localT * 1.15) % 9;
-  const activeStep = Math.min(7, Math.floor(stepCycle));
+  const activeStep = localT < 4.5 ? Math.min(7, Math.floor((localT / 4.5) * 8)) : 7;
+  const highlightStep = Math.floor(localT * 1.8) % 8;
   const samplePoints = [
     { lam: 0.92, flux: 0.72 },
     { lam: 1.41, flux: 0.28, dip: 'H₂O' },
@@ -1311,7 +1311,7 @@ function renderScene2(localT) {
     const cx = plotX(pt.lam);
     const cyFilter = fy + fh / 2;
     const cyPlot = plotY(pt.flux);
-    const isCurrent = i === activeStep;
+    const isCurrent = i === highlightStep;
 
     // Star position on the LVF filter
     ctx.beginPath();
@@ -1351,13 +1351,14 @@ function renderScene2(localT) {
 
   // Bottom insight box on Right Card
   drawCard(fx, sy + sh + 16, fw, 74, { fill: 'rgba(95, 224, 176, 0.08)', border: 'rgba(95, 224, 176, 0.45)', r: 12 });
-  ctx.font = '600 15px "IBM Plex Sans", sans-serif';
+  ctx.font = '600 13.5px "IBM Plex Sans", sans-serif';
   ctx.fillStyle = '#5fe0b0';
-  ctx.fillText(
+  wrapText(
+    ctx,
     lang === 'tr'
       ? '💡 Neden Önemli? Chronosphere’de bir yıldızın zaman içindeki pozlarını toplamak, otomatik olarak 102 renkli kimyasal tayfını çıkarır!'
       : '💡 Why It Matters: In Chronosphere, collecting exposures over time automatically builds the object’s 102-band chemical spectrum!',
-    fx + 18, sy + sh + 58
+    fx + 18, sy + sh + 48, fw - 36, 20
   );
   ctx.restore();
 }
@@ -1955,9 +1956,11 @@ function renderScene5(localT) {
     ctx.font = '400 13px "IBM Plex Sans", sans-serif';
     ctx.fillStyle = '#b8afa2';
     ctx.fillText(r[0], x1 + 40, ry);
-    ctx.font = '600 13px "IBM Plex Mono", monospace';
+    ctx.font = '600 12.5px "IBM Plex Mono", monospace';
     ctx.fillStyle = idx < 2 ? '#5fe0b0' : '#f3eee6';
-    ctx.fillText(r[1], x1 + 275, ry);
+    ctx.textAlign = 'right';
+    ctx.fillText(r[1], x1 + colW - 40, ry);
+    ctx.textAlign = 'left';
   });
 
   // --------------------------------------------------------------------------
@@ -1975,8 +1978,8 @@ function renderScene5(localT) {
   ctx.fillText(lang === 'tr' ? 'WISE 0855: 4 Mikron Ötesinde Karanlıktan Çıkan Dünya' : 'WISE 0855: Materializing Out of Darkness Past 4 µm', x2 + 24, y0 + 74);
 
   const wDets = REAL_DATA.wise0855.dets;
-  // Cycle slower on D5 & D6 so the viewer clearly sees it appear!
-  const detSchedule = [0, 1, 2, 3, 4, 5, 5, 5];
+  // Emphasize D5 & D6 so the viewer clearly sees WISE 0855 appear!
+  const detSchedule = [0, 2, 4, 5, 5, 5];
   const dPick = detSchedule[Math.floor(localT * 1.1) % detSchedule.length];
   const curD = wDets[dPick];
   const isVisibleNow = curD.det >= 5;
@@ -1989,25 +1992,39 @@ function renderScene5(localT) {
   ctx.drawImage(decodeStampCanvas(curD.b64, stampSize, isVisibleNow ? 'ir' : 'gray'), wImgX, wImgY, wImgS, wImgS);
   ctx.imageSmoothingEnabled = true;
 
-  // Target circle at center (where WISE 0855 sits)
+  // Grey Gaia circle on the neighbour star (just right of center)
   const wcx = wImgX + wImgS / 2, wcy = wImgY + wImgS / 2;
   ctx.beginPath();
-  ctx.arc(wcx, wcy, 24, 0, Math.PI * 2);
-  ctx.strokeStyle = isVisibleNow ? '#ff7b39' : '#877e72';
-  ctx.lineWidth = isVisibleNow ? 2.8 : 1.8;
+  ctx.arc(wcx + 2, wcy - 4, 15, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(76, 201, 240, 0.55)';
+  ctx.lineWidth = 1.4;
   ctx.stroke();
 
+  // Target circle on WISE 0855's position (just left/east of the neighbour star, where it emerges in D5/D6!)
+  const wiseX = wcx - 24, wiseY = wcy - 2;
+  ctx.beginPath();
+  ctx.arc(wiseX, wiseY, 22, 0, Math.PI * 2);
+  ctx.strokeStyle = isVisibleNow ? '#ff7b39' : '#5fe0b0';
+  ctx.lineWidth = isVisibleNow ? 2.8 : 2.0;
+  ctx.stroke();
+
+  if (isVisibleNow) {
+    ctx.font = '600 11.5px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#ff7b39';
+    ctx.fillText('WISE 0855 →', wiseX - 96, wiseY + 4);
+  }
+
   // Status banner inside WISE 0855 stamp
-  roundRect(ctx, wImgX + 10, wImgY + 10, wImgS - 20, 32, 6);
+  roundRect(ctx, wImgX + 10, wImgY + 10, wImgS - 20, 30, 6);
   ctx.fillStyle = 'rgba(10, 9, 8, 0.88)'; ctx.fill();
-  ctx.font = '600 12px "IBM Plex Mono", monospace';
+  ctx.font = '600 11.5px "IBM Plex Mono", monospace';
   ctx.fillStyle = isVisibleNow ? '#ff7b39' : '#b8afa2';
   ctx.fillText(
     `D${curD.det} (${curD.band[0]}–${curD.band[1]} µm): ` +
     (isVisibleNow
       ? (lang === 'tr' ? '★ WISE 0855 BELİRDİ!' : '★ WISE 0855 APPEARS!')
-      : (lang === 'tr' ? 'Halka Boş (Çok Soğuk / Görünmez)' : 'Ring Empty (Too Cold / Invisible)')),
-    wImgX + 18, wImgY + 30
+      : (lang === 'tr' ? 'Halka Boş (Görünmez)' : 'Ring Empty (Invisible)')),
+    wImgX + 16, wImgY + 29
   );
   ctx.restore();
   ctx.strokeStyle = isVisibleNow ? '#ff7b39' : '#3c342c';
@@ -2473,12 +2490,12 @@ function renderScene7(localT) {
     ctx.fillText(b[1], bx + bw / 2, by + 65);
   });
 
-  // Team Credit Line at bottom
+  // Team Credit Line positioned cleanly below the 5 achievement cards and above the CTA buttons
   ctx.font = '600 14px "IBM Plex Mono", monospace';
   ctx.fillStyle = '#f2c14e';
   ctx.fillText(
     'THE BRIGHT NOBLES   ·   Muhammet Mücahit Soylu   ·   Serdar Aydın   ·   Furkan Küpeli',
-    cx, 845
+    cx, 825
   );
   ctx.restore();
 }

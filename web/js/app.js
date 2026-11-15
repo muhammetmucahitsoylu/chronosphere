@@ -438,6 +438,8 @@ function paint() {
   ctx.imageSmoothingEnabled = S.smooth;
   ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * (W / 2 - (S.view.cx + 0.5) * s), dpr * (H / 2 - (n - 0.5 - S.view.cy) * s));
   ctx.drawImage(off, 0, 0);
+  const marked = flagLayer(it, n);
+  if (marked) { ctx.imageSmoothingEnabled = false; ctx.drawImage(marked, 0, 0); }
   ctx.restore();
   overlays(it, W, H, s);
 }
@@ -1340,6 +1342,104 @@ function renderReleases() {
     el.appendChild(lab);
   }
 }
+// ------------------------------------------------------------ the pipeline's pixel flags of one exposure
+/**
+ * Every SPHEREx exposure carries a FLAGS layer: for each pixel, what the processing noticed about it. The names
+ * and their meaning are read from the file itself, so a flag added by a later release shows up unasked; the plain
+ * words below are for the ones known today. NOTES are not defects.
+ */
+const FLAG_SAYS = {
+  TRANSIENT: () => G`a sudden jump in the signal during the exposure, as from a cosmic-ray hit or an overloaded pixel`,
+  OVERFLOW: () => G`the pixel filled up during the exposure: too bright`,
+  SUR_ERROR: () => G`an error in the processing on board`,
+  NONFUNC: () => G`a pixel that never works`,
+  DICHROIC: () => G`low sensitivity here, caused by the telescope's beam splitter`,
+  MISSING_DATA: () => G`data lost on board`,
+  HOT: () => G`a hot pixel: it gives signal by itself`,
+  COLD: () => G`an abnormally low signal`,
+  FULLSAMPLE: () => G`the pixel's full read-out history was kept`,
+  PHANMISS: () => G`a correction for phantom signals was not applied`,
+  NONLINEAR: () => G`the detector's response could not be corrected reliably here`,
+  PERSIST: () => G`charge left over from an earlier exposure`,
+  OUTLIER: () => G`marked as an outlier by the processing`,
+  CROSSTALK: () => G`electrical crosstalk from another pixel`,
+  SOURCE: () => G`a known star or galaxy lies on this pixel`,
+  GHOST: () => G`a reflection of a bright source in this exposure`,
+  GHOST_FPA: () => G`a reflection of a bright source on another detector`,
+  GHOST_EXT: () => G`a reflection of a bright source outside the field`,
+  STREAK: () => G`a streak across the image`,
+  BLOOM: () => G`part of the bloom around a very bright source`,
+  SNOWBALL: () => G`part of a snowball: a large round flash in the detector`,
+  HALO: () => G`part of the halo around a sudden flash`,
+};
+const FLAG_NOTES = new Set(['SOURCE', 'FULLSAMPLE']);
+const flagSays = pl => (FLAG_SAYS[pl.name] ? FLAG_SAYS[pl.name]() : esc(pl.text || pl.name));
+const flagStore = new Map();          // one entry per exposure of the view in use: { state: 'reading' | 'done' | 'failed', res, unsupported }
+const flagKey = f => `${S.gen}:${f.det}:${f.id}`;
+let flagCanvas = null, flagCanvasKey = '', flagTimer = 0;
+async function loadFlags(f) {
+  const key = flagKey(f);
+  if (flagStore.get(key)?.state === 'reading') return;
+  if (flagStore.size > 60) flagStore.clear();
+  flagStore.set(key, { state: 'reading' }); renderMeta();
+  try {
+    const res = await Archive.readFlags(f, S.grid);
+    const count = new Map();
+    for (let p = 0; p < res.bits.length; p++) { const v = res.bits[p]; if (v) for (const pl of res.planes) if (v & (1 << pl.bit)) count.set(pl.bit, (count.get(pl.bit) || 0) + 1); }
+    flagStore.set(key, { state: 'done', res, count });
+  } catch (e) {
+    flagStore.set(key, { state: 'failed', unsupported: !!e.unsupported });
+  }
+  renderMeta(); paint();
+}
+/** The flags set inside the ring of the measured spot in this exposure. */
+function flagsAtSpot(f, res) {
+  const pos = selPos(f.mjd);
+  if (!pos) return null;
+  const n = res.n, r = 9.2 / S.grid.scale, x0 = Math.round(pos[0]), y0 = Math.round(pos[1]), k = Math.ceil(r);
+  let v = 0;
+  for (let j = Math.max(0, y0 - k); j <= Math.min(n - 1, y0 + k); j++) for (let i = Math.max(0, x0 - k); i <= Math.min(n - 1, x0 + k); i++) {
+    if (Math.hypot(i - pos[0], j - pos[1]) <= r) v |= res.bits[j * n + i];
+  }
+  return res.planes.filter(pl => v & (1 << pl.bit));
+}
+function flagsHtml(f) {
+  const e = flagStore.get(flagKey(f));
+  if (!e) return G`<button type="button" class="pxread" data-flags>Read the flags of this exposure</button> <span class="hint">What the processing marked on each pixel: cosmic-ray hits, overloaded pixels, reflections and more.</span>`;
+  if (e.state === 'reading') return G`Reading the flags…`;
+  if (e.state === 'failed') return e.unsupported ? G`This file stores its flags in a form this page cannot read.` : G`The flags could not be read now. <button type="button" class="pxread" data-flags>Try again</button>`;
+  const { res, count } = e, here = flagsAtSpot(f, res);
+  const say = list => list.map(pl => `<b class="asis">${esc(pl.name)}</b> (${flagSays(pl)})`).join('; ');
+  const faults = here ? here.filter(pl => !FLAG_NOTES.has(pl.name)) : null, notes = here ? here.filter(pl => FLAG_NOTES.has(pl.name)) : [];
+  const spot = !here ? '' : `<p>${faults.length ? G`At the circled spot: ${say(faults)}.` : G`At the circled spot: nothing is marked as a fault.`}${notes.length ? ` ${G`Also noted there: ${say(notes)}.`}` : ''}</p>`;
+  const present = res.planes.filter(pl => count.get(pl.bit));
+  const share = v => { const d = v < 0.01 ? 2 : 0; return G`${(100 * v).toLocaleString(Lang.locale, { minimumFractionDigits: d, maximumFractionDigits: d })}%`; };          // written the way the language writes a percentage
+  const chip = pl => `<button type="button" class="pxflag${S.flagBit === pl.bit ? ' on' : ''}${FLAG_NOTES.has(pl.name) ? ' note' : ''}" data-bit="${pl.bit}" aria-pressed="${S.flagBit === pl.bit}" title="${flagSays(pl).replace(/"/g, '&quot;')}"><span class="asis">${esc(pl.name)}</span> <i>${share(count.get(pl.bit) / res.bits.length)}</i></button>`;
+  const shown = present.find(pl => pl.bit === S.flagBit);
+  const field = present.length
+    ? `<p>${G`In this field, with the share of its pixels. Press one to see where:`}</p><p class="pxflags">${present.map(chip).join('')}</p>${shown ? `<p class="pxsay"><b class="asis">${esc(shown.name)}</b>: ${flagSays(shown)}. ${G`Its pixels are drawn in pink on the image.`}</p>` : ''}`
+    : `<p>${G`Nothing is marked in this field.`}</p>`;
+  return spot + field;
+}
+/** The pixels of the pressed flag as a picture to lay over the image; null when there is nothing to draw. */
+function flagLayer(it, n) {
+  if (S.flagBit == null || !it?.frame) return null;
+  const e = flagStore.get(flagKey(it.frame));
+  if (e?.state !== 'done' || e.res.n !== n) return null;
+  const key = `${flagKey(it.frame)}:${S.flagBit}`;
+  if (flagCanvasKey !== key) {
+    flagCanvas = flagCanvas || document.createElement('canvas'); flagCanvas.width = flagCanvas.height = n;
+    const fx = flagCanvas.getContext('2d'), im = fx.createImageData(n, n), px = im.data, m = 1 << S.flagBit, bits = e.res.bits;
+    for (let p = 0; p < bits.length; p++) {
+      if (!(bits[p] & m)) continue;
+      const o = ((n - 1 - ((p / n) | 0)) * n + (p % n)) * 4;
+      px[o] = 255; px[o + 1] = 70; px[o + 2] = 170; px[o + 3] = 150;
+    }
+    fx.putImageData(im, 0, 0); flagCanvasKey = key;
+  }
+  return flagCanvas;
+}
+
 function renderMeta() {
   const it = S.seq[S.idx], el = $('meta');
   if (!it) { el.innerHTML = ''; return; }
@@ -1358,15 +1458,28 @@ function renderMeta() {
     add(G`Coverage`, G`${Math.round(f.cov * 100)}% of the field`);
     add(G`PSF width`, `${f.fwhm}″`);
     add(G`Source file`, G`<a href="${f.url}" target="_blank" rel="noopener">FITS at IRSA</a>`);
+    add(G`Pixel flags`, `<div class="pxbox">${flagsHtml(f)}</div>`);
   } else {
     add(G`Image`, it.title);
     add(G`Built from`, it.sub);
     if (it.det !== 0) { const d = it.det || S.det; add(G`Detector`, `D${d} (${C.DET_BANDS[d].join('–')} µm)`); }
     if (it.sig) add(G`Noise (1σ)`, `${it.sig.toFixed(3)} MJy/sr`);
     if (it.ep) add(G`Releases`, [...new Set(it.ep.frames.map(f => f.coll))].join(', '));
+    add(G`Pixel flags`, G`Flags belong to single exposures: choose “Exposures” above, then read them here.`);
   }
   if (S.grid) add(G`Pixel scale`, G`${S.grid.scale.toFixed(2)}″ (resampled, north up, east left)`);
   el.innerHTML = rows.join('');
+  if (it.frame) {
+    const f = it.frame;
+    el.querySelectorAll('[data-flags]').forEach(b => { b.onclick = () => { stop(); S.flagsOn = true; loadFlags(f); }; });          // flags are one exposure's: the sequence waits on it
+    // Once flags have been asked for, stepping to another exposure reads its flags too: after a pause, so that
+    // stepping quickly through many exposures does not fetch them all, and never while the sequence plays.
+    clearTimeout(flagTimer);
+    if (S.flagsOn && !S.playing && !flagStore.has(flagKey(f)) && el.closest('details')?.open) {
+      flagTimer = setTimeout(() => { if (S.seq[S.idx]?.frame === f && !S.playing && !flagStore.has(flagKey(f))) loadFlags(f); }, 700);
+    }
+    el.querySelectorAll('[data-bit]').forEach(b => { b.onclick = () => { S.flagBit = S.flagBit === +b.dataset.bit ? null : +b.dataset.bit; renderMeta(); paint(); }; });
+  }
 }
 function setStatus(text, frac) {
   $('status').innerHTML = text ? `${text}${frac ? `<div class="bar"><i style="width:${Math.round(frac * 100)}%"></i></div>` : ''}` : '';

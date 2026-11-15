@@ -328,6 +328,19 @@ table.t td i { display: inline-block; width: 8px; height: 8px; border-radius: 50
 dl#meta { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; font-size: 13px; }
 dl#meta dt { color: var(--ink-3); }
 dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-size: 12.5px; }
+/* the pipeline's pixel flags of one exposure */
+.pxbox { font-family: var(--sans); font-size: 13px; line-height: 1.45; color: var(--ink-2); }
+.pxbox p { margin: 0 0 6px; }
+.pxbox b { color: var(--ink); font-family: var(--mono); font-size: 12px; font-weight: 600; }
+.pxread { border: 1px solid var(--line-2); border-radius: 999px; padding: 4px 12px; font-size: 13px; color: var(--ink); min-height: 30px; }
+.pxread:hover { background: var(--surface); }
+.pxflags { display: flex; flex-wrap: wrap; gap: 6px; }
+.pxflag { border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 10px; font: 600 11.5px var(--mono); color: var(--ink); min-height: 28px; }
+.pxflag i { font-style: normal; font-weight: 400; color: var(--ink-3); }
+.pxflag.note { color: var(--ink-2); border-style: dashed; }
+.pxflag:hover { background: var(--surface); }
+.pxflag.on { border-color: #ff46aa; background: #ff46aa26; }
+.pxsay { color: var(--ink); }
 #releases label { display: flex; gap: 8px; align-items: center; min-height: 28px; font: 13px var(--mono); }
 .legend { display: flex; flex-wrap: wrap; gap: 2px 12px; font: 11px var(--mono); color: var(--ink-2); margin-top: 6px; }
 .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }

@@ -5,6 +5,8 @@
 //     and the block of pixels around the target are fetched, with HTTP range requests.
 //  3. The block is resampled onto a common north-up grid using the file's own astrometry (TAN-SIP),
 //     the sky level is removed, and the wavelength of every pixel is read from the file's WCS-WAVE table.
+//  4. On request, the pipeline's flags for those pixels are read from the file's FLAGS layer (readFlags).
+import { riceDecode } from './rice.js';
 
 const S3 = 'https://nasa-irsa-spherex.s3.amazonaws.com/';
 const IBE = 'https://irsa.ipac.caltech.edu/ibe/data/spherex/';
@@ -273,6 +275,81 @@ export async function readFrame(f, grid, signal) {
     lam: s0 / npx, lgx: sx / sxx, lgy: sy / sxx, bw: tableAt(t, t.bw, xs[pc] + 1, ys[pc] + 1),
     bg: med, sig, cov, fwhm: +(h.PSF_FWHM || 0).toFixed(2), px: [+xs[pc].toFixed(1), +ys[pc].toFixed(1)], data: out,
   };
+}
+
+// ------------------------------------------------------------------ the pipeline's flags of one exposure
+/** What the file itself calls each bit of its FLAGS layer: [{ bit, name, text }], from the MSKN and MSKD cards. */
+function maskPlanes(cards) {
+  const out = [];
+  for (const k of Object.keys(cards)) {
+    const m = k.match(/^MSKN(\d{4})$/);
+    if (!m || +m[1] > 30) continue;
+    out.push({ bit: +m[1], name: String(cards[k]).trim(), text: String(cards[`MSKD${m[1]}`] ?? '').trim() });
+  }
+  return out.sort((a, b) => a.bit - b.bit);
+}
+/**
+ * The flags the processing set on the pixels of one exposure, on the same grid as its image:
+ * { n, bits: Int32Array (for each pixel of the grid, the flags of the detector pixels it was resampled from),
+ *   planes: [{ bit, name, text }] }.
+ * The layer is a tile-compressed image, one row of the detector per tile: only the rows of the stamp are fetched.
+ * Throws an error with `unsupported` set when a file stores its flags in another way.
+ */
+export async function readFlags(f, grid, signal) {
+  const key = String(f.url || '').startsWith(IBE) ? f.url.slice(IBE.length) : null;
+  if (!key) throw new Error('no source file');
+  const cannot = why => Object.assign(new Error(`flags layer: ${why}`), { unsupported: true });
+  const head = new Uint8Array(await range(key, 0, HEAD_BYTES - 1, signal));
+  const h1 = readHeader(head, 0), img = readHeader(head, h1.next), wcs = makeWcs(img.cards);
+  // where the stamp lies on the detector, exactly as readFrame works it out. The grid of a pre-built object
+  // comes without the sky position of each of its pixels: those are made here, and must give the same grid.
+  const sky = grid.raG ? grid : makeGrid(grid.ra, grid.dec, grid.size);
+  if (sky.n !== grid.n || Math.abs(sky.scale - grid.scale) > 1e-6) throw new Error('grid differs');
+  const n = grid.n, npx = n * n, xs = new Float64Array(npx), ys = new Float64Array(npx);
+  let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
+  for (let p = 0; p < npx; p++) {
+    const [x, y] = wcs.world2pix(sky.raG[p], sky.decG[p]);
+    if (!(x === x)) throw new Error('stamp not on this exposure');
+    xs[p] = x; ys[p] = y;
+    if (x < xmin) xmin = x; if (x > xmax) xmax = x; if (y < ymin) ymin = y; if (y > ymax) ymax = y;
+  }
+  const x0 = Math.max(0, Math.floor(xmin) - 1), x1 = Math.min(NPIX, Math.ceil(xmax) + 2);
+  const y0 = Math.max(0, Math.floor(ymin) - 1), y1 = Math.min(NPIX, Math.ceil(ymax) + 2);
+  if (x1 - x0 < 4 || y1 - y0 < 4) throw new Error('stamp not on this exposure');
+  // the layer after the image: its header, then one (length, place) pair for every row of the detector
+  const at = img.next + Math.ceil(NPIX * NPIX * 4 / BLOCK) * BLOCK;
+  let raw = new Uint8Array(await range(key, at, at + 16 * BLOCK - 1, signal));
+  const fh = readHeader(raw, 0), c = fh.cards;
+  if (c.EXTNAME !== 'FLAGS') throw cannot(`found ${c.EXTNAME}`);
+  if (!(c.ZIMAGE === true && c.ZCMPTYPE === 'RICE_1' && c.ZBITPIX === 32 && c.ZNAXIS1 === NPIX && c.ZNAXIS2 === NPIX
+        && c.ZTILE1 === NPIX && c.ZTILE2 === 1 && /^1PB/.test(String(c.TFORM1)) && c.NAXIS1 === 8 && c.NAXIS2 === NPIX)) throw cannot('not Rice-compressed rows of 32-bit integers');
+  if (raw.length < fh.next + 8 * NPIX) raw = new Uint8Array(await range(key, at, at + fh.next + 8 * NPIX - 1, signal));
+  const rows = new DataView(raw.buffer, raw.byteOffset + fh.next, 8 * NPIX), heap = at + fh.next + (c.THEAP || 8 * NPIX);
+  let lo = Infinity, hi = 0;
+  for (let j = y0; j < y1; j++) {
+    const len = rows.getInt32(8 * j, false), off = rows.getInt32(8 * j + 4, false);
+    if (len > 0) { lo = Math.min(lo, off); hi = Math.max(hi, off + len); }
+  }
+  const w = x1 - x0, hgt = y1 - y0, cut = new Int32Array(w * hgt);
+  if (hi > lo) {
+    if (hi - lo > 16e6) throw cannot('rows not stored together');
+    const bytes = new Uint8Array(await range(key, heap + lo, heap + hi - 1, signal));
+    for (let j = 0; j < hgt; j++) {
+      const len = rows.getInt32(8 * (y0 + j), false), off = rows.getInt32(8 * (y0 + j) + 4, false);
+      if (len <= 0) continue;
+      const row = riceDecode(bytes.subarray(off - lo, off - lo + len), NPIX, c.ZVAL1 || 32);
+      cut.set(row.subarray(x0, x1), j * w);
+    }
+  }
+  // each pixel of the grid takes the flags of the four detector pixels its brightness was mixed from
+  const bits = new Int32Array(npx);
+  for (let p = 0; p < npx; p++) {
+    const i = Math.floor(xs[p] - x0), j = Math.floor(ys[p] - y0);
+    if (i < 0 || j < 0 || i + 1 >= w || j + 1 >= hgt) continue;
+    const q = j * w + i;
+    bits[p] = cut[q] | cut[q + 1] | cut[q + w] | cut[q + w + 1];
+  }
+  return { n, bits, planes: maskPlanes(c) };
 }
 
 // ------------------------------------------------------------------ stream for one detector

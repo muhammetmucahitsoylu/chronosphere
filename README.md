@@ -40,6 +40,12 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   catalogue, and the few that moved or changed are listed and marked. On the test fields this blind check
   finds Barnard's Star (10.5 arcseconds north), Epsilon Indi B (6.1 arcseconds south-east) and the fading of
   RW Aurigae, and nothing else.
+- **Is it real, or the camera?** Every exposure carries the processing pipeline's own flags for each pixel:
+  cosmic-ray hits, overloaded pixels, left-over charge, reflections of bright stars, and more. In the
+  *Exposures* view, "This image" reads them on request (a few hundred kilobytes), says which are set at the
+  circled spot, lists those present in the field with the share of its pixels, and draws the pixels of the one
+  you press on the image. The names and their meaning are read from the file itself, so a flag added by a
+  later data release appears without a change to the site.
 - **What is it made of?** Click a star to get its spectrum from 0.75 to 5 microns and a table of the dips
   found where water, methane, carbon monoxide and carbon dioxide absorb.
 - **Check it elsewhere.** One click opens the same coordinates in SIMBAD, WiseView (Backyard Worlds), ESASky,
@@ -81,7 +87,7 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 | Choose the field of view | 3 to 40 arcminutes |
 | Overlay other telescopes | Gaia DR3 with proper-motion arrows and WISE sources, for any position; 2MASS, WISE and DSS sky maps |
 | Coordinates in the URL | `?ra=269.446&dec=4.771&fov=5&det=5&mode=epochs`; add `&embed=1` for a bare viewer to place in an iframe; `?tour` starts the tour |
-| Display metadata | Date, wavelength, detector, release, exposure id, sky level, noise, coverage, PSF width, masked pixels and a link to the source FITS file for every exposure |
+| Display metadata | Date, wavelength, detector, release, exposure id, sky level, noise, coverage, PSF width, masked pixels, the pipeline's flags for each pixel by name (cosmic-ray hit, overflow, persistence, ghost and the rest, read from the file's FLAGS layer and drawn on the image) and a link to the source FITS file for every exposure |
 
 ## How it works
 
@@ -150,6 +156,13 @@ talking directly to NASA's open data.
   Luhman 16 are measured moving at 5.3 and 2.8 arcseconds per year, against catalogue values of 5.1 and 2.8.
   The blind field check finds Luhman 16 from raw coordinates, and rejects a close pair of stars in the same
   field that a naive position comparison would report as moving.
+- **Pixel flags.** The FLAGS layer of an exposure is a Rice-compressed image; the page has its own decoder.
+  For two whole exposures (4.16 million pixels each) its output is identical to Astropy's, pixel for pixel.
+  For the stamps of three test objects, the flags the page assigns to each pixel were recomputed
+  independently, with Astropy's decompression and Astropy's WCS including the SIP distortion: 0 of 28,812
+  pixels differ. Edge, WebKit and Firefox give the same flags for the same exposure. The flags make sense where the answer is known: in the exposures tried, Barnard's Star and
+  R Draconis, which overload the detectors, carry OVERFLOW and BLOOM at the circled spot, and WISE 0855
+  carries no fault.
 - **Sky-map tiles.** The HEALPix code (`web/js/healpix.js`) agrees with `astropy-healpix`, and the tiles it
   predicts for a view include the ones the map goes on to request.
 - **Map transitions.** The guided tour was filmed frame by frame (about 5,300 frames for the twelve steps
@@ -233,6 +246,7 @@ web/js/archive.js     sky index lookup, FITS range reader, TAN-SIP astrometry, r
 web/js/app.js         viewer, plots, search, checks against comparison stars, tour wiring, offline store
 web/js/core.js        decoding, sky geometry, stacking, photometry, band depths, joining saturated detectors
 web/js/sky.js         the explorable sky map (Aladin Lite + IRSA sky maps)
+web/js/rice.js        Rice decompression, for the flags layer of an exposure
 web/js/healpix.js     which sky-map tiles a view needs (HEALPix)
 web/js/info.js        identification (SIMBAD), Wikipedia card, links to other tools
 web/js/tour.js        guided tour: the steps and what the map does at each
@@ -266,6 +280,11 @@ No build step: plain HTML, CSS and JavaScript modules.
   approximate. If every detector is saturated only relative brightness is shown.
 - Next to a very bright star, faint neighbours sit in its glow, so they cannot serve as comparison stars;
   the tool says so instead of comparing.
+- Pixel flags are read for one exposure at a time and need a connection; the stacked views (Visits, Deep and
+  the others) mix many exposures and show no flags of their own. A pixel of the displayed image takes the
+  flags of the four detector pixels it was resampled from, so a flagged pixel reaches one pixel further than
+  on the detector. The plain-language meaning given for each flag is ours; the file's own short description
+  is used for any flag the site does not know.
 - A dip at a molecule's wavelength is a hint, not a detection: other molecules and the shape of the spectrum
   itself can produce one.
 - A star close to saturating the camera is located less faithfully: Barnard's Star is 1.7 arcseconds off its
