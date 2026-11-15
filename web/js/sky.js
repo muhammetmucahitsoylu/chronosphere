@@ -85,21 +85,60 @@ function outstanding() {
 }
 // A tile the archive fails to deliver would stay a hole in the map: the map library does not ask
 // again. (The archive drops requests that have queued for some ten seconds, which happens on a
-// first visit to a large screen.) Such a tile is fetched once more here, twice at most, and when it
-// has arrived the library is made to look at its tiles again: it then finds it in the browser's store.
-const mending = new Map();           // tile address -> tries so far
-let mendWait = 0, mended = 0, nudgeTimer = 0;      // repairs under way count as tiles the map is waiting for
+// first visit to a large screen.) Such a tile is fetched once more here, twice at most. If the map
+// is behind its still copy at that moment, the layer is then started afresh: the library asks for
+// all its tiles again and finds them in the browser's store. If the map is in view, the tile waits
+// in that store until the view next changes, which is when the library asks for what it lacks.
+const mending = new Map();           // tile address -> tries so far, since the map library last received it whole
+const repairs = [];                  // what was repaired and why, for inspection (window.__chrono.repairs with ?debug)
+const noteRepair = (what, why) => { if (repairs.length < 300) repairs.push({ at: Math.round(performance.now()), what, why }); };
+let mendWait = 0, mendBusy = 0, mended = 0, nudgeTimer = 0;      // repairs under way count as tiles the map is waiting for
+let reloading = null;                // the layer is being started afresh (a promise while it is)
 function mend(u) {
   const tries = mending.get(u) || 0;
   if (tries >= 2 || navigator.onLine === false || mending.size > 120) return;
-  mending.set(u, tries + 1); mendWait++;
+  mending.set(u, tries + 1); mendWait++; mendBusy++;
+  const settle = () => { mendBusy--; if (!mendBusy && mended) { clearTimeout(nudgeTimer); nudgeTimer = setTimeout(nudge, 120); } };
   nap(350 * (tries + 1)).then(() => quietFetch(u, { mode: 'cors' })).then(r => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('no tile'))))
-    .then(() => { mended++; clearTimeout(nudgeTimer); nudgeTimer = setTimeout(nudge, 150); }, () => { mendWait = Math.max(0, mendWait - 1); mend(u); });
+    .then(() => { mended++; settle(); }, () => { mendWait = Math.max(0, mendWait - 1); settle(); mend(u); });
 }
 function nudge() {
+  if (mendBusy) return;              // more repairs are on their way: one fresh start for all of them
   const n = mended; mended = 0;
-  try { if (al) al.setFoV(al.getFov()[0] * (1 + 1e-7)); } catch { /* the hole stays until the view next changes */ }      // any change of view makes the library ask for its tiles again
-  frame().then(frame).then(frame).then(() => { mendWait = Math.max(0, mendWait - n); });
+  const done = () => { mendWait = Math.max(0, mendWait - n); };
+  if (!al || !veilUp || lifting) return done();
+  // A fresh start is only worth it if the tiles the map already has come back at once, out of the
+  // browser's store. If they had to be downloaded again, the map would be emptier for it, not fuller.
+  // And never while the library still has requests of its own under way: their answers would land in the fresh layer.
+  reloading = idle().then(stored).then(yes => { noteRepair('layer', yes && veilUp && !lifting ? 'started afresh' : 'left as it is'); return yes && veilUp && !lifting ? reloadLayer() : null; })
+    .then(done, done).finally(() => { reloading = null; });
+}
+/** Resolves when the map library has had no tile request of its own under way for a third of a second (or after 15 s). */
+function idle() {
+  return new Promise(resolve => {
+    const t0 = performance.now(); let quietAt = t0;
+    const tick = () => {
+      const now = performance.now();
+      if (outstanding() - mendWait > 0) quietAt = now;
+      if (now - quietAt >= 330 || now - t0 > 15000) resolve(); else setTimeout(tick, 60);
+    };
+    tick();
+  });
+}
+/** Does a tile the map has already received come back at once? */
+async function stored() {
+  let u = null;
+  for (const x of answered.keys()) if (!mending.has(x)) { u = x; break; }
+  if (!u) return false;
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 250);
+  try { const r = await quietFetch(u, { mode: 'cors', signal: ctl.signal }); await r.arrayBuffer(); return r.ok; } catch { return false; } finally { clearTimeout(timer); }
+}
+/** Start the sky layer on show afresh. Resolves when the library has added it and has had three frames to ask for its tiles. */
+function reloadLayer() {
+  return new Promise(resolve => {
+    setTimeout(resolve, 6000);
+    try { al.setBaseImageLayer(layerFor(LAYERS.find(l => l.id === layerId) || LAYERS[0], () => frame().then(frame).then(frame).then(resolve))); } catch { resolve(); }
+  });
 }
 window.fetch = function (input, init) {
   let lost = null;
@@ -114,7 +153,13 @@ window.fetch = function (input, init) {
     }
   } catch { /* keeping count must never break a request */ }
   const answer = plainFetch(input, init);
-  if (lost) answer.catch(e => { lost(); if (e?.name !== 'AbortError') mend(new URL(typeof input === 'string' ? input : input.url, location.href).href); });      // failed: nothing more will come of this request
+  if (lost) {
+    // The archive mostly fails in the middle of a tile: the answer begins well and then breaks off.
+    // So the whole tile is read here as well (from a copy of the answer), to know how it ended.
+    const u = new URL(typeof input === 'string' ? input : input.url, location.href).href;
+    answer.then(r => { if (r.ok) return r.clone().arrayBuffer().then(() => { mending.delete(u); }); if (r.status !== 404) throw new Error('refused'); return null; })
+      .catch(e => { lost(); if (e?.name !== 'AbortError') { noteRepair(u.slice(-28), `${e?.name}: ${e?.message}`); answered.delete(u); mend(u); } });      // nothing more will come of this request
+  }
   return answer;
 };
 /** fetch for this site's own background work: not counted as the map waiting for something. */
@@ -279,7 +324,7 @@ export function settled({ max = 3200, expect = false, level: tag = '' } = {}) {
     const t0 = performance.now(), changed = expect ? null : pictureWatch();
     // While a colour is awaited, only its own tiles count as news: tiles of the colour being left,
     // asked for again by a change of size just before, say nothing about the new picture.
-    const want = hue, from = want ? Math.max(t0, want.at) : t0;
+    let want = hue, from = want ? Math.max(t0, want.at) : t0;
     const mine = (u, at) => !want || (at >= want.at && u.includes(want.tag));
     const count = () => { if (!want) return answered.size; let k = 0; for (const [u, at] of answered) if (mine(u, at)) k++; return k; };
     const hasLevel = () => { for (const [u, at] of answered) if (u.includes(tag) && mine(u, at)) return true; return false; };
@@ -288,6 +333,7 @@ export function settled({ max = 3200, expect = false, level: tag = '' } = {}) {
     setTimeout(finish, max + 600);                // also when the page is in the background and frames do not run
     const tick = () => {
       if (done) return;
+      if (hue !== want) { want = hue; from = want ? Math.max(performance.now(), want.at) : t0; n = -1; }      // the layer was started afresh under way
       const now = performance.now(), left = outstanding(), k = count(), got = k > 0; ticks++;
       if (left > 0) { waitAt = now; waitTick = ticks; }
       if (k !== n) { n = k; if (!firstAt) firstAt = now; lastAt = now; lastTick = ticks; drawn = false; }
@@ -312,6 +358,12 @@ export function settled({ max = 3200, expect = false, level: tag = '' } = {}) {
     };
     requestAnimationFrame(tick);
   });
+}
+
+/** The wait for the picture. If it runs out of patience while the layer is being started afresh, that is waited for as well: it must not happen in view. */
+async function picture(opts) {
+  await settled(opts);
+  if (reloading) { await Promise.race([reloading, nap(2500)]); await settled({ max: 2000, expect: true }); }
 }
 
 /**
@@ -361,7 +413,7 @@ export function change(fn, opts = {}) {
   return (async () => {
     for (;;) { const n = jobs.length; await Promise.race([Promise.all(jobs), nap(5000)]); if (jobs.length === n) break; }
     if (my !== gen) return false;
-    await settled({ max: Math.max(250, deadline - performance.now()), expect: opts.expect, level: opts.expect ? '' : level });
+    await picture({ max: Math.max(250, deadline - performance.now()), expect: opts.expect, level: opts.expect ? '' : level });
     if (my !== gen) return false;
     jobs = []; level = ''; hue = null;
     try { opts.shown?.(); } catch { /* cosmetic */ }
@@ -471,7 +523,7 @@ export async function init(selector, { onClick, onFov, still: wanted = true } = 
   // on a touch screen would open the same menu.
   try { al.contextMenu = null; al.on('rightClickMove', () => {}); } catch { /* older builds have neither */ }
   ready = true; tellFov();
-  if (/[?&]debug\b/.test(location.search)) window.__chrono = { al, A };
+  if (/[?&]debug\b/.test(location.search)) window.__chrono = { al, A, repairs };
   // Dragging or zooming by hand must act on the live map straight away.
   for (const ev of ['pointerdown', 'wheel']) host.addEventListener(ev, grab, { passive: true, capture: true });
   // The cube opens on a blank frame. Until a real one has been chosen and drawn, the map is covered
@@ -487,7 +539,7 @@ export async function init(selector, { onClick, onFov, still: wanted = true } = 
       await Promise.race([Promise.all(jobs), nap(9000)]);
       if (my !== gen) return;
       // Until then the map would be blank white, or white in patches. With a picture to look at, the wait may be longer.
-      await settled({ max: pic.style.display === 'none' ? 9000 : 16000, expect: true });
+      await picture({ max: pic.style.display === 'none' ? 9000 : 20000, expect: true });
       if (my !== gen) return;
       jobs = []; hue = null; lift(800);
     })();
@@ -503,10 +555,11 @@ export async function init(selector, { onClick, onFov, still: wanted = true } = 
  * frame, which is blank in the SPHEREx cube, and would ask for those tiles: so a cube is sent to
  * the wanted frame in the very call in which the library adds it, before it has asked for anything.
  */
-function layerFor(L) {
-  const opts = { name: L.label };
-  if (L.cube) opts.successCallback = h => { try { if (rawSlice(slice, h)) { shown = slice; h.onFrame = true; } } catch { /* firstFrame does it a moment later */ } };
-  return A.HiPS(L.url, opts);
+function layerFor(L, added = null) {
+  return A.HiPS(L.url, { name: L.label, successCallback: h => {
+    try { if (L.cube && rawSlice(slice, h)) { shown = slice; h.onFrame = true; } } catch { /* firstFrame does it a moment later */ }
+    try { added?.(); } catch { /* the caller's own business */ }
+  } });
 }
 /** Resolves once the cube layer exists and shows the wanted frame. */
 function firstFrame() {

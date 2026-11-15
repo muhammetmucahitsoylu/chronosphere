@@ -102,8 +102,10 @@ talking directly to NASA's open data.
    three dozen tiles of about 200 kB each. A still picture of exactly that view (`web/opening.jpg`, a copy
    of the map's own canvas, made by pointing the map at a square that holds the opening view of a screen of
    any shape) is shown at once and is clickable; the live map replaces it when complete. The archive also
-   drops tile requests that have queued for about ten seconds, and the map library does not ask again: such
-   a tile is fetched once more and the library is made to look at its tiles again, so no hole stays.
+   breaks off tile downloads that have queued for about ten seconds, and the map library does not ask
+   again. The site reads every tile to its end to notice this, fetches a broken one once more, and then,
+   still behind the still picture and only once the library has no request of its own under way, starts the
+   layer afresh: the library finds every tile in the browser's store, and no hole stays.
 
 ## How the numbers were checked
 
@@ -140,8 +142,11 @@ talking directly to NASA's open data.
   the still picture is up 0.4 s after the page starts to load and lies within one pixel of the live map
   that replaces it 4 to 14 s later, at the same brightness. Before, the map stayed dark for that time. A
   visitor who does not wait (clicks a star, starts the tour, drags, zooms, or arrives by a link to an
-  object) never sees the blank map either. With five tile requests held back and then dropped, as the
-  archive does, the map ends up without a hole; without the repair the hole stays.
+  object) never sees the blank map either. Tile downloads were then made to fail the way the archive
+  fails them (refused at once, or broken off part-way, early or late, with the other tiles fast or slow):
+  in 21 runs the live map matched the still picture each time. Without the repair the holes stay; an
+  earlier form of the repair, which did not wait for the library to be idle, left the map scrambled in one
+  run of four.
 - **Clicks.** Ten well-known stars were clicked dead on and a few arcseconds off, at the tolerance of a wide
   map and of a close view, in empty and in crowded fields: 40 of 40 clicks opened the star that was clicked.
   The earlier catalogue query, which did not ask for the nearest objects first, managed 32.
