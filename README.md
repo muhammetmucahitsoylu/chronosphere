@@ -263,6 +263,10 @@ web/js/lang/          the measurement panel in Turkish, Spanish, German, French 
 web/js/pages.js       the "What is SPHEREx?", "How it works" and "About" pages, in English
 web/js/pages/         the same three pages in the other five languages (one file each)
 web/sw.js             service worker: offline cache
+web/404.html          what a wrong address shows, with the way back to the map
+web/manifest.webmanifest, web/icon-192.png, web/icon-512.png, web/apple-touch-icon.png, web/favicon.ico
+                      the site's name and icon for home screens and browser tabs
+web/robots.txt, web/sitemap.xml   for search engines
 web/index/            the sky index (generated)
 web/data/             the five showcase objects (generated)
 web/vendor/aladin.js  Aladin Lite 3.8.2 (CDS, GPL-3.0), unmodified

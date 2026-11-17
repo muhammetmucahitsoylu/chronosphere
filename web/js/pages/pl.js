@@ -74,6 +74,12 @@ export default {
     <p>Plutona odnalazł w 1930 roku człowiek porównujący dwie fotografie. Ludzie wciąż znajdują w ten sposób nowe światy. Wolontariusze wypatrzyli większość z ponad 5000 komet odkrytych na zdjęciach z sondy SOHO oraz około 3000 kandydatów na brązowe karły na zdjęciach z teleskopu WISE należącego do NASA. SPHEREx fotografuje teraz setki milionów obiektów, raz za razem: więcej, niż jakakolwiek grupa zawodowców zdoła przejrzeć.</p>
     <p>Chcieliśmy narzędzia, w którym każdy, bez żadnego przygotowania, może wybrać punkt na niebie i sam zobaczyć, czy coś się tam poruszyło lub zmieniło, a potem jednym kliknięciem sprawdzić to w niezależnych źródłach.</p>
     <p>Wyzwanie bierze nazwę od Planety X, hipotetycznej, nieodkrytej jeszcze planety w zewnętrznym Układzie Słonecznym. Czy SPHEREx może ją zobaczyć, czy nie, każdy nieznany bliski obiekt zdradziłby się tak samo jak Pluton: jako punkt, który się porusza.</p>
+    <h2>Dla kogo</h2>
+    <ul>
+      <li><b>Dla każdego, kto jest ciekawy.</b> Bez konta i bez przygotowania: przewodnik trwa dwie minuty, a każdy obiekt otwiera się kilkoma prostymi zdaniami o tym, co pokazują pomiary.</li>
+      <li><b>Dla nauczycieli i uczniów.</b> Klasa może znaleźć poruszającą się gwiazdę tak, jak znaleziono Plutona, na prawdziwych zdjęciach NASA. Przewodnik zapisuje się na urządzeniu i działa bez połączenia, w sześciu językach.</li>
+      <li><b>Dla miłośników astronomii i badaczy.</b> Pomiary dowolnego miejsca można pobrać jako tabelę (CSV), każda ekspozycja prowadzi do swojego oryginalnego pliku w archiwum NASA, a każdy widok można udostępnić jako link albo osadzić na innej stronie.</li>
+    </ul>
     <h2>Skąd pochodzą dane</h2>
     <ul>
       <li><b>Obrazy SPHEREx i mapa całego nieba:</b> NASA/JPL-Caltech, udostępniane przez NASA/IPAC Infrared Science Archive (IRSA).</li>

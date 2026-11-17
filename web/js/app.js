@@ -1006,7 +1006,10 @@ function closePanel() {
   const shut = () => { $('app').dataset.panel = 'closed'; if (Sky.isReady()) { Sky.clearMark(); Sky.resize(); } };
   if (Sky.isReady()) Sky.reshape(shut); else shut();
   history.replaceState(null, '', location.pathname);
+  document.title = HOME_TITLE;
 }
+/** The page's own title, in the language in use. */
+const HOME_TITLE = Lang.lang === 'en' ? document.title : `Chronosphere — ${T('hero.title').replace(/\.$/, '')}`;
 
 /** Find out what the selected spot is, then look for an encyclopedia card. */
 async function loadInfo(gen) {
@@ -1051,6 +1054,7 @@ function fmtDistance(plx, err) {
 function renderAbout() {
   const t = S.target, k = S.track, i = S.info, el = $('about');
   const name = t ? t.label : i ? i.name : k?.name ? k.name : S.infoState === 'failed' || S.infoState === 'loading' ? G`This spot` : G`Uncatalogued spot`;
+  document.title = `${name} · Chronosphere`;          // the tab, the history and a bookmark say which object this is
   const sp = t?.sp || i?.sptype;
   const spHtml = sp ? G` · spectral type <span class="asis">${esc(sp)}</span>` : '';
   const kind = t?.type ? `${esc(G(t.type))}${spHtml}` : i ? `${esc(G(i.type))}${spHtml}`
@@ -2257,6 +2261,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   if (q.has('debug')) window.__app = { S, C, findComparisons, usable, gEpoch, scan: () => scanResult };      // for inspection from the console
   if (S.embed) document.body.classList.add('embed');
   Lang.applyStatic();
+  document.title = HOME_TITLE;
   const pick = $('lang');
   pick.innerHTML = Object.entries(Lang.LANGS).map(([code, name]) => `<option value="${code}"${code === Lang.lang ? ' selected' : ''}>${name}</option>`).join('');
   pick.onchange = () => Lang.choose(pick.value);
@@ -2268,6 +2273,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     try {
       await Sky.init('#map', { still: !(q.has('target') || (q.has('ra') && q.has('dec'))), onClick: openAt, onFov: f => { $('fovlabel').textContent = f >= 10 ? `${Math.round(f)}°` : f >= 1 ? `${f.toFixed(1)}°` : `${Math.round(f * 60)}′`; } });
       setWave(25);
+      document.querySelector('#map .aladin-input-text')?.setAttribute('aria-label', T('search.label'));          // the map library's own position box has no name of its own
       // On a slow connection the first picture takes a few seconds: say so, instead of an empty map.
       const loading = T('note.loadingMap'), slow = setTimeout(() => { if ($('mapnote').hidden) note(loading); }, 1800);
       Sky.firstPicture().then(() => { clearTimeout(slow); if ($('mapnote').textContent === loading) note(''); });

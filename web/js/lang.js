@@ -785,4 +785,5 @@ export function applyStatic(root = document) {
   for (const el of root.querySelectorAll('[data-t]')) el.textContent = t(el.dataset.t);
   for (const el of root.querySelectorAll('[data-t-placeholder]')) el.placeholder = t(el.dataset.tPlaceholder);
   for (const el of root.querySelectorAll('[data-t-label]')) el.setAttribute('aria-label', t(el.dataset.tLabel));
+  document.documentElement.classList.remove('wait-words');          // the words held back by the page's first lines can be shown now
 }

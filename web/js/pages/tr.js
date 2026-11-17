@@ -74,6 +74,12 @@ export default {
     <p>Plüton 1930’da iki fotoğrafı karşılaştıran bir insan tarafından bulundu. İnsanlar hâlâ yeni dünyaları bu yolla buluyor. SOHO uzay aracının görüntülerinde keşfedilen 5.000’den fazla kuyruklu yıldızın çoğunu ve NASA’nın WISE teleskobunun görüntülerindeki yaklaşık 3.000 kahverengi cüce adayını gönüllüler fark etti. SPHEREx şimdi yüz milyonlarca cismi tekrar tekrar fotoğraflıyor: hiçbir uzman grubunun inceleyebileceğinden çok fazlası.</p>
     <p>Hiçbir eğitimi olmayan birinin gökyüzünde bir nokta seçip orada bir şeyin hareket edip etmediğini ya da değişip değişmediğini kendi gözüyle görebileceği, sonra da bunu tek tıkla bağımsız kaynaklarla karşılaştırabileceği bir araç istedik.</p>
     <p>Görev adını, dış güneş sisteminde bulunduğu varsayılan ve henüz keşfedilmemiş gezegenden, X Gezegeni’nden alır. SPHEREx onu görebilsin ya da göremesin, yakındaki bilinmeyen her cisim kendini Plüton’un ele verdiği yolla ele verir: hareket eden bir nokta olarak.</p>
+    <h2>Kimler için</h2>
+    <ul>
+      <li><b>Merak eden herkes.</b> Hesap açmak ya da eğitim almak gerekmez: tur iki dakika sürer ve her cisim, ölçümlerin ne gösterdiğini anlatan birkaç yalın cümleyle açılır.</li>
+      <li><b>Öğretmenler ve öğrenciler.</b> Bir sınıf, hareket eden bir yıldızı Plüton’un bulunduğu yöntemle, gerçek NASA görüntülerinde kendisi bulabilir. Tur cihaza kaydedilir ve bağlantı olmadan, altı dilde çalışır.</li>
+      <li><b>Amatör gökbilimciler ve araştırmacılar.</b> Seçilen noktanın ölçümleri tablo (CSV) olarak indirilebilir, her poz NASA arşivindeki özgün dosyasına bağlanır, her görünüm bağlantı olarak paylaşılabilir ya da başka bir sayfanın içine yerleştirilebilir.</li>
+    </ul>
     <h2>Veriler nereden geliyor</h2>
     <ul>
       <li><b>SPHEREx görüntüleri ve tüm gökyüzü haritası:</b> NASA/JPL-Caltech; NASA/IPAC Kızılötesi Bilim Arşivi (IRSA) sunar.</li>

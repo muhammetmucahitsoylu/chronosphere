@@ -11,13 +11,33 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://chronospherex.com/">
 <meta property="og:image" content="https://chronospherex.com/preview.png">
+<meta property="og:image:width" content="1440">
+<meta property="og:image:height" content="900">
+<meta property="og:image:alt" content="Epsilon Indi B in Chronosphere: the sky map, the image sequence, and a spectrum showing water and methane">
+<meta property="og:site_name" content="Chronosphere">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Chronosphere — the sky is not still">
+<meta name="twitter:description" content="Fly over the whole sky as NASA's SPHEREx sees it, pick any point, and watch it change over time.">
+<meta name="twitter:image" content="https://chronospherex.com/preview.png">
+<link rel="canonical" href="https://chronospherex.com/">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"Chronosphere","url":"https://chronospherex.com/","description":"Fly over the whole sky as NASA's SPHEREx sees it, pick any point, and watch that spot change over time. See what moves, what flickers, and what it is made of.","applicationCategory":"EducationalApplication","operatingSystem":"Any","browserRequirements":"Requires JavaScript and WebGL 2","inLanguage":["en","tr","es","de","fr","pl"],"isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"license":"https://www.gnu.org/licenses/gpl-3.0.html","image":"https://chronospherex.com/preview.png","author":{"@type":"Organization","name":"The Bright Nobles"},"sameAs":"https://github.com/muhammetmucahitsoylu/chronosphere"}
+</script>
+<script>
+// A language picked earlier, or carried by the address, is known before the page's code arrives:
+// its words are held back until they can be shown in that language, instead of flashing in English first.
+try { var L = new URLSearchParams(location.search).get('lang') || localStorage.getItem('chrono-lang');
+  if (L && L !== 'en') { document.documentElement.className = 'wait-words'; setTimeout(function () { document.documentElement.classList.remove('wait-words'); }, 5000); } } catch (e) { /* private mode */ }
+</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0908'/%3E%3Ccircle cx='13' cy='17' r='7' fill='none' stroke='%23f3eee6' stroke-width='2'/%3E%3Ccircle cx='19' cy='14' r='7' fill='%23ff7b39'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="preload" as="image" href="opening.jpg" fetchpriority="high">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<noscript><p style="margin:0;padding:14px 18px;background:#1b1512;color:#f3eee6;font:15px/1.5 system-ui,sans-serif">Chronosphere reads NASA's SPHEREx images in your browser, so it needs JavaScript. Turn it on for this site and reload the page.</p></noscript>
 <header class="top" id="top">
   <a class="brand" href="./" aria-label="Chronosphere, home">
     <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><circle cx="13" cy="17" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="19" cy="14" r="8" fill="var(--ember)"/></svg>
@@ -41,7 +61,7 @@
   </nav>
 </header>
 
-<div class="app" id="app" data-panel="closed">
+<main class="app" id="app" data-panel="closed">
   <section class="mapwrap" aria-label="Sky map">
     <div class="mapstage" id="mapstage">
       <div id="map"></div>
@@ -64,7 +84,7 @@
           <button type="button" class="cta" id="tourbtn2" data-t="hero.tour">Take the two-minute tour</button>
           <button type="button" class="ghost" id="hidewelcome" data-t="hero.explore">Explore freely</button>
         </div>
-        <p class="startwith"><span data-t="hero.start">Or start with</span> <span id="examples"></span></p>
+        <p class="startwith"><span data-t="hero.start">Or start with</span> <!-- the five test objects, written out so the text does not jump when data/targets.json arrives; the page's code replaces them with the same list --><span id="examples"><button type="button">Barnard's Star</button><button type="button">Epsilon Indi B</button><button type="button">WISE 0855</button><button type="button">RW Aurigae</button><button type="button">R Draconis</button></span></p>
         <p class="offline" id="offline"></p>
       </div>
 
@@ -216,7 +236,7 @@
 
     <p class="credits">Images: NASA SPHEREx, served by NASA/IPAC (IRSA). Catalogues: Gaia DR3, CatWISE2020, SIMBAD. Sky atlas: Aladin Lite. Encyclopedia cards: Wikipedia.</p>
   </aside>
-</div>
+</main>
 
 <div class="coach" id="coach" hidden role="region" aria-label="A walk through the panel" aria-live="polite">
   <div class="coachhead"><span id="coachcount"></span><button type="button" id="coachclose" aria-label="End the walk through the panel" data-t-label="coach.close">×</button></div>

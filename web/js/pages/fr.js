@@ -74,6 +74,12 @@ export default {
     <p>Pluton a été trouvée en 1930 par une personne qui comparait deux photographies. On trouve encore de nouveaux mondes de cette façon. Des bénévoles ont repéré la plupart des plus de 5 000 comètes découvertes dans les images de la sonde SOHO, et environ 3 000 candidates naines brunes dans les images du télescope WISE de la NASA. SPHEREx photographie maintenant des centaines de millions d’objets, encore et encore : plus que n’importe quel groupe de professionnels ne peut en inspecter.</p>
     <p>Nous voulions un outil où chacun, sans formation, puisse choisir un point du ciel et voir par lui-même si quelque chose y a bougé ou changé, puis le vérifier auprès de sources indépendantes en un clic.</p>
     <p>Le défi tient son nom de la Planète X, la planète hypothétique encore non découverte du Système solaire externe. Que SPHEREx puisse la voir ou non, tout objet proche inconnu se trahirait comme Pluton l’a fait : par un point qui bouge.</p>
+    <h2>À qui il s’adresse</h2>
+    <ul>
+      <li><b>À tous les curieux.</b> Sans compte et sans formation : la visite guidée dure deux minutes, et chaque objet s’ouvre sur quelques phrases simples qui disent ce que montrent les mesures.</li>
+      <li><b>Aux enseignants et aux élèves.</b> Une classe peut trouver une étoile qui se déplace comme on a trouvé Pluton, sur de vraies images de la NASA. La visite guidée est conservée sur l’appareil et fonctionne sans connexion, en six langues.</li>
+      <li><b>Aux astronomes amateurs et aux chercheurs.</b> Les mesures de n’importe quel point se téléchargent sous forme de tableau (CSV), chaque pose renvoie à son fichier d’origine dans l’archive de la NASA, et chaque vue se partage par un lien ou s’intègre dans une autre page.</li>
+    </ul>
     <h2>D’où viennent les données</h2>
     <ul>
       <li><b>Images et carte du ciel entier de SPHEREx :</b> NASA/JPL-Caltech, servies par le NASA/IPAC Infrared Science Archive (IRSA).</li>

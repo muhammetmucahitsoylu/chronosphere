@@ -99,6 +99,12 @@ const ENGLISH = {
     <p>Pluto was found in 1930 by a person comparing two photographs. People still find new worlds that way. Volunteers have spotted most of the more than 5,000 comets discovered in images from the SOHO spacecraft, and about 3,000 candidate brown dwarfs in images from NASA's WISE telescope. SPHEREx is now photographing hundreds of millions of objects, again and again: more than any group of professionals can inspect.</p>
     <p>We wanted a tool where anyone, with no training, can pick a point in the sky and see for themselves whether something there has moved or changed, and then check it against independent sources in one click.</p>
     <p>The challenge takes its name from Planet X, the hypothetical undiscovered planet in the outer solar system. Whether or not SPHEREx can see it, any unknown nearby object would give itself away the same way Pluto did: as a dot that moves.</p>
+    <h2>Who it is for</h2>
+    <ul>
+      <li><b>Anyone curious.</b> No account and no training: the tour takes two minutes, and every object opens with a few plain sentences on what the measurements show.</li>
+      <li><b>Teachers and students.</b> A class can find a moving star the way Pluto was found, on real NASA images. The tour is kept on the device and runs without a connection, in six languages.</li>
+      <li><b>Amateur astronomers and researchers.</b> The measurements of any spot can be downloaded as a table (CSV), every exposure links to its original file in NASA's archive, and any view can be shared as a link or placed inside another page.</li>
+    </ul>
     <h2>Where the data comes from</h2>
     <ul>
       <li><b>SPHEREx images and all-sky map:</b> NASA/JPL-Caltech, served by the NASA/IPAC Infrared Science Archive (IRSA).</li>

@@ -74,6 +74,12 @@ export default {
     <p>Pluto wurde 1930 von einem Menschen gefunden, der zwei Fotografien verglich. Noch heute werden neue Welten auf diese Weise gefunden. Freiwillige haben die meisten der mehr als 5000 Kometen entdeckt, die in Bildern der Raumsonde SOHO gefunden wurden, und rund 3000 Kandidaten für Braune Zwerge in Bildern des NASA-Teleskops WISE. SPHEREx fotografiert nun Hunderte Millionen Objekte, immer wieder: mehr, als irgendeine Gruppe von Fachleuten durchsehen kann.</p>
     <p>Wir wollten ein Werkzeug, mit dem jeder ohne Vorkenntnisse einen Punkt am Himmel wählen und selbst sehen kann, ob sich dort etwas bewegt oder verändert hat, und es dann mit einem Klick an unabhängigen Quellen prüfen kann.</p>
     <p>Die Aufgabe hat ihren Namen von Planet X, dem hypothetischen, noch unentdeckten Planeten im äußeren Sonnensystem. Ob SPHEREx ihn sehen kann oder nicht: Jedes unbekannte nahe Objekt würde sich so verraten wie einst Pluto, als ein Punkt, der sich bewegt.</p>
+    <h2>Für wen es gedacht ist</h2>
+    <ul>
+      <li><b>Alle, die neugierig sind.</b> Ohne Konto und ohne Vorkenntnisse: Die Tour dauert zwei Minuten, und jedes Objekt öffnet sich mit ein paar einfachen Sätzen darüber, was die Messungen zeigen.</li>
+      <li><b>Lehrkräfte und Lernende.</b> Eine Klasse kann einen wandernden Stern so finden, wie Pluto gefunden wurde, auf echten NASA-Bildern. Die Tour wird auf dem Gerät gespeichert und läuft ohne Verbindung, in sechs Sprachen.</li>
+      <li><b>Amateurastronomen und Forschende.</b> Die Messungen jeder Stelle lassen sich als Tabelle (CSV) herunterladen, jede Aufnahme führt zu ihrer Originaldatei im NASA-Archiv, und jede Ansicht lässt sich als Link teilen oder in eine andere Seite einbetten.</li>
+    </ul>
     <h2>Woher die Daten kommen</h2>
     <ul>
       <li><b>SPHEREx-Bilder und Karte des ganzen Himmels:</b> NASA/JPL-Caltech, bereitgestellt vom NASA/IPAC Infrared Science Archive (IRSA).</li>

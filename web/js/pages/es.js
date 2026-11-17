@@ -74,6 +74,12 @@ export default {
     <p>Plutón fue encontrado en 1930 por una persona que comparaba dos fotografías. Todavía hoy se encuentran mundos nuevos de esa manera. Voluntarios han localizado la mayoría de los más de 5000 cometas descubiertos en las imágenes de la nave SOHO, y unas 3000 candidatas a enana marrón en las imágenes del telescopio WISE de la NASA. SPHEREx está fotografiando ahora cientos de millones de objetos, una y otra vez: más de lo que cualquier grupo de profesionales puede inspeccionar.</p>
     <p>Queríamos una herramienta con la que cualquiera, sin formación previa, pudiera elegir un punto del cielo y ver por sí mismo si algo allí se ha movido o ha cambiado, y después comprobarlo con fuentes independientes en un clic.</p>
     <p>El reto toma su nombre del Planeta X, el hipotético planeta aún no descubierto del sistema solar exterior. Pueda verlo SPHEREx o no, cualquier objeto cercano desconocido se delataría igual que lo hizo Plutón: como un punto que se mueve.</p>
+    <h2>Para quién es</h2>
+    <ul>
+      <li><b>Cualquier persona curiosa.</b> Sin cuenta y sin formación previa: la visita guiada dura dos minutos y cada objeto se abre con unas frases sencillas sobre lo que muestran las mediciones.</li>
+      <li><b>Docentes y estudiantes.</b> Una clase puede encontrar una estrella que se mueve tal como se encontró Plutón, en imágenes reales de la NASA. La visita guiada se guarda en el dispositivo y funciona sin conexión, en seis idiomas.</li>
+      <li><b>Aficionados a la astronomía e investigadores.</b> Las mediciones de cualquier punto se pueden descargar como tabla (CSV), cada exposición enlaza con su archivo original en el archivo de la NASA, y cualquier vista se puede compartir como enlace o insertar en otra página.</li>
+    </ul>
     <h2>De dónde vienen los datos</h2>
     <ul>
       <li><b>Imágenes y mapa de todo el cielo de SPHEREx:</b> NASA/JPL-Caltech, servidos por el Archivo de Ciencia Infrarroja de NASA/IPAC (IRSA).</li>
