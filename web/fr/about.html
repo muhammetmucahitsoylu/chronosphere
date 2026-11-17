@@ -31,10 +31,21 @@
   .doctop { justify-content: space-between; }
   .doctop .cta { text-decoration: none; display: inline-flex; align-items: center; }
   .doc { padding: 5vh 16px 8vh; }
+  .sheet h3 { font: 500 13px/1.4 var(--mono); letter-spacing: 1px; text-transform: uppercase; color: var(--ink-3); margin: 22px 0 0; }
+  .docfig { margin: 22px 0 6px; }
+  .docfig img { display: block; width: 100%; max-width: 420px; height: auto; border-radius: 10px; background: #000; image-rendering: auto; }
+  .docfig figcaption { margin-top: 8px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+  .docrungs { list-style: none; padding: 0 !important; margin: 10px 0 0; }
+  .docrungs li { display: flex; gap: 14px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); margin: 0; }
+  .docrungs li b { font: 500 15px var(--mono); min-width: 4.5em; color: var(--ink); }
+  .docrungs li.limit { border-bottom: 1px dashed var(--ember); color: var(--ember); font: 500 12px var(--mono); letter-spacing: 1px; text-transform: uppercase; padding: 10px 0 4px; }
+  .docgo { margin-top: 22px !important; }
+  .docgo .cta { display: inline-flex; align-items: center; text-decoration: none; white-space: normal; text-align: center; max-width: 100%; }          /* a long name wraps instead of leaving the screen */
   .docmore { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14.5px; }
   .docmore a { color: var(--ink-2); text-underline-offset: 3px; }
   .docmore a:hover, .docmore a[aria-current] { color: var(--ink); }
   .docmore span { flex-basis: 100%; height: 0; }
+  .docmore em { font-style: normal; color: var(--ink-3); }
 </style>
 </head>
 <body>
@@ -78,6 +89,13 @@
       <a href="what-is-spherex.html">Qu’est-ce que SPHEREx ?</a>
       <a href="how-it-works.html">Comment ça marche</a>
       <a href="about.html" aria-current="page">À propos</a>
+      <a href="planet-x.html">La planète X</a>
+      <span></span>
+      <em>Les objets de test:</em> <a href="barnards-star.html">Étoile de Barnard</a>
+      <a href="epsilon-indi-b.html">Epsilon Indi B</a>
+      <a href="wise-0855.html">WISE 0855</a>
+      <a href="rw-aurigae.html">RW Aurigae</a>
+      <a href="r-draconis.html">R Draconis</a>
       <span></span>
       <a href="../about.html" lang="en" hreflang="en">English</a>
       <a href="../tr/about.html" lang="tr" hreflang="tr">Türkçe</a>

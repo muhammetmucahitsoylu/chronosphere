@@ -273,7 +273,12 @@ web/manifest.webmanifest, web/icon-192.png, web/icon-512.png, web/apple-touch-ic
 web/what-is-spherex.html, web/how-it-works.html, web/about.html
                       the three information pages as plain pages with addresses of their own, which a search
                       engine or a browser without scripts can read (generated)
-web/tr/, web/es/, web/de/, web/fr/, web/pl/   the same three pages in the other languages (generated)
+web/planet-x.html     Planet X, Pluto and SPHEREx: the guided tour's story as a plain page, with Pluto in two
+                      SPHEREx exposures six days apart (generated)
+web/barnards-star.html, web/epsilon-indi-b.html, web/wise-0855.html, web/rw-aurigae.html, web/r-draconis.html
+                      the five test objects as plain pages, each with its SPHEREx pictures (generated)
+web/tr/, web/es/, web/de/, web/fr/, web/pl/   the same pages in the other languages (generated)
+web/img/              those pictures: real SPHEREx images, made by scripts/build_images.py
 web/robots.txt, web/sitemap.xml   for search engines (the sitemap is generated with the pages)
 web/db83ba526cb561c174feda741610f139.txt   the IndexNow key: Bing, Yandex and others read it to check that a
                       notice of new pages (scripts/indexnow.py) comes from this site
@@ -282,8 +287,9 @@ web/data/             the five showcase objects (generated)
 web/vendor/aladin.js  Aladin Lite 3.8.2 (CDS, GPL-3.0), unmodified
 web/fonts/            IBM Plex and Instrument Serif (SIL Open Font License)
 scripts/              build_index.py, prebuild.py; build_pages.mjs writes the plain information pages
-                      from web/js/pages.js (run it with Node after changing a page); indexnow.py tells
-                      search engines which pages changed
+                      from web/js/pages.js, the tour's words and the showcase objects (run it with Node after
+                      changing any of them); build_images.py makes their pictures from the showcase data;
+                      indexnow.py tells search engines which pages changed
 backend/              Python reference pipeline and optional API
 ```
 
