@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0908">
+<title>So funktioniert es · Chronosphere</title>
+<meta name="description" content="Sie klicken auf einen Punkt am Himmel. Wenige Sekunden später sehen Sie jedes Bild, das SPHEREx von ihm aufgenommen hat, ausgerichtet und mit einem Spektrum darunter. Das geschieht dazwischen.">
+<link rel="canonical" href="https://chronospherex.com/de/how-it-works.html">
+<link rel="alternate" hreflang="en" href="https://chronospherex.com/how-it-works.html">
+<link rel="alternate" hreflang="tr" href="https://chronospherex.com/tr/how-it-works.html">
+<link rel="alternate" hreflang="es" href="https://chronospherex.com/es/how-it-works.html">
+<link rel="alternate" hreflang="de" href="https://chronospherex.com/de/how-it-works.html">
+<link rel="alternate" hreflang="fr" href="https://chronospherex.com/fr/how-it-works.html">
+<link rel="alternate" hreflang="pl" href="https://chronospherex.com/pl/how-it-works.html">
+<link rel="alternate" hreflang="x-default" href="https://chronospherex.com/how-it-works.html">
+<meta property="og:title" content="So funktioniert es · Chronosphere">
+<meta property="og:description" content="Sie klicken auf einen Punkt am Himmel. Wenige Sekunden später sehen Sie jedes Bild, das SPHEREx von ihm aufgenommen hat, ausgerichtet und mit einem Spektrum darunter. Das geschieht dazwischen.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://chronospherex.com/de/how-it-works.html">
+<meta property="og:image" content="https://chronospherex.com/preview.png">
+<meta property="og:site_name" content="Chronosphere">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../favicon.ico">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  html, body { height: auto; }
+  body { display: block; overflow: auto; }
+  .doctop { justify-content: space-between; }
+  .doctop .cta { text-decoration: none; display: inline-flex; align-items: center; }
+  .doc { padding: 5vh 16px 8vh; }
+  .docmore { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14.5px; }
+  .docmore a { color: var(--ink-2); text-underline-offset: 3px; }
+  .docmore a:hover, .docmore a[aria-current] { color: var(--ink); }
+  .docmore span { flex-basis: 100%; height: 0; }
+</style>
+</head>
+<body>
+<header class="top doctop">
+  <a class="brand" href="../?lang=de" aria-label="Chronosphere">
+    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><circle cx="13" cy="17" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="19" cy="14" r="8" fill="var(--ember)"/></svg>
+    <span>Chronosphere</span>
+  </a>
+  <a class="cta" href="../?lang=de">Himmelskarte öffnen</a>
+</header>
+<main class="doc">
+  <article class="sheet">
+    <p class="eyebrow">Unter der Haube</p>
+    <h1>So funktioniert es</h1>
+    <p class="lead">Sie klicken auf einen Punkt am Himmel. Wenige Sekunden später sehen Sie jedes Bild, das SPHEREx von ihm aufgenommen hat, ausgerichtet und mit einem Spektrum darunter. Das geschieht dazwischen.</p>
+    <ol>
+      <li><b>Im Himmelsindex nachschlagen.</b> Ein kompakter Index aller öffentlichen SPHEREx-Aufnahmen, rund 1,6 Millionen, sagt, welche davon in die Nähe Ihrer Stelle gerichtet waren. Der Index wird regelmäßig aus dem Archiv der NASA neu aufgebaut, sodass neue Datenveröffentlichungen erscheinen, ohne dass jemand den Code anfasst.</li>
+      <li><b>Nur die Pixel lesen, auf die es ankommt.</b> Eine vollständige Aufnahme ist eine Datei von mehr als 60 Megabyte. Ihr Browser liest ihren Kopf und nur den kleinen Pixelblock um Ihre Stelle, einige Hundert Kilobyte, direkt aus den offenen Daten der NASA in der Cloud.</li>
+      <li><b>Die Bilder ausrichten.</b> Jede Aufnahme entstand unter einem anderen Winkel. Jeder Block wird mithilfe der in der Datei gespeicherten Positionsangaben auf ein gemeinsames Raster neu gezeichnet, Norden oben, und das Leuchten des Himmelshintergrunds wird abgezogen.</li>
+      <li><b>Die Farbe jedes Pixels bestimmen.</b> Jede Aufnahme zeichnet Ihre Stelle bei einer anderen Wellenlänge auf. Diese Wellenlänge wird aus einer Tabelle in jeder Datei gelesen.</li>
+      <li><b>Auf Ihrem Gerät rechnen.</b> Helligkeit, Aufsummieren, Abziehen, Farbbilder, Messungen und Diagramme werden in Ihrem Browser berechnet; deshalb reagiert jedes Bedienelement sofort.</li>
+      <li><b>Sagen, was es ist.</b> Der SIMBAD-Katalog wird gefragt, was an dieser Position liegt. Kataloge speichern, wo ein Stern im Jahr 2000 stand; nahe Sterne, die seitdem weitergewandert sind, werden deshalb vor dem Abgleich auf das heutige Datum gebracht.</li>
+    </ol>
+    <h2>Kein Server, und es funktioniert offline</h2>
+    <p>Chronosphere hat keinen eigenen Server. Die Seite ist ein Satz statischer Dateien; alles andere ist Ihr Browser, der direkt mit den offenen Daten der NASA spricht. Auf unserer Seite gibt es also nichts, was laufen muss, und nichts, was ausfallen kann. Was Sie einmal geöffnet haben, einschließlich der gesamten Führung, wird auf Ihrem Gerät gespeichert und funktioniert auch ohne Verbindung weiter.</p>
+    <h2>Wie man liest, was man sieht</h2>
+    <ul>
+      <li><b>Besuche.</b> SPHEREx kehrt zu den meisten Teilen des Himmels etwa alle sechs Monate zurück, und jeder Besuch dauert einige Tage bis einige Wochen. Ein aufsummiertes Bild pro Besuch, nacheinander gezeigt, macht eine kleine Verschiebung leicht sichtbar. Nahe den Polen der Ebene des Sonnensystems schaut es fast bei jedem Umlauf hin; dort werden die Bilder deshalb nach Monaten gruppiert.</li>
+      <li><b>Die Verschiebungstabelle.</b> Bei einem bewegten Objekt wird die in jedem Besuch gemessene Position mit der Vorhersage des Katalogs verglichen: seine gleichmäßige Bewegung über den Himmel und, bei den nächsten Sternen, das jährliche Schwanken durch die Bahn der Erde selbst. Die Bewegung wird in jedem Detektor, der das Objekt sieht, getrennt gemessen, und die Detektoren werden miteinander verglichen.</li>
+      <li><b>Das Spektrum.</b> Jeder Punkt ist eine Aufnahme: ihre Wellenlänge und wie hell die eingekreiste Stelle war. Die Punkte sind nach Besuch gefärbt.</li>
+      <li><b>Molekülbänder.</b> Schattierte Streifen zeigen, wo häufige Moleküle Licht absorbieren. Die Tabelle gibt an, wie tief die dort gemessene Senke ist.</li>
+      <li><b>Mit den Nachbarn verglichen.</b> Unter der Helligkeitskurve wird die Änderung der eingekreisten Stelle zwischen den Besuchen gewöhnlichen Sternen in denselben Bildern gegenübergestellt. Blieben sie konstant und die Stelle nicht, ist die Änderung echt und keine Eigenheit der Kamera. Dasselbe geschieht für ihre Position.</li>
+      <li><b>Jeder Stern, geprüft.</b> Unter den Bildern wird jeder klare Stern des Feldes auf Bewegung und auf Helligkeitsänderungen getestet, ohne irgendeinen Katalog zu benutzen. Die wenigen, die auffallen, werden aufgelistet und mit einer Raute markiert. Eine Markierung ist ein Grund hinzusehen, kein Befund.</li>
+    </ul>
+    <h2>Was es Ihnen nicht sagen kann</h2>
+    <ul>
+      <li>Ein SPHEREx-Pixel deckt 6,15 Bogensekunden ab. Selbst der Stern, dessen Ort am Himmel sich am schnellsten ändert, bewegt sich weniger als zwei Pixel pro Jahr; Bewegung ist deshalb ein kleiner Sprung zwischen den Besuchen, nie eine Spur.</li>
+      <li>Die Messungen verwenden einen einfachen festen Kreis und sind zum Erkunden gedacht, nicht zur Veröffentlichung. Sehr helle Sterne übersteuern den Detektor; bei ihnen wird stattdessen das schwache äußere Leuchten des Sterns gemessen und jeder Detektor an seinen Nachbarn angeschlossen: Die Gesamtform des Spektrums stimmt, sein Niveau und die feinen Einzelheiten sind Näherungen.</li>
+      <li>Eine Senke bei der Wellenlänge eines Moleküls ist ein Hinweis, kein Nachweis.</li>
+      <li>Positionen wiederholen sich bei gewöhnlichen Sternen auf wenige Zehntel Bogensekunden, aber ein Stern nahe der Übersteuerung der Kamera kann in einem einzelnen Besuch um eine Bogensekunde oder mehr abweichen.</li>
+      <li>Nichts hier erhebt den Anspruch einer Entdeckung. Etwas, das neu aussieht, ist ein Grund, es in den anderen Werkzeugen zu prüfen, die bei jedem Objekt verlinkt sind.</li>
+    </ul>
+    <nav class="docmore" aria-label="Chronosphere">
+      <a href="what-is-spherex.html">Was ist SPHEREx?</a>
+      <a href="how-it-works.html" aria-current="page">So funktioniert es</a>
+      <a href="about.html">Über uns</a>
+      <span></span>
+      <a href="../how-it-works.html" lang="en" hreflang="en">English</a>
+      <a href="../tr/how-it-works.html" lang="tr" hreflang="tr">Türkçe</a>
+      <a href="../es/how-it-works.html" lang="es" hreflang="es">Español</a>
+      <a href="../de/how-it-works.html" lang="de" hreflang="de" aria-current="true">Deutsch</a>
+      <a href="../fr/how-it-works.html" lang="fr" hreflang="fr">Français</a>
+      <a href="../pl/how-it-works.html" lang="pl" hreflang="pl">Polski</a>
+    </nav>
+  </article>
+</main>
+</body>
+</html>

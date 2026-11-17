@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0908">
+<title>Jak to działa · Chronosphere</title>
+<meta name="description" content="Klikasz punkt na niebie. Kilka sekund później oglądasz wszystkie zdjęcia, jakie zrobił mu SPHEREx, wyrównane, z widmem pod spodem. Oto co dzieje się pomiędzy.">
+<link rel="canonical" href="https://chronospherex.com/pl/how-it-works.html">
+<link rel="alternate" hreflang="en" href="https://chronospherex.com/how-it-works.html">
+<link rel="alternate" hreflang="tr" href="https://chronospherex.com/tr/how-it-works.html">
+<link rel="alternate" hreflang="es" href="https://chronospherex.com/es/how-it-works.html">
+<link rel="alternate" hreflang="de" href="https://chronospherex.com/de/how-it-works.html">
+<link rel="alternate" hreflang="fr" href="https://chronospherex.com/fr/how-it-works.html">
+<link rel="alternate" hreflang="pl" href="https://chronospherex.com/pl/how-it-works.html">
+<link rel="alternate" hreflang="x-default" href="https://chronospherex.com/how-it-works.html">
+<meta property="og:title" content="Jak to działa · Chronosphere">
+<meta property="og:description" content="Klikasz punkt na niebie. Kilka sekund później oglądasz wszystkie zdjęcia, jakie zrobił mu SPHEREx, wyrównane, z widmem pod spodem. Oto co dzieje się pomiędzy.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://chronospherex.com/pl/how-it-works.html">
+<meta property="og:image" content="https://chronospherex.com/preview.png">
+<meta property="og:site_name" content="Chronosphere">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../favicon.ico">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  html, body { height: auto; }
+  body { display: block; overflow: auto; }
+  .doctop { justify-content: space-between; }
+  .doctop .cta { text-decoration: none; display: inline-flex; align-items: center; }
+  .doc { padding: 5vh 16px 8vh; }
+  .docmore { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14.5px; }
+  .docmore a { color: var(--ink-2); text-underline-offset: 3px; }
+  .docmore a:hover, .docmore a[aria-current] { color: var(--ink); }
+  .docmore span { flex-basis: 100%; height: 0; }
+</style>
+</head>
+<body>
+<header class="top doctop">
+  <a class="brand" href="../?lang=pl" aria-label="Chronosphere">
+    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><circle cx="13" cy="17" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="19" cy="14" r="8" fill="var(--ember)"/></svg>
+    <span>Chronosphere</span>
+  </a>
+  <a class="cta" href="../?lang=pl">Otwórz mapę nieba</a>
+</header>
+<main class="doc">
+  <article class="sheet">
+    <p class="eyebrow">Pod maską</p>
+    <h1>Jak to działa</h1>
+    <p class="lead">Klikasz punkt na niebie. Kilka sekund później oglądasz wszystkie zdjęcia, jakie zrobił mu SPHEREx, wyrównane, z widmem pod spodem. Oto co dzieje się pomiędzy.</p>
+    <ol>
+      <li><b>Wyszukanie w indeksie nieba.</b> Zwarty indeks wszystkich publicznych ekspozycji SPHEREx, około 1,6 miliona, podaje, które z nich były skierowane w pobliże twojego punktu. Indeks jest okresowo odbudowywany z archiwum NASA, więc nowe wydania danych pojawiają się bez dotykania kodu.</li>
+      <li><b>Odczyt tylko potrzebnych pikseli.</b> Pełna ekspozycja to plik większy niż 60 megabajtów. Przeglądarka odczytuje jego nagłówek i tylko mały blok pikseli wokół twojego punktu, kilkaset kilobajtów, prosto z otwartych danych NASA w chmurze.</li>
+      <li><b>Wyrównanie obrazów.</b> Każdą ekspozycję wykonano pod innym kątem. Każdy blok jest przerysowywany na wspólną siatkę, północą do góry, na podstawie informacji o położeniu zapisanych w pliku, a poświata tła nieba jest odejmowana.</li>
+      <li><b>Ustalenie koloru każdego piksela.</b> Każda ekspozycja zapisuje twój punkt na innej długości fali. Tę długość fali odczytuje się z tabeli zawartej w każdym pliku.</li>
+      <li><b>Obliczenia na twoim urządzeniu.</b> Jasność, sumowanie, odejmowanie, obrazy barwne, pomiary i wykresy są liczone w przeglądarce, dlatego każdy przycisk reaguje natychmiast.</li>
+      <li><b>Powiedzenie, co to jest.</b> Katalog SIMBAD jest pytany, co leży w tym położeniu. Katalogi przechowują miejsce, w którym gwiazda była w roku 2000, więc bliskie gwiazdy, które od tamtej pory się przesunęły, są przed dopasowaniem przenoszone na dzisiejszą datę.</li>
+    </ol>
+    <h2>Bez serwera, działa też offline</h2>
+    <p>Chronosphere nie ma własnego serwera. Strona to zestaw statycznych plików; cała reszta to twoja przeglądarka rozmawiająca bezpośrednio z otwartymi danymi NASA. Po naszej stronie nie ma więc niczego, co trzeba utrzymywać w ruchu, ani niczego, co mogłoby przestać działać. Wszystko, co raz otworzysz, łącznie z całą wycieczką, zapisuje się na twoim urządzeniu i działa dalej bez połączenia.</p>
+    <h2>Jak czytać to, co widzisz</h2>
+    <ul>
+      <li><b>Wizyty.</b> SPHEREx wraca do większości obszarów nieba mniej więcej co sześć miesięcy, a każda wizyta trwa od kilku dni do kilku tygodni. Jeden zsumowany obraz na wizytę, pokazywane po kolei, sprawiają, że małe przesunięcie łatwo dostrzec. W pobliżu biegunów płaszczyzny Układu Słonecznego patrzy niemal przy każdym okrążeniu, więc tam obrazy są grupowane według miesięcy.</li>
+      <li><b>Tabela przesunięć.</b> Dla obiektu w ruchu położenie zmierzone w każdej wizycie porównuje się z tym, co przewiduje katalog: jego jednostajnym ruchem po niebie oraz, dla najbliższych gwiazd, rocznym wahaniem wywołanym przez orbitę samej Ziemi. Ruch jest mierzony osobno w każdym detektorze, który widzi obiekt, a detektory są ze sobą porównywane.</li>
+      <li><b>Widmo.</b> Każdy punkt to jedna ekspozycja: jej długość fali i jasność zakreślonego miejsca. Punkty są pokolorowane według wizyty.</li>
+      <li><b>Pasma cząsteczek.</b> Zacieniowane paski pokazują, gdzie pospolite cząsteczki pochłaniają światło. Tabela podaje, jak głęboki spadek tam zmierzono.</li>
+      <li><b>Porównanie z sąsiadami.</b> Pod krzywą jasności zmiana zakreślonego miejsca między wizytami jest zestawiana ze zwykłymi gwiazdami na tych samych obrazach. Jeśli one pozostały stałe, a miejsce nie, zmiana jest prawdziwa, a nie jest kaprysem kamery. To samo robi się dla jego położenia.</li>
+      <li><b>Każda gwiazda sprawdzona.</b> Pod obrazami każda wyraźna gwiazda w polu jest badana pod kątem ruchu i zmian jasności, bez użycia jakiegokolwiek katalogu. Te nieliczne, które się wyróżniają, są wypisane i oznaczone rombem. Oznaczenie to powód, by spojrzeć, a nie wynik.</li>
+    </ul>
+    <h2>Czego ci nie powie</h2>
+    <ul>
+      <li>Jeden piksel SPHEREx obejmuje 6,15 sekundy łuku. Nawet gwiazda, której położenie na niebie zmienia się najszybciej, przesuwa się o mniej niż dwa piksele rocznie, więc ruch to mały skok między wizytami, nigdy smuga.</li>
+      <li>Pomiary używają prostego, stałego koła i służą do poznawania, a nie do publikacji. Bardzo jasne gwiazdy nasycają detektor; dla nich mierzy się zamiast tego słabą zewnętrzną poświatę gwiazdy, a każdy detektor dołącza się do sąsiedniego: ogólny kształt widma jest poprawny, jego poziom i drobne szczegóły są przybliżone.</li>
+      <li>Spadek na długości fali cząsteczki to wskazówka, a nie wykrycie.</li>
+      <li>Położenia zwykłych gwiazd powtarzają się z dokładnością do kilku dziesiątych sekundy łuku, ale gwiazda bliska nasycenia kamery może w pojedynczej wizycie odbiegać o sekundę łuku lub więcej.</li>
+      <li>Nic tutaj nie jest twierdzeniem o odkryciu. Coś, co wygląda na nowe, to powód, by sprawdzić to w innych narzędziach, do których prowadzą odnośniki przy każdym obiekcie.</li>
+    </ul>
+    <nav class="docmore" aria-label="Chronosphere">
+      <a href="what-is-spherex.html">Czym jest SPHEREx?</a>
+      <a href="how-it-works.html" aria-current="page">Jak to działa</a>
+      <a href="about.html">O projekcie</a>
+      <span></span>
+      <a href="../how-it-works.html" lang="en" hreflang="en">English</a>
+      <a href="../tr/how-it-works.html" lang="tr" hreflang="tr">Türkçe</a>
+      <a href="../es/how-it-works.html" lang="es" hreflang="es">Español</a>
+      <a href="../de/how-it-works.html" lang="de" hreflang="de">Deutsch</a>
+      <a href="../fr/how-it-works.html" lang="fr" hreflang="fr">Français</a>
+      <a href="../pl/how-it-works.html" lang="pl" hreflang="pl" aria-current="true">Polski</a>
+    </nav>
+  </article>
+</main>
+</body>
+</html>

@@ -2093,7 +2093,13 @@ $('sheet').addEventListener('keydown', e => {
   if (e.shiftKey && (document.activeElement === first || document.activeElement === $('sheet'))) { e.preventDefault(); last.focus(); }
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 });
-document.querySelectorAll('[data-sheet]').forEach(b => { b.onclick = () => { closeMenu(); openSheet(b.dataset.sheet); }; });
+// The three pages also exist as plain pages with addresses of their own (scripts/build_pages.mjs): a plain click
+// opens the words over the map, a click meant for a new tab or window follows the link.
+const PAGE_FILES = { spherex: 'what-is-spherex.html', how: 'how-it-works.html', about: 'about.html' };
+document.querySelectorAll('[data-sheet]').forEach(b => {
+  b.href = (NAV ? `${Lang.lang}/` : '') + PAGE_FILES[b.dataset.sheet];
+  b.onclick = e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); closeMenu(); openSheet(b.dataset.sheet); };
+});
 if (NAV) {          // the three pages are in the language in use: so are their names in the top bar
   document.querySelectorAll('[data-sheet]').forEach(b => { b.textContent = NAV[b.dataset.sheet] || b.textContent; });
   $('navlinks').removeAttribute('lang'); $('sheetwrap').removeAttribute('lang');

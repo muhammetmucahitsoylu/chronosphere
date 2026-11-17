@@ -2,6 +2,8 @@
 // Every figure quoted here was checked against its source; the sources are linked at the end of each page.
 // This file holds the English text. The same pages in another language are in pages/<code>.js, in the same shape;
 // a language without such a file gets the English pages.
+// The same words are also published as plain pages with addresses of their own (what-is-spherex.html and the
+// others, for search engines and browsers without scripts): after changing a page, run node scripts/build_pages.mjs
 import { lang } from './lang.js';
 
 export const TEAM = {

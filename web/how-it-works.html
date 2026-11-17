@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0908">
+<title>How it works · Chronosphere</title>
+<meta name="description" content="You click a point of the sky. A few seconds later you are watching every picture SPHEREx has taken of it, lined up, with a spectrum underneath. Here is what happens in between.">
+<link rel="canonical" href="https://chronospherex.com/how-it-works.html">
+<link rel="alternate" hreflang="en" href="https://chronospherex.com/how-it-works.html">
+<link rel="alternate" hreflang="tr" href="https://chronospherex.com/tr/how-it-works.html">
+<link rel="alternate" hreflang="es" href="https://chronospherex.com/es/how-it-works.html">
+<link rel="alternate" hreflang="de" href="https://chronospherex.com/de/how-it-works.html">
+<link rel="alternate" hreflang="fr" href="https://chronospherex.com/fr/how-it-works.html">
+<link rel="alternate" hreflang="pl" href="https://chronospherex.com/pl/how-it-works.html">
+<link rel="alternate" hreflang="x-default" href="https://chronospherex.com/how-it-works.html">
+<meta property="og:title" content="How it works · Chronosphere">
+<meta property="og:description" content="You click a point of the sky. A few seconds later you are watching every picture SPHEREx has taken of it, lined up, with a spectrum underneath. Here is what happens in between.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://chronospherex.com/how-it-works.html">
+<meta property="og:image" content="https://chronospherex.com/preview.png">
+<meta property="og:site_name" content="Chronosphere">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  html, body { height: auto; }
+  body { display: block; overflow: auto; }
+  .doctop { justify-content: space-between; }
+  .doctop .cta { text-decoration: none; display: inline-flex; align-items: center; }
+  .doc { padding: 5vh 16px 8vh; }
+  .docmore { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14.5px; }
+  .docmore a { color: var(--ink-2); text-underline-offset: 3px; }
+  .docmore a:hover, .docmore a[aria-current] { color: var(--ink); }
+  .docmore span { flex-basis: 100%; height: 0; }
+</style>
+</head>
+<body>
+<header class="top doctop">
+  <a class="brand" href="./" aria-label="Chronosphere">
+    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><circle cx="13" cy="17" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="19" cy="14" r="8" fill="var(--ember)"/></svg>
+    <span>Chronosphere</span>
+  </a>
+  <a class="cta" href="./">Open the sky map</a>
+</header>
+<main class="doc">
+  <article class="sheet">
+    <p class="eyebrow">Under the hood</p>
+    <h1>How it works</h1>
+    <p class="lead">You click a point of the sky. A few seconds later you are watching every picture SPHEREx has taken of it, lined up, with a spectrum underneath. Here is what happens in between.</p>
+    <ol>
+      <li><b>Look it up in the sky index.</b> A compact index of every public SPHEREx exposure, about 1.6 million of them, says which ones were pointed near your spot. The index is rebuilt from NASA's archive on a schedule, so new data releases appear without anyone touching the code.</li>
+      <li><b>Read only the pixels that matter.</b> A full exposure is a file of more than 60 megabytes. Your browser reads its header and just the small block of pixels around your spot, a few hundred kilobytes, straight from NASA's open data on the cloud.</li>
+      <li><b>Line the images up.</b> Each exposure was taken at a different angle. Every block is redrawn on one common grid, north up, using the position information stored in the file, and the glow of the sky background is removed.</li>
+      <li><b>Find the colour of each pixel.</b> Each exposure records your spot at a different wavelength. That wavelength is read from a table inside every file.</li>
+      <li><b>Compute on your device.</b> Brightness, stacking, subtracting, colour pictures, measurements and plots are all computed in your browser, which is why every control answers instantly.</li>
+      <li><b>Say what it is.</b> The SIMBAD catalogue is asked what lies at that position. Catalogues store where a star was in the year 2000, so nearby stars that have drifted since are moved to today's date before matching.</li>
+    </ol>
+    <h2>No server, and it works offline</h2>
+    <p>Chronosphere has no server of its own. The page is a set of static files; everything else is your browser talking directly to NASA's open data. That means there is nothing to keep running and nothing that can go down on our side. Whatever you have opened once, including the whole guided tour, is saved on your device and keeps working without a connection.</p>
+    <h2>How to read what you see</h2>
+    <ul>
+      <li><b>Visits.</b> SPHEREx comes back to most parts of the sky about every six months, and each visit lasts from a few days to a few weeks. One stacked image per visit, shown in turn, makes a small shift easy to see. Near the poles of the solar system's plane it looks almost every orbit, so there the images are grouped by month instead.</li>
+      <li><b>The shift table.</b> For a moving object, the position measured in each visit is compared with what the catalogue predicts: its steady motion across the sky plus, for the nearest stars, the yearly wobble caused by Earth's own orbit. The motion is measured separately in every detector that sees the object, and the detectors are compared with each other.</li>
+      <li><b>The spectrum.</b> Each dot is one exposure: its wavelength, and how bright the circled spot was. Dots are coloured by visit.</li>
+      <li><b>Molecule bands.</b> Shaded strips mark where common molecules absorb light. The table reports how deep a dip was measured there.</li>
+      <li><b>Checked against its neighbours.</b> Under the brightness curve, the change of the circled spot between visits is set against ordinary stars in the same images. If they stayed steady and the spot did not, the change is real and not a quirk of the camera. The same is done for its position.</li>
+      <li><b>Every star, checked.</b> Under the images, every clear star of the field is tested for motion and for brightness changes, without using any catalogue. The few that stand out are listed and marked with a diamond. A flag is a reason to look, not a finding.</li>
+    </ul>
+    <h2>What it cannot tell you</h2>
+    <ul>
+      <li>One SPHEREx pixel covers 6.15 arcseconds. Even the star whose place in the sky changes fastest moves less than two pixels a year, so motion is a small hop between visits, never a streak.</li>
+      <li>Measurements use a simple fixed circle and are meant for exploring, not for publication. Very bright stars overload the detector; for those, the star's faint outer glow is measured instead and each detector is joined to its neighbour: the overall shape of the spectrum is right, its level and fine detail are approximate.</li>
+      <li>A dip at a molecule's wavelength is a hint, not a detection.</li>
+      <li>Positions repeat to a few tenths of an arcsecond for ordinary stars, but a star close to overloading the camera can be off by an arcsecond or more in a single visit.</li>
+      <li>Nothing here claims a discovery. Something that looks new is a reason to check it in the other tools linked from every object.</li>
+    </ul>
+    <nav class="docmore" aria-label="Chronosphere">
+      <a href="what-is-spherex.html">What is SPHEREx?</a>
+      <a href="how-it-works.html" aria-current="page">How it works</a>
+      <a href="about.html">About</a>
+      <span></span>
+      <a href="how-it-works.html" lang="en" hreflang="en" aria-current="true">English</a>
+      <a href="tr/how-it-works.html" lang="tr" hreflang="tr">Türkçe</a>
+      <a href="es/how-it-works.html" lang="es" hreflang="es">Español</a>
+      <a href="de/how-it-works.html" lang="de" hreflang="de">Deutsch</a>
+      <a href="fr/how-it-works.html" lang="fr" hreflang="fr">Français</a>
+      <a href="pl/how-it-works.html" lang="pl" hreflang="pl">Polski</a>
+    </nav>
+  </article>
+</main>
+</body>
+</html>

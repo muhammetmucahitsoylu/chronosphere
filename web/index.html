@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a0908">
-<title>Chronosphere — the sky is not still</title>
+<title>Chronosphere — the sky is not still · NASA SPHEREx sky explorer</title>
 <meta name="description" content="Fly over the whole sky as NASA's SPHEREx sees it, pick any point, and watch that spot change over time. See what moves, what flickers, and what it is made of.">
 <meta property="og:title" content="Chronosphere — the sky is not still">
 <meta property="og:description" content="Fly over the whole sky as NASA's SPHEREx sees it, pick any point, and watch it change over time.">
@@ -37,7 +37,7 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<noscript><p style="margin:0;padding:14px 18px;background:#1b1512;color:#f3eee6;font:15px/1.5 system-ui,sans-serif">Chronosphere reads NASA's SPHEREx images in your browser, so it needs JavaScript. Turn it on for this site and reload the page.</p></noscript>
+<noscript><p style="margin:0;padding:14px 18px;background:#1b1512;color:#f3eee6;font:15px/1.5 system-ui,sans-serif">Chronosphere reads NASA's SPHEREx images in your browser, so it needs JavaScript. Turn it on for this site and reload the page. To read about it meanwhile: <a href="what-is-spherex.html" style="color:#ff7b39">What is SPHEREx?</a> · <a href="how-it-works.html" style="color:#ff7b39">How it works</a> · <a href="about.html" style="color:#ff7b39">About</a></p></noscript>
 <header class="top" id="top">
   <a class="brand" href="./" aria-label="Chronosphere, home">
     <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><circle cx="13" cy="17" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="19" cy="14" r="8" fill="var(--ember)"/></svg>
@@ -51,9 +51,10 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
   </form>
   <nav class="nav" id="nav" aria-label="About this site">
     <div class="navlinks" id="navlinks" lang="en">
-      <button type="button" data-sheet="spherex">What is SPHEREx?</button>
-      <button type="button" data-sheet="how">How it works</button>
-      <button type="button" data-sheet="about">About</button>
+      <!-- links to the pages as plain pages (a search engine, a new tab); a plain click opens the same words over the map -->
+      <a href="what-is-spherex.html" data-sheet="spherex">What is SPHEREx?</a>
+      <a href="how-it-works.html" data-sheet="how">How it works</a>
+      <a href="about.html" data-sheet="about">About</a>
       <select id="lang" class="langpick" aria-label="Language" data-t-label="nav.language"></select>
     </div>
     <button id="tourbtn" type="button" class="cta" data-t="nav.tour">Guided tour</button>

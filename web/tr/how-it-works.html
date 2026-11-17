@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0908">
+<title>Nasıl çalışır? · Chronosphere</title>
+<meta name="description" content="Gökyüzünde bir noktaya tıklarsınız. Birkaç saniye sonra SPHEREx’in o noktadan çektiği bütün görüntüleri hizalanmış olarak, altında bir tayfla izliyorsunuzdur. Arada şunlar olur.">
+<link rel="canonical" href="https://chronospherex.com/tr/how-it-works.html">
+<link rel="alternate" hreflang="en" href="https://chronospherex.com/how-it-works.html">
+<link rel="alternate" hreflang="tr" href="https://chronospherex.com/tr/how-it-works.html">
+<link rel="alternate" hreflang="es" href="https://chronospherex.com/es/how-it-works.html">
+<link rel="alternate" hreflang="de" href="https://chronospherex.com/de/how-it-works.html">
+<link rel="alternate" hreflang="fr" href="https://chronospherex.com/fr/how-it-works.html">
+<link rel="alternate" hreflang="pl" href="https://chronospherex.com/pl/how-it-works.html">
+<link rel="alternate" hreflang="x-default" href="https://chronospherex.com/how-it-works.html">
+<meta property="og:title" content="Nasıl çalışır? · Chronosphere">
+<meta property="og:description" content="Gökyüzünde bir noktaya tıklarsınız. Birkaç saniye sonra SPHEREx’in o noktadan çektiği bütün görüntüleri hizalanmış olarak, altında bir tayfla izliyorsunuzdur. Arada şunlar olur.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://chronospherex.com/tr/how-it-works.html">
+<meta property="og:image" content="https://chronospherex.com/preview.png">
+<meta property="og:site_name" content="Chronosphere">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../favicon.ico">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../css/fonts.css">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  html, body { height: auto; }
+  body { display: block; overflow: auto; }
+  .doctop { justify-content: space-between; }
+  .doctop .cta { text-decoration: none; display: inline-flex; align-items: center; }
+  .doc { padding: 5vh 16px 8vh; }
+  .docmore { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14.5px; }
+  .docmore a { color: var(--ink-2); text-underline-offset: 3px; }
+  .docmore a:hover, .docmore a[aria-current] { color: var(--ink); }
+  .docmore span { flex-basis: 100%; height: 0; }
+</style>
+</head>
+<body>
+<header class="top doctop">
+  <a class="brand" href="../?lang=tr" aria-label="Chronosphere">
+    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><circle cx="13" cy="17" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="19" cy="14" r="8" fill="var(--ember)"/></svg>
+    <span>Chronosphere</span>
+  </a>
+  <a class="cta" href="../?lang=tr">Gökyüzü haritasını aç</a>
+</header>
+<main class="doc">
+  <article class="sheet">
+    <p class="eyebrow">Perde arkası</p>
+    <h1>Nasıl çalışır?</h1>
+    <p class="lead">Gökyüzünde bir noktaya tıklarsınız. Birkaç saniye sonra SPHEREx’in o noktadan çektiği bütün görüntüleri hizalanmış olarak, altında bir tayfla izliyorsunuzdur. Arada şunlar olur.</p>
+    <ol>
+      <li><b>Gökyüzü dizininde arama.</b> Herkese açık bütün SPHEREx pozlarının, yaklaşık 1,6 milyon pozun, küçük bir dizini hangilerinin sizin noktanızın yakınına bakmış olduğunu söyler. Dizin belirli aralıklarla NASA’nın arşivinden yeniden kurulur; böylece yeni veri sürümleri kimse koda dokunmadan görünür.</li>
+      <li><b>Yalnızca gereken pikselleri okuma.</b> Tam bir poz 60 megabayttan büyük bir dosyadır. Tarayıcınız dosyanın başlığını ve yalnızca noktanızın çevresindeki birkaç yüz kilobaytlık küçük piksel bloğunu, doğrudan NASA’nın buluttaki açık verisinden okur.</li>
+      <li><b>Görüntüleri hizalama.</b> Her poz başka bir açıyla çekilmiştir. Her blok, dosyada saklanan konum bilgisi kullanılarak kuzey yukarıda olacak biçimde ortak bir ızgaraya yeniden çizilir ve gökyüzü arka planının ışıması çıkarılır.</li>
+      <li><b>Her pikselin rengini bulma.</b> Her poz noktanızı başka bir dalga boyunda kaydeder. Bu dalga boyu her dosyanın içindeki bir tablodan okunur.</li>
+      <li><b>Hesabı sizin cihazınızda yapma.</b> Parlaklık, üst üste toplama, çıkarma, renkli görüntüler, ölçümler ve grafikler tarayıcınızda hesaplanır; her denetimin anında yanıt vermesi bundandır.</li>
+      <li><b>Ne olduğunu söyleme.</b> SIMBAD kataloğuna o konumda ne bulunduğu sorulur. Kataloglar bir yıldızın 2000 yılında nerede olduğunu saklar; bu yüzden o zamandan beri yer değiştirmiş yakın yıldızlar eşleştirmeden önce bugünün tarihine taşınır.</li>
+    </ol>
+    <h2>Sunucu yok, çevrimdışı da çalışır</h2>
+    <p>Chronosphere’in kendi sunucusu yoktur. Sayfa bir dizi sabit dosyadan oluşur; geri kalan her şey tarayıcınızın doğrudan NASA’nın açık verisiyle konuşmasıdır. Yani bizim tarafımızda çalışır durumda tutulacak ya da çökebilecek bir şey yok. Bir kez açtığınız her şey, rehberli turun tamamı da içinde, cihazınıza kaydedilir ve bağlantı olmadan çalışmayı sürdürür.</p>
+    <h2>Gördüklerinizi nasıl okumalı</h2>
+    <ul>
+      <li><b>Ziyaretler.</b> SPHEREx gökyüzünün çoğu bölümüne yaklaşık altı ayda bir geri gelir ve her ziyaret birkaç günden birkaç haftaya kadar sürer. Her ziyaret için üst üste toplanmış tek bir görüntü sırayla gösterilince küçük bir kayma kolayca görülür. Güneş sistemi düzleminin kutuplarına yakın yerlere neredeyse her yörüngede baktığı için orada görüntüler aylara göre gruplanır.</li>
+      <li><b>Kayma tablosu.</b> Hareket eden bir cisim için her ziyarette ölçülen konum, kataloğun öngördüğüyle karşılaştırılır: gökyüzündeki düzgün hareketi ve en yakın yıldızlar için Dünya’nın kendi yörüngesinden kaynaklanan yıllık salınım. Hareket, cismi gören her dedektörde ayrı ayrı ölçülür ve dedektörler birbiriyle karşılaştırılır.</li>
+      <li><b>Tayf.</b> Her nokta bir pozdur: dalga boyu ve halka içindeki noktanın o pozdaki parlaklığı. Noktalar ziyarete göre renklendirilir.</li>
+      <li><b>Molekül bantları.</b> Gölgeli şeritler yaygın moleküllerin ışığı soğurduğu yerleri gösterir. Tablo, orada ne kadar soğurma ölçüldüğünü bildirir.</li>
+      <li><b>Komşularıyla karşılaştırma.</b> Parlaklık eğrisinin altında, halka içindeki noktanın ziyaretler arasındaki değişimi aynı görüntülerdeki sıradan yıldızlarla karşılaştırılır. Onlar sabit kalmış, nokta kalmamışsa değişim gerçektir, kameranın bir kusuru değildir. Aynısı konumu için de yapılır.</li>
+      <li><b>Her yıldız denetlenir.</b> Görüntülerin altında, alandaki her net yıldız hiçbir katalog kullanılmadan hareket ve parlaklık değişimi açısından sınanır. Öne çıkan birkaçı listelenir ve bir baklava işaretiyle gösterilir. İşaret, bakmak için bir nedendir, bir bulgu değil.</li>
+    </ul>
+    <h2>Size söyleyemeyecekleri</h2>
+    <ul>
+      <li>Bir SPHEREx pikseli 6,15 yay saniyesi kaplar. Gökyüzündeki yeri en hızlı değişen yıldız bile yılda iki pikselden az yer değiştirir; bu yüzden hareket ziyaretler arasında küçük bir sıçramadır, asla bir çizgi değil.</li>
+      <li>Ölçümler basit, sabit bir daire kullanır ve keşif içindir, yayın için değil. Çok parlak yıldızlar dedektörü doyurur; onlarda bunun yerine yıldızın sönük dış ışıması ölçülür ve her dedektör komşusuna eklenir: tayfın genel biçimi doğrudur, düzeyi ve ince ayrıntısı yaklaşıktır.</li>
+      <li>Bir molekülün dalga boyundaki soğurma izi bir ipucudur, kesin bir tespit değil.</li>
+      <li>Sıradan yıldızlarda konumlar yay saniyesinin onda birkaçı kadar bir doğrulukla yinelenir; ama kamerayı doyurmaya yakın bir yıldız tek bir ziyarette bir yay saniyesi ya da daha fazla sapabilir.</li>
+      <li>Buradaki hiçbir şey bir keşif iddiası değildir. Yeni görünen bir şey, onu her cisimden bağlantısı verilen öteki araçlarda denetlemek için bir nedendir.</li>
+    </ul>
+    <nav class="docmore" aria-label="Chronosphere">
+      <a href="what-is-spherex.html">SPHEREx nedir?</a>
+      <a href="how-it-works.html" aria-current="page">Nasıl çalışır?</a>
+      <a href="about.html">Hakkında</a>
+      <span></span>
+      <a href="../how-it-works.html" lang="en" hreflang="en">English</a>
+      <a href="../tr/how-it-works.html" lang="tr" hreflang="tr" aria-current="true">Türkçe</a>
+      <a href="../es/how-it-works.html" lang="es" hreflang="es">Español</a>
+      <a href="../de/how-it-works.html" lang="de" hreflang="de">Deutsch</a>
+      <a href="../fr/how-it-works.html" lang="fr" hreflang="fr">Français</a>
+      <a href="../pl/how-it-works.html" lang="pl" hreflang="pl">Polski</a>
+    </nav>
+  </article>
+</main>
+</body>
+</html>

@@ -181,6 +181,10 @@ talking directly to NASA's open data.
   in 21 runs the live map matched the still picture each time. Without the repair the holes stay; an
   earlier form of the repair, which did not wait for the library to be idle, left the map scrambled in one
   run of four.
+- **Nothing jumps while the page loads.** The browser's own measure of how far things on the screen move
+  after they first appear (cumulative layout shift; 0.1 is the usual limit for "good") was 0.13 on a phone,
+  0.23 on a small phone and 0.07 on a laptop, because the list of test objects and the map chooser were
+  filled in after the first picture. Now: 0.01, 0.02 and 0.004 on the published site.
 - **Languages.** Making the panel translatable must not change its English: the words of the panel for the
   five test objects, in six views each, were recorded before and after and are identical. A test language
   (`?lang=xx`) puts every translatable text in brackets; what stays outside them on the screen is object
@@ -266,12 +270,17 @@ web/sw.js             service worker: offline cache
 web/404.html          what a wrong address shows, with the way back to the map
 web/manifest.webmanifest, web/icon-192.png, web/icon-512.png, web/apple-touch-icon.png, web/favicon.ico
                       the site's name and icon for home screens and browser tabs
-web/robots.txt, web/sitemap.xml   for search engines
+web/what-is-spherex.html, web/how-it-works.html, web/about.html
+                      the three information pages as plain pages with addresses of their own, which a search
+                      engine or a browser without scripts can read (generated)
+web/tr/, web/es/, web/de/, web/fr/, web/pl/   the same three pages in the other languages (generated)
+web/robots.txt, web/sitemap.xml   for search engines (the sitemap is generated with the pages)
 web/index/            the sky index (generated)
 web/data/             the five showcase objects (generated)
 web/vendor/aladin.js  Aladin Lite 3.8.2 (CDS, GPL-3.0), unmodified
 web/fonts/            IBM Plex and Instrument Serif (SIL Open Font License)
-scripts/              build_index.py, prebuild.py
+scripts/              build_index.py, prebuild.py; build_pages.mjs writes the plain information pages
+                      from web/js/pages.js (run it with Node after changing a page)
 backend/              Python reference pipeline and optional API
 ```
 
