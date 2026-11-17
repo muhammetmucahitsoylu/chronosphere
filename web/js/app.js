@@ -5,9 +5,11 @@ import * as Info from './info.js';
 import { buildTour } from './tour.js';
 import { SHEETS, NAV } from './pages.js';
 import * as Archive from './archive.js';
+import * as Movers from './movers.js';
 import * as Lang from './lang.js';
 
 const T = Lang.t, G = Lang.G;          // the words of the front page, the tour and the walk through the panel, in the language in use
+const PAGE_FILES = { planetx: 'planet-x.html', spherex: 'what-is-spherex.html', how: 'how-it-works.html', about: 'about.html' };
 
 const API = (window.CHRONO_API || '').replace(/\/$/, '');
 const $ = id => document.getElementById(id);
@@ -18,6 +20,9 @@ const calmMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').m
 const yearNow = C.epochNow;
 const NUM = new Intl.NumberFormat('en'), NUM2 = new Intl.NumberFormat('en', { maximumFractionDigits: 2 });      // made once: making one per number is slow
 const nExp = n => Lang.N(n, 'exposure');
+// The showcase objects that have a name of their own in other languages (the tour's ladder of brightness names them).
+const NAMED = { barnard: 'ladder.r3', pluto: 'ladder.r4' };
+const nameOf = t => (NAMED[t.slug] && Lang.lang !== 'en' ? T(NAMED[t.slug]) : t.label);
 
 const MODES = {
   epochs: G`One stacked image per SPHEREx visit to this spot, played in a loop. Anything that moved between visits jumps.`,
@@ -26,6 +31,7 @@ const MODES = {
   diff: G`A later visit minus an earlier one. Steady stars mostly cancel, leaving at most a faint smudge; a moving object leaves a strong dark-and-bright pair.`,
   deep: G`All exposures of this detector added together: the deepest, cleanest image.`,
   bands: G`The same patch of sky in each of the six detectors, from 0.75 to 5 microns, then all six as one colour picture (short wavelengths blue, long red). Cold objects only appear at the long end.`,
+  trail: G`One image for every stop of the telescope that caught this body, in time order. The stars stay where they are; the body moves on.`,
 };
 
 const S = {
@@ -78,9 +84,10 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   S.abort?.abort(); S.abort = new AbortController();
   const gen = ++S.gen;
   stop();
-  Object.assign(S, { ra, dec, size: size || 5, target, track: track || (target && target.resolved) || null,
+  Object.assign(S, { ra, dec, size: size || 5, target, track: track || (target && (target.eph ? { name: target.label, eph: target.eph } : target.resolved)) || null,
     head: null, grid: null, dets: {}, seq: [], idx: 0, sel: null, gaia: null, catwise: null, deep: null, off: new Set(), stacks: null, epochs: null, pts: [], bandCache: {}, stackCache: {}, haloDets: [] });
   S.info = info; S.infoState = info ? 'done' : 'loading'; S.wiki = null; S.found = null; S.moved = null; S.find = {};
+  S.movers = null; S.bodyMemo = null;
   S.detPicked = !!det; S.autoNote = '';
   S.wantPlay = !calmMotion();          // the sequence starts playing by itself once it has loaded
   S.busyUntil = performance.now() + 9000;
@@ -93,7 +100,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
     const zoomNow = Sky.fov(), width = w => (keepZoom ? clamp(zoomNow, 0.12, Sky.objectFov(S.size, w)) : Sky.objectFov(S.size, w));
     if (fly) Sky.flyTo(ra, dec, width, { layout: opening ? openPanel : null });
     else if (opening) Sky.reshape(openPanel);
-    Sky.mark(ra, dec, S.size, target ? target.label : info ? info.name : track?.name || '');
+    Sky.mark(ra, dec, S.size, target ? nameOf(target) : info ? info.name : track?.name || '');
   }
   openPanel();
   const mapFirst = Sky.isReady() ? Promise.race([Sky.onItsWay(), nap(450)]) : null;
@@ -114,7 +121,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
       if (gen !== S.gen) return;
       if (!S.dets[d] && +S.head.avail[d] > 0) await loadDet(d, gen);
     }
-    if (gen === S.gen) { setStatus(''); autoDetector(); renderMotion(); maybeAutoplay(); }
+    if (gen === S.gen) { setStatus(''); autoDetector(); renderMotion(); maybeAutoplay(); findBodies(gen); }
   } catch (e) {
     if (e.name === 'AbortError' || gen !== S.gen) return;
     console.error(e);
@@ -196,7 +203,7 @@ function onData(det) {
   if (det === S.det) {
     setStatus(D.done ? '' : G`Loading detector ${det}: ${D.frames.length} of ${D.total} exposures`, D.done ? 0 : D.frames.length / Math.max(1, D.total));
     rebuild();
-  } else if (S.mode === 'bands' && D.done) { rebuild();
+  } else if ((S.mode === 'bands' || S.mode === 'trail') && D.done) { rebuild();
   } else if (!S.dets[S.det]?.loading) {
     setStatus(D.done ? '' : G`Loading detector ${det} for the spectrum: ${D.frames.length} of ${D.total}`, D.done ? 0 : D.frames.length / Math.max(1, D.total));
   }
@@ -231,7 +238,7 @@ function autoDetector() {
 /** Start the sequence by itself, once, when everything it needs has arrived. */
 function maybeAutoplay() {
   if (!S.wantPlay || !S.head || S.playing) return;
-  const ready = S.mode === 'bands'
+  const ready = S.mode === 'bands' || S.mode === 'trail'
     ? [1, 2, 3, 4, 5, 6].every(d => !+S.head.avail[d] || S.dets[d]?.done)
     : !!S.dets[S.det]?.done;
   if (!ready) return;
@@ -278,6 +285,7 @@ const epochColor = mjd => C.EPOCH_COLORS[gEpoch(mjd) % C.EPOCH_COLORS.length];
 
 function rebuild() {
   if (!S.grid) return;
+  if (S.mode === 'trail' && S.sel && !bodyStops()) S.mode = 'epochs';          // nothing is being followed any more
   const n = S.grid.n, npx = n * n, frames = usable(S.det);
   const keepMjd = S.seq[S.idx]?.mjd, keepDet = S.seq[S.idx]?.det;
   // Group by the archive-wide observing seasons so every detector agrees on what "season 2" is.
@@ -329,6 +337,17 @@ function rebuild() {
       seq = [{ kind: 'rgb', rgb: [a, m, b], mjd: b.mjd, title: G`Time as colour`,
         sub: m ? G`red ${C.fmtMonth(a.mjd)} · green ${C.fmtMonth(m.mjd)} · blue ${C.fmtMonth(b.mjd)}` : G`red ${C.fmtMonth(a.mjd)} · cyan ${C.fmtMonth(b.mjd)}` }];
     }
+  } else if (S.mode === 'trail') {
+    // One image per stop of the telescope that caught the body: the exposures of that stop in one detector, combined.
+    // The detector in use decides which half of the camera is shown (D1 to D3, or D4 to D6).
+    for (const q of bodyStops() || []) {
+      const d = q.dets.find(x => (x <= 3) === (S.det <= 3)) ?? q.dets[0], fr = usable(d).filter(f => Movers.stopOf(f.id) === q.stop);
+      if (!fr.length) continue;
+      const img = fr.length >= 3 ? C.medianStack(fr, npx) : fr.length === 2 ? Float32Array.from(fr[0].data, (v, p) => (fr[1].data[p] < v ? fr[1].data[p] : v)) : fr[0].data;
+      const st = C.robustStats(img);
+      seq.push({ kind: 'stack', det: d, img, sig: st.sig, hi: Math.max(st.p(0.997), 25 * st.sig), mjd: q.mjd, n: fr.length, at: q,
+        title: C.fmtDate(q.mjd, true), sub: `${nExp(fr.length)} · ${lamRange(fr)}` });
+    }
   } else if (S.mode === 'diff') {
     const pair = (a, b) => {
       const img = C.subtract(b.img, a.img);
@@ -352,9 +371,10 @@ function rebuild() {
   S.idx = clamp(idx, 0, Math.max(0, seq.length - 1));
   if (!S.sel) defaultSelection();
   $('seek').max = Math.max(0, seq.length - 1);
-  renderMotion(); renderScan();
+  renderModes(); renderMotion(); renderScan();
   show();
 }
+const lamRange = fr => { const v = fr.map(f => f.lam).sort((a, b) => a - b); return v.length > 1 ? `${v[0].toFixed(2)}–${v[v.length - 1].toFixed(2)} µm` : `${v[0].toFixed(2)} µm`; };
 
 function defaultSelection() {
   if (S.track) { S.sel = { follow: true }; return; }
@@ -369,6 +389,7 @@ function defaultSelection() {
 /** Where the catalogued target should be on a date: its year-2000 position, moved by its proper
  *  motion and, for nearby stars, by its parallax. Returned in grid pixels. */
 function trackPos(mjd) {
+  if (S.track.eph) { const p = ephAt(S.track.eph, mjd); return p ? C.skyToGrid(S.grid, p[0], p[1]) : [NaN, NaN]; }
   let [ra, dec] = C.propagate({ ra: S.track.ra2000, dec: S.track.dec2000, pmra: S.track.pmra, pmdec: S.track.pmdec }, 2000, C.mjdToYear(mjd));
   const plx = S.target?.dist?.plx ?? S.track.plx;
   if (plx > 20) {
@@ -379,8 +400,42 @@ function trackPos(mjd) {
 }
 function selPos(mjd) {
   if (!S.sel) return null;
-  if (S.sel.follow && S.track) return trackPos(mjd);
+  if (S.sel.trail) { const t = S.sel.trail; return mjd >= t.t0 - 0.05 && mjd <= t.t1 + 0.05 ? Movers.trackAt(t, mjd) : null; }      // a body is somewhere else on other days
+  if (S.sel.follow && S.track) { const p = trackPos(mjd); return p[0] === p[0] ? p : null; }
   return [S.sel.x, S.sel.y];
+}
+/** Where a body of the solar system was at a moment, from its path [[mjd, ra, dec], …]: null outside the days the path covers. */
+function ephAt(eph, mjd) {
+  if (!eph.length || mjd < eph[0][0] || mjd > eph[eph.length - 1][0]) return null;
+  let lo = 0, hi = eph.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (eph[m][0] <= mjd) lo = m; else hi = m; }
+  const a = eph[lo], b = eph[hi], t = (mjd - a[0]) / Math.max(b[0] - a[0], 1e-9);
+  return [a[1] + t * (b[1] - a[1]), a[2] + t * (b[2] - a[2])];
+}
+/**
+ * The body of the solar system being followed, if any: the stops of the telescope that caught it, in time order,
+ * each with the place of the body on the grid and the detectors that looked: [{ stop, mjd, x, y, dets }].
+ * Either a track found in these images (S.sel.trail), or a body whose path is known (S.track.eph).
+ */
+function bodyStops() {
+  const trail = S.sel?.trail, known = !trail && S.sel?.follow && S.track?.eph;
+  if (!S.grid || (!trail && !known)) return null;
+  const key = `${S.gen}:${trail ? 'found' : 'known'}:${[1, 2, 3, 4, 5, 6].map(d => S.dets[d]?.frames.length || 0).join()}:${[...S.off].join()}`;
+  if (S.bodyMemo?.key === key && S.bodyMemo.trail === trail) return S.bodyMemo.stops;
+  const n = S.grid.n, by = new Map();
+  for (let d = 1; d <= 6; d++) for (const f of usable(d)) {
+    const p = selPos(f.mjd);
+    if (!p || !(p[0] > 4 && p[1] > 4 && p[0] < n - 5 && p[1] < n - 5)) continue;
+    const v = f.data[Math.round(p[1]) * n + Math.round(p[0])];
+    if (v !== v) continue;                                               // this exposure did not look at that place
+    const k = Movers.stopOf(f.id);
+    if (trail && !trail.sightings.some(q => q.stop === k)) continue;      // a found track counts where it was found
+    if (!by.has(k)) by.set(k, { stop: k, mjd: 0, x: 0, y: 0, k: 0, dets: new Set() });
+    const o = by.get(k); o.mjd += f.mjd; o.x += p[0]; o.y += p[1]; o.k++; o.dets.add(d);
+  }
+  const stops = [...by.values()].map(o => ({ stop: o.stop, mjd: o.mjd / o.k, x: o.x / o.k, y: o.y / o.k, dets: [...o.dets].sort() })).sort((a, b) => a.mjd - b.mjd);
+  S.bodyMemo = { key, trail, stops };
+  return stops;
 }
 function lamAt(f) {
   const p = selPos(f.mjd), c = (S.grid.n - 1) / 2;
@@ -515,6 +570,27 @@ function overlays(it, W, H, s) {
         ctx.lineWidth = 1.2;
       }
     }
+    // A body of the solar system that is being followed: its path from stop to stop, with a dot at each stop. Kept out of the ring.
+    const path = bodyStops();
+    if (path && path.length > 1) {
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.arc(PX, PY, clear, 0, 7); ctx.clip('evenodd');
+      ctx.strokeStyle = '#ffffff77'; ctx.setLineDash([3, 3]); ctx.beginPath();
+      path.forEach((q, i) => { const [X, Y] = g2c(q.x, q.y, W, H, s); if (i) ctx.lineTo(X, Y); else ctx.moveTo(X, Y); });
+      ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = '#ffffffcc';
+      for (const q of path) { const [X, Y] = g2c(q.x, q.y, W, H, s); ctx.beginPath(); ctx.arc(X, Y, 1.8, 0, 7); ctx.fill(); }
+      ctx.restore();
+    }
+    // The other bodies that the search found in the exposures of this very stop: a gold corner mark and a name.
+    const here = it.frame ? Movers.stopOf(it.frame.id) : it.at?.stop;
+    if (here && S.movers?.tracks) for (const t of S.movers.tracks) {
+      if (t === S.sel?.trail || (t.body?.own && S.sel?.follow)) continue;
+      const q = t.sightings.find(x => x.stop === here); if (!q) continue;
+      const [X, Y] = g2c(q.x, q.y, W, H, s), r = rAp + 4, k = 6;
+      ctx.strokeStyle = ctx.fillStyle = '#f2c14e'; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { ctx.moveTo(X + sx * r, Y + sy * (r - k)); ctx.lineTo(X + sx * r, Y + sy * r); ctx.lineTo(X + sx * (r - k), Y + sy * r); }
+      ctx.stroke(); ctx.fillText(bodyLabel(t), X + r + 5, Y + 4);
+    }
     // Stars that the field check flagged: a diamond, wide enough to leave the star in view.
     if (scanResult?.flags?.length && scanKey.startsWith(`${S.gen}:${S.det}:`)) {
       ctx.strokeStyle = '#f2c14e'; ctx.lineWidth = 1.4;
@@ -589,8 +665,9 @@ function measureAll() {
   if (!S.grid || !S.sel) return [];
   const n = S.grid.n, c = (n - 1) / 2, sc = S.grid.scale, pts = [];
   S.haloDets = [];
+  const body = bodyStops(), stopsOf = body && new Set(body.map(q => q.stop));
   for (let det = 1; det <= 6; det++) {
-    const fr = usable(det); if (!fr.length) continue;
+    const fr = usable(det).filter(f => (body ? stopsOf.has(Movers.stopOf(f.id)) : true) && selPos(f.mjd)); if (!fr.length) continue;
     const pos = fr.map(f => selPos(f.mjd));
     // What is measured in an exposure depends only on the spot and the method, so it is worked out once
     // and remembered on the exposure: the plots are redrawn many times while detectors arrive.
@@ -644,7 +721,7 @@ function drawPlots() {
     xlabel: G`wavelength (µm)`, ylabel: relative ? G`relative brightness` : G`brightness (${unit})`, ylim: [ymin - (ymax - ymin) * 0.04, ymax > ymin ? ymax : ymin + 1],
     xlim: [0.7, 5.1], empty: S.failed ? G`No images to measure` : !S.grid ? G`Waiting for the images…` : S.sel ? G`Measuring…` : G`Click or tap a star in the image`,
     shade: [...(S.grid ? [{ x0: C.DET_BANDS[S.det][0], x1: C.DET_BANDS[S.det][1], color: '#ff7b3916' }] : []),
-      ...(S.showBands ? C.MOLECULES.map((m, i) => ({ x0: m.band[0], x1: m.band[1], color: '#ffffff12', label: m.f, row: i % 2 })) : [])],
+      ...(S.showBands ? (bodyStops() ? C.ICES : C.MOLECULES).map((m, i) => ({ x0: m.band[0], x1: m.band[1], color: '#ffffff12', label: m.f, row: i % 2 })) : [])],
     tipText: p => `${p.x.toFixed(3)} µm · ${relative ? `×${p.y.toFixed(2)}` : `${p.src.halo ? '≈ ' : ''}${p.y.toFixed(p.y >= 100 ? 0 : 2)}${p.src.halo ? '' : ` ± ${p.err.toFixed(2)}`} ${unit}`} · ${C.fmtDate(p.src.mjd)} · D${p.src.det}`,
     onPick: p => jumpTo(p.src),
   });
@@ -696,14 +773,17 @@ function steadied(pts) {
 function renderMolecules(pts) {
   const el = $('molecules');
   if (!S.showBands || pts.length < 30) { el.innerHTML = ''; S.find.bands = null; renderFindings(); return; }
-  const rowsData = C.bandDepths(pts);
+  // A star or a brown dwarf is checked for the gases of its atmosphere; a body of the solar system, which shines by
+  // reflected sunlight, for the ices on its surface, and only what is found is said: most asteroids carry none.
+  const body = !!bodyStops(), rowsData = body ? C.bandDepths(pts, C.ICES, true) : C.bandDepths(pts);
+  if (body && !rowsData.some(m => m.depth !== null && m.depth > 0.12 && m.depth > 4 * m.err)) { el.innerHTML = ''; S.find.bands = null; renderFindings(); return; }
   {
     // The table below, said in one line. Only what is beyond doubt makes the headline: a band has to
     // stand out by six times its uncertainty here, against four in the table. What passes the table's
     // test but not this one is called possible.
     const seen = m => m.depth !== null && Math.abs(m.depth) > 0.12 && Math.abs(m.depth) > 4 * m.err;
     const sure = m => seen(m) && Math.abs(m.depth) > 0.15 && Math.abs(m.depth) > 6 * m.err;
-    const short = { 'Water vapour': G`water`, 'Carbon monoxide, methane': G`carbon monoxide or methane`, 'Methane, or water ice': G`methane or water ice`, 'Carbon dioxide, gas or ice': G`carbon dioxide`, 'Carbon monoxide': G`carbon monoxide` };
+    const short = { 'Water vapour': G`water`, 'Carbon monoxide, methane': G`carbon monoxide or methane`, 'Methane, or water ice': G`methane or water ice`, 'Carbon dioxide, gas or ice': G`carbon dioxide`, 'Carbon monoxide': G`carbon monoxide`, 'Methane ice': G`methane ice` };
     const and = a => (a.length > 1 ? G`${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}` : a[0]);
     const names = rows => [...new Set(rows.map(m => short[m.name] || G(m.name).toLowerCase()))];
     const dips = names(rowsData.filter(m => sure(m) && m.depth > 0)), maybe = names(rowsData.filter(m => seen(m) && !sure(m) && m.depth > 0)).filter(x => !dips.includes(x));
@@ -757,14 +837,14 @@ function renderFindings() {
   const el = $('findings');
   if (!el) return;
   const f = S.find || {}, ready = !!S.dets[S.det]?.done;
-  const rows = ready ? [['motion', f.motion], ['lccheck', f.change], ['molecules', f.bands]].filter(r => r[1]) : [];
+  const rows = ready ? [['motion', f.motion], ['lccheck', f.change], ['molecules', f.bands], ['movers', S.sel?.trail ? null : f.movers]].filter(r => r[1]) : [];
   const html = rows.length ? G`<h2>What the measurements say</h2><ul>${rows.map(([to, r]) => G`<li class="${r.cls}"><button type="button" data-to="${to}" title="Show how this was measured">${r.html}</button></li>`).join('')}</ul>` : '';
   if (el.dataset.was !== html) { el.dataset.was = html; el.innerHTML = html; }
   el.hidden = !rows.length;
   leadState();
 }
 /** The lead of the panel (what to look for, what the measurements say) takes no room while it has nothing to say. */
-function leadState() { document.querySelector('.cols').classList.toggle('nolook', !$('lookbox').innerHTML && $('findings').hidden); }
+function leadState() { document.querySelector('.cols').classList.toggle('nolook', !$('lookbox').innerHTML && $('findings').hidden && $('bodybox').hidden); }
 $('findings').addEventListener('click', e => {
   const to = e.target.closest('button')?.dataset.to;
   if (to) $(to)?.scrollIntoView({ behavior: calmMotion() ? 'auto' : 'smooth', block: 'center' });
@@ -797,7 +877,7 @@ function findComparisons(targetFlux = 0) {
   peaks.sort((a, b) => b.v - a.v);
   const eps = S.head?.epochs || [];
   // Never the catalogued target itself, nor whatever is circled at the moment.
-  const mine = [...(S.track ? eps.map(e => trackPos((e[0] + e[1]) / 2)) : []), ...(S.sel && !S.sel.follow ? [[S.sel.x, S.sel.y]] : [])];
+  const mine = [...(S.track ? eps.map(e => trackPos((e[0] + e[1]) / 2)) : []), ...(S.sel && S.sel.x != null ? [[S.sel.x, S.sel.y]] : [])].filter(m => m[0] === m[0]);
   const crowd = 26 / g.scale;
   const clear = p => mine.every(m => {
     const d = Math.hypot(m[0] - p.x, m[1] - p.y) * g.scale;                       // arcseconds from the target
@@ -975,6 +1055,7 @@ function renderScan() {
   el.querySelectorAll('[data-flag]').forEach(b => { b.onclick = () => {
     const f = r.flags[+b.dataset.flag];
     S.sel = f.own ? { follow: true } : { x: f.s.x, y: f.s.y };
+    if (S.mode === 'trail') { rebuild(); renderMovers(); }
     paint(); renderMeta(); renderMotion(); refreshPlots();
     $('sky').scrollIntoView({ block: 'nearest', behavior: calmMotion() ? 'auto' : 'smooth' });
   }; });
@@ -985,7 +1066,7 @@ function renderChips() {
   const el = $('examples'); el.innerHTML = '';
   for (const t of S.targets) {
     const b = document.createElement('button');
-    b.type = 'button'; b.textContent = t.label; b.onclick = () => openTarget(t);
+    b.type = 'button'; b.textContent = nameOf(t); b.onclick = () => openTarget(t);
     el.appendChild(b);
   }
   // Suggestions on which the tool has been tried: nearby fast movers, brown dwarfs, a nebula, a galaxy.
@@ -1053,7 +1134,7 @@ function fmtDistance(plx, err) {
 
 function renderAbout() {
   const t = S.target, k = S.track, i = S.info, el = $('about');
-  const name = t ? t.label : i ? i.name : k?.name ? k.name : S.infoState === 'failed' || S.infoState === 'loading' ? G`This spot` : G`Uncatalogued spot`;
+  const name = t ? nameOf(t) : i ? i.name : k?.name ? k.name : S.infoState === 'failed' || S.infoState === 'loading' ? G`This spot` : G`Uncatalogued spot`;
   document.title = `${name} · Chronosphere`;          // the tab, the history and a bookmark say which object this is
   const sp = t?.sp || i?.sptype;
   const spHtml = sp ? G` · spectral type <span class="asis">${esc(sp)}</span>` : '';
@@ -1072,6 +1153,13 @@ function renderAbout() {
   const pmSrc = t?.pm || (i && i.pmra != null ? i : k && k.pmra != null ? k : null);
   const pm = pmSrc ? Math.hypot(pmSrc.pmra, pmSrc.pmdec) / 1000 : 0;          // arcseconds per year
   const fast = pm > 0.2;
+  if (t?.body) {
+    // A body of the solar system has no place of its own in the sky: what is told is when it was here, and where it was then.
+    const b = t.body;
+    fact(G`Crossed this field`, C.fmtRange(b.from, b.to), G`${arc(b.moved)} across the sky`, G`The days on which it was inside these images, and how far it moved meanwhile`);
+    fact(G`Brightness`, G`magnitude ${b.mag.toFixed(1)}`, G`one SPHEREx exposure reaches about 19`, G`How bright it looked on those days, from ${b.source}`);
+    fact(G`Distance`, G`${b.sun.toFixed(1)} au from the Sun`, G`${b.earth.toFixed(1)} au from Earth; 1 au is the distance from the Earth to the Sun`, G`On those days, from ${b.source}`);
+  } else {
   const [sra, sdec] = C.fmtSex(S.ra, S.dec).split(' ');
   fact(fast ? G`Position today` : G`Position`, `${sra}<br>${sdec}`,
     fast ? G`${(pm * (yearNow() - 2000)).toFixed(0)}″ from its year-2000 place` : `${S.ra.toFixed(5)}°, ${S.dec >= 0 ? '+' : ''}${S.dec.toFixed(5)}°`,
@@ -1088,6 +1176,7 @@ function renderAbout() {
       G`Parallax ${plx} ${plxErr != null ? `± ${plxErr} ` : ''}milliarcseconds`);
   }
   if (i?.redshift > 0.002) fact(G`Redshift`, i.redshift.toFixed(4), G`its light is stretched by the expanding universe`);
+  }
   if (S.head) {
     const eps = S.head.epochs, split = !!S.head.split;
     fact(G`SPHEREx has`, `${S.head.estimated ? G`about ` : ''}${nExp(S.head.total)}`,
@@ -1096,7 +1185,7 @@ function renderAbout() {
   const w = S.wiki;
   // The encyclopedia's picture sits in the header only when it is a photograph (see isPhoto).
   const thumb = w?.thumb ? `<a class="thumb" href="${esc(w.url)}" target="_blank" rel="noopener" title="Wikipedia: ${esc(w.title)}"${photos.get(w.thumb) === true ? '' : ' hidden'}><img src="${esc(w.thumb)}" alt="${esc(w.title)}, image from Wikipedia"></a>` : '';
-  const links = [...(w ? [{ label: 'Wikipedia', title: G`Encyclopedia article: ${w.title}`, url: w.url }] : []), ...Info.externalLinks(S.ra, S.dec, i)]
+  const links = [...(w ? [{ label: 'Wikipedia', title: G`Encyclopedia article: ${w.title}`, url: w.url }] : []), ...(t?.body ? Info.bodyLinks(t.body.number || t.label) : Info.externalLinks(S.ra, S.dec, i))]
     .map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.title)}">${l.label}</a>`).join('');
   el.innerHTML = `<div class="toprow">
       <div class="idblock"><p class="kind">${kind}</p><h1>${esc(name)}</h1>${gloss ? `<p class="gloss">${esc(gloss)}</p>` : ''}${mv ? G`<p class="gomoved"><button type="button" class="cta" id="gomoved">Go to where it is now</button></p>` : ''}</div>
@@ -1243,6 +1332,7 @@ function renderMotion() {
   const el = $('motion');
   if (!el) return;
   const sum = (cls, html) => { S.find.motion = cls ? { cls, html } : null; renderFindings(); };
+  if (S.grid && bodyStops()) return bodyMotion(el, sum);
   if (!S.grid || !S.sel || !S.stacks || S.stacks.length < 2) { el.innerHTML = ''; sum(null); return; }
   const g = S.grid, n = g.n, as = v => (v * g.scale).toFixed(1);
   const tracked = !!(S.sel.follow && S.track && S.track.pmra != null);
@@ -1315,8 +1405,143 @@ function renderMotion() {
   sum('none', G`<b>No motion:</b> the same place to within ${Math.max(d, 0.1).toFixed(1)}″ between ${span}.`);
 }
 function renderModes() {
-  for (const b of $('modes').children) b.setAttribute('aria-pressed', b.dataset.mode === S.mode);
+  const body = !!(S.grid && bodyStops());
+  for (const b of $('modes').children) { b.setAttribute('aria-pressed', b.dataset.mode === S.mode); if (b.dataset.mode === 'trail') b.hidden = !body; }
   $('explain').textContent = MODES[S.mode];
+}
+
+// ------------------------------------------------------------ bodies of the solar system passing through
+const nap0 = () => new Promise(r => setTimeout(r, 0));
+const arc = v => (v >= 90 ? `${(v / 60).toFixed(1)}′` : `${v.toFixed(v < 10 ? 1 : 0)}″`);                        // a length on the sky
+const pace = r => (r >= 2 ? G`${r.toFixed(1)}″ an hour` : G`${(r * 24).toFixed(r * 24 < 10 ? 1 : 0)}″ a day`);      // a speed on the sky, given in arcseconds an hour
+const clock = mjd => C.fmtDate(mjd, true).slice(11, 16);
+const span = (a, b) => (C.fmtDate(a) === C.fmtDate(b) ? `${C.fmtRange(a, a)}, ${clock(a)}–${clock(b)} UTC` : C.fmtRange(a, b));          // when: "6 Oct 2025, 02:04–15:09 UTC", "25 Sep – 12 Oct 2025"
+const lasting = hours => (hours >= 48 ? Lang.N(Math.round(hours / 24), 'day') : Lang.N(Math.max(1, Math.round(hours)), 'hour'));
+/**
+ * Look through every exposure of the field for dots that are at one place for minutes and gone on other days
+ * (movers.js), once all detectors have arrived; then ask what each one is.
+ */
+async function findBodies(gen) {
+  if (!S.grid || !S.head) return;
+  const dets = {}; let k = 0;
+  for (let d = 1; d <= 6; d++) { dets[d] = usable(d); k += dets[d].length; }
+  if (k < 12) { S.movers = null; renderMovers(); return; }
+  S.movers = { state: 'working' }; renderMovers();
+  try {
+    const signal = S.abort.signal;
+    const r = await Movers.findMovers(dets, S.grid, { pause: nap0, flags: navigator.onLine === false ? undefined : f => Archive.readFlags(f, S.grid, signal) });
+    if (gen !== S.gen) return;
+    S.movers = { state: 'done', ...r };
+  } catch (e) {
+    if (gen !== S.gen) return;
+    console.error(e); S.movers = { state: 'failed' };
+  }
+  // the body this page is about, when it is one: the track that lies on its path is its own
+  if (S.track?.eph) for (const t of S.movers.tracks || []) {
+    const p = trackPos(t.sightings[0].mjd);
+    if (Math.hypot(p[0] - t.sightings[0].x, p[1] - t.sightings[0].y) * S.grid.scale < 15) t.body = { own: true, name: S.target ? nameOf(S.target) : S.track.name };
+  }
+  renderMovers(); renderMotion(); paint();
+  if (S.wantBody && S.movers.tracks?.[S.wantBody - 1]) followBody(S.movers.tracks[S.wantBody - 1]);
+  S.wantBody = 0;
+  nameBodies(gen);
+}
+/** What each track is: SkyBoT knows where every catalogued body of the solar system was at a moment. One question per track, unhurried. */
+async function nameBodies(gen) {
+  for (const t of S.movers?.tracks || []) {
+    if (t.body || gen !== S.gen) continue;
+    if (navigator.onLine === false) { t.body = { unknown: true }; continue; }
+    const q = t.sightings[0], [ra, dec] = C.gridToSky(S.grid, q.x, q.y);
+    try {
+      const rows = await Info.skybot(ra, dec, q.mjd, 60, S.abort.signal);
+      // SPHEREx reaches about magnitude 19; a body listed much fainter than that is not what was seen
+      const hit = rows.find(o => o.d <= 25 && !(o.v > 20.5));
+      t.body = hit ? { ...hit, name: Info.bodyName(hit), kind: Info.bodyKind(hit) } : { none: true };
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      t.body = { unknown: true };
+    }
+    if (gen !== S.gen) return;
+    renderMovers(); renderMotion(); paint();
+    await nap(1500);
+  }
+}
+const bodyLabel = t => (t.body?.name ? t.body.name : t.sightings.length > 1 ? G`Unnamed moving dot` : G`Unnamed dot`);
+function renderMovers() {
+  const el = $('movers'), m = S.movers;
+  if (!el) return;
+  if (!m || m.state === 'failed') { el.innerHTML = ''; renderBodyBox(); return; }
+  if (m.state === 'working') { el.innerHTML = G`<p class="hint">Looking for bodies of the solar system passing through…</p>`; return; }
+  const tracks = m.tracks, sub = m.unchecked ? G` Possible sightings left out because the pipeline's flags could not be read: ${m.unchecked}.` : '';
+  if (!tracks.length) {
+    el.innerHTML = G`<p class="hint verdict"><b>Nothing passed through.</b> In ${nExp(m.frames)} no dot is at one place for a few minutes and gone from there on other days.${sub}</p>`;
+    S.find.movers = null; renderFindings(); renderBodyBox(); return;
+  }
+  const row = (t, i) => {
+    const b = t.body, v = t.sightings, one = v.length === 1, on = S.sel?.trail === t || (b?.own && S.sel?.follow);
+    const what = b?.own ? G`found by this search too` : b?.name ? `${b.kind}${b.v === b.v ? G`, magnitude ${b.v.toFixed(1)}` : ''}`
+      : b?.none ? G`no catalogued body is there` : b?.unknown ? G`not looked up: no connection` : G`looking it up…`;
+    const seen = one ? G`${Lang.N(v[0].hits.length, 'image')} within ${Lang.N(Math.max(1, Math.round((v[0].t1 - v[0].t0) * 1440)), 'minute')}, ${C.fmtDate(v[0].mjd, true)}`
+      : G`${Lang.N(v.length, 'stop')}, ${span(t.t0, t.t1)} · ${arc(t.path)} at ${pace(t.rate)}`;
+    return `<li><button type="button" data-body="${i}" aria-pressed="${!!on}">${esc(bodyLabel(t))}</button><span>${what} · ${seen}</span></li>`;
+  };
+  el.innerHTML = G`<p class="hint verdict"><b>Passed through this field: ${Lang.N(tracks.length, 'body of the solar system')}.</b> Each was a dot at one place for a few minutes, in several exposures, and gone from there on other days.${sub}</p>`
+    + `<ul class="flags bodies">${tracks.map(row).join('')}</ul>`
+    + G`<p class="hint">Press one to follow it from stop to stop. Names come from <a href="https://ssp.imcce.fr/webservices/skybot/" target="_blank" rel="noopener">SkyBoT</a> (Paris Observatory), which knows where every catalogued body was at that moment.</p>`;
+  el.querySelectorAll('[data-body]').forEach(b => { b.onclick = () => followBody(tracks[+b.dataset.body]); });
+  const others = tracks.filter(t => !t.body?.own), names = others.map(bodyLabel), strange = others.filter(t => t.body?.none).length;
+  S.find.movers = others.length ? { cls: strange ? 'unsure' : 'found', html: G`<b>Passed through this field:</b> ${esc(names.slice(0, 3).join(', '))}${names.length > 3 ? '…' : ''}.` } : null;
+  renderFindings(); renderBodyBox();
+}
+/** Follow a body found in these images: the ring goes with it, the images show it stop by stop, the plots measure it. */
+function followBody(t) {
+  stop(); S.wantPlay = false;
+  if (t.body?.own && S.track?.eph) S.sel = { follow: true }; else S.sel = { trail: t };
+  S.mode = 'trail'; S.seq = []; S.idx = 0; S.view = { ...S.view, z: 1 }; resetView();
+  renderModes(); rebuild(); renderMovers(); refreshPlots(); syncUrl();
+  if (S.seq.length > 1 && !calmMotion()) play();
+  $('sky').scrollIntoView({ block: 'nearest', behavior: calmMotion() ? 'auto' : 'smooth' });
+}
+function unfollow() {
+  stop(); S.sel = null; S.mode = 'epochs'; S.seq = []; S.idx = 0;
+  renderModes(); rebuild(); renderMovers(); refreshPlots(); syncUrl();
+}
+/** Above the measurements: which passing body they are about, while one is followed in the field of another object. */
+function renderBodyBox() {
+  const el = $('bodybox'), t = S.sel?.trail;
+  if (!el) return;
+  if (!t) { el.hidden = true; el.innerHTML = ''; leadState(); return; }
+  const b = t.body || {};
+  const facts = b.name ? [b.kind, b.v === b.v ? G`magnitude ${b.v.toFixed(1)}` : '', b.dh ? G`${b.dh.toFixed(2)} au from the Sun, ${b.dg.toFixed(2)} au from Earth` : ''].filter(Boolean).join(' · ')
+    : b.none ? G`SkyBoT lists no body of the solar system within 25″ of this place at that moment. It may be an artefact the checks missed, an artificial satellite, or a body nobody has catalogued: look at it in every exposure before believing it.`
+    : b.unknown ? G`Not looked up: SkyBoT could not be reached.` : G`Asking SkyBoT what it is…`;
+  const link = b.name ? ` ${Info.bodyLinks(b.num || b.name).map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.title)}">${l.label}</a>`).join(' · ')}` : '';
+  el.innerHTML = `<p class="kind">${G`Passing through this field`}</p><h2>${esc(bodyLabel(t))}</h2><p>${facts}${link}</p><button type="button" class="ghost" id="unfollow">${G`Back to ${esc(S.target ? nameOf(S.target) : S.info?.name || G`the spot`)}`}</button>`;
+  el.hidden = false;
+  $('unfollow').onclick = unfollow;
+  leadState();
+}
+/** How far and how fast the followed body moved, from stop to stop; for a body whose path is known, how well the path fits. */
+function bodyMotion(el, sum) {
+  const v = bodyStops(), t = S.sel?.trail, as = S.grid.scale;
+  if (v.length < 2) {
+    el.innerHTML = v.length ? G`<p class="hint">Caught at one stop of the telescope only: too little to measure a motion.</p>` : (S.dets[S.det]?.done ? G`<p class="hint">Its path does not cross these images.</p>` : '');
+    sum(null); return;
+  }
+  const a = v[0], z = v[v.length - 1], hours = (z.mjd - a.mjd) * 24, dE = -(z.x - a.x) * as, dN = (z.y - a.y) * as;
+  let path = 0; for (let i = 1; i < v.length; i++) path += Math.hypot(v[i].x - v[i - 1].x, v[i].y - v[i - 1].y) * as;
+  const rate = path / Math.max(hours, 1e-6), b = t?.body;
+  // a body whose path is known: how well does the search, which is not told where to look, agree with it?
+  let check = '';
+  const found = !t && (S.movers?.tracks || []).find(x => x.body?.own);
+  if (found) {
+    const off = found.sightings.map(q => { const p = trackPos(q.mjd); return Math.hypot(p[0] - q.x, p[1] - q.y) * as; }).filter(d => d === d).sort((p, q) => p - q);
+    check = G` The search for moving dots, which is not told where to look, found it at ${found.sightings.length} of them, typically ${off[off.length >> 1].toFixed(1)}″ from where its orbit puts it.`;
+  } else if (b?.name && b.rate && hours < 48) check = G` SkyBoT's orbit for ${esc(b.name)} gives ${pace(b.rate)} at that moment, ${b.d.toFixed(0)}″ from this track.`;      // over days a body speeds up or slows down: one moment's speed is no yardstick then
+  const rows = v.length <= 8 ? G`<table class="t"><thead><tr><th>Stop</th><th title="How far it has moved since the first stop">Moved</th><th>Detectors</th></tr></thead><tbody>${v.map((q, i) =>
+    `<tr><td>${C.fmtDate(q.mjd, true)}</td><td>${i ? arc(Math.hypot(q.x - a.x, q.y - a.y) * as) : G`first`}</td><td>${q.dets.map(d => 'D' + d).join(' + ')}</td></tr>`).join('')}</tbody></table>` : '';
+  el.innerHTML = G`${rows}<p class="hint verdict"><b>Moved ${arc(Math.hypot(dE, dN))} towards the ${compass(dE, dN)}</b> (${span(a.mjd, z.mjd)}): ${pace(rate)}. Stops of the telescope that caught it: ${v.length}.${check} One SPHEREx pixel is 6.15″.</p>`;
+  sum('found', G`<b>Moving ${pace(rate)}</b> towards the ${compass(dE, dN)}: ${arc(path)} in ${lasting(hours)}.`);
 }
 const DET_COLORS = ['#fff1d0', '#ffd58a', '#ffb057', '#ff7b39', '#e2472a', '#b3261e'];
 function renderDets() {
@@ -1547,8 +1772,9 @@ async function search(text) {
     }
     return;
   }
-  const q = text.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const preset = S.targets.find(t => [t.label, t.slug, t.query].some(s => { const v = s.toLowerCase().replace(/[^a-z0-9]/g, ''); return v.includes(q) || q.includes(v); }));
+  const plain = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');          // "Plüton" and "Plutón" are Pluto
+  const q = plain(text);
+  const preset = q.length > 2 && S.targets.find(t => [t.label, t.slug, t.query, nameOf(t)].some(s => { const v = plain(s); return v.includes(q) || q.includes(v); }));
   if (preset && size === preset.size) return openTarget(preset);
   note(T('note.lookingUpName', { name: text }));
   let r = null, reached = true;
@@ -1595,6 +1821,8 @@ function syncUrl() {
   if (isPreset()) p.set('target', S.target.slug);
   else { p.set('ra', S.ra.toFixed(5)); p.set('dec', S.dec.toFixed(5)); p.set('fov', S.size); }
   p.set('det', S.det); p.set('mode', S.mode);
+  const followed = S.sel?.trail ? (S.movers?.tracks || []).indexOf(S.sel.trail) + 1 : 0;
+  if (followed) p.set('body', followed);
   if (document.body.classList.contains('embed')) p.set('embed', '1');
   history.replaceState(null, '', '?' + p.toString());
 }
@@ -1694,7 +1922,9 @@ function pick(X, Y) {
   if (S.track && it) { const t = trackPos(it.mjd); if (Math.hypot(t[0] - gx, t[1] - gy) < 3) { S.sel = { follow: true }; paint(); renderMotion(); refreshPlots(); return; } }
   const img = it && it.img ? it.img : S.deep;
   const hit = img && C.centroid(img, S.grid.n, gx, gy, 2.5);
+  const was = S.sel?.trail;
   S.sel = hit ? { x: hit.x, y: hit.y } : { x: gx, y: gy };
+  if (was || S.mode === 'trail') { S.mode = 'frames'; rebuild(); renderMovers(); syncUrl(); }
   paint(); renderMeta(); renderMotion(); refreshPlots();
 }
 
@@ -1728,9 +1958,11 @@ $('savecsv').onclick = () => {
     p.flux.toPrecision(5), p.err.toPrecision(3), p.halo ? (relative ? 'halo (relative)' : 'halo joined to neighbouring detector (approximate)') : 'aperture 9.2 arcsec',
     q(p.frame.coll), q(p.frame.id), q(p.frame.url)].join(','));
   // Say which spot was measured: the object itself, or another star the user circled in its field.
-  const own = !!S.sel?.follow || !S.grid || (S.sel && Math.hypot(S.sel.x - (S.grid.n - 1) / 2, S.sel.y - (S.grid.n - 1) / 2) < 3);
-  const [sra, sdec] = own ? [S.ra, S.dec] : C.gridToSky(S.grid, S.sel.x, S.sel.y);
-  const what = own ? `${slugOf()}${S.sel?.follow ? ', following its catalogued motion' : ''}` : `a spot in the field of ${slugOf()}`;
+  const trail = S.sel?.trail, path = bodyStops();
+  const own = !trail && (!!S.sel?.follow || !S.grid || (S.sel && Math.hypot(S.sel.x - (S.grid.n - 1) / 2, S.sel.y - (S.grid.n - 1) / 2) < 3));
+  const [sra, sdec] = trail ? C.gridToSky(S.grid, trail.sightings[0].x, trail.sightings[0].y) : own ? [S.ra, S.dec] : C.gridToSky(S.grid, S.sel.x, S.sel.y);
+  const what = trail ? `${bodyLabel(trail)}, a body of the solar system passing through the field of ${slugOf()}, followed from stop to stop; the position is where it was first seen`
+    : own ? `${slugOf()}${path ? ', followed along its orbit' : S.sel?.follow ? ', following its catalogued motion' : ''}` : `a spot in the field of ${slugOf()}`;
   const pos = `# Chronosphere: ${what}. RA ${sra.toFixed(6)} Dec ${sdec.toFixed(6)} (ICRS). SPHEREx level-2 exposures from NASA/IPAC IRSA.\n# ${location.href}\n`;
   const name = own ? slugOf() : `${sra.toFixed(5)}_${sdec >= 0 ? '+' : ''}${sdec.toFixed(5)}`;
   download(new Blob([pos + head.join(',') + '\n' + rows.join('\n') + '\n'], { type: 'text/csv' }), `chronosphere_${name}_measurements.csv`);
@@ -1804,30 +2036,50 @@ function setLayer(id) {
 
 // ------------------------------------------------------------ the tour's worked example
 /**
- * Two real SPHEREx pictures of one small patch of sky, about a year apart, for the step of the tour
- * that explains why the same place is looked at twice: the first and the last visit to Barnard's
- * Star, the middle of the stamp, drawn the way the viewer draws them. They are made here, from the
- * same file that the Barnard step opens, so nothing is shown that the tool itself did not compute.
+ * Two real SPHEREx pictures of one small patch of sky for the step of the tour that tells how Pluto
+ * was found by comparing two photographs: Pluto itself, at two stops of the telescope about six days
+ * apart (the gap between Tombaugh's two plates), in one detector, the middle of the stamp, drawn the
+ * way the viewer draws them. They are made here, from the file that the Pluto step opens, so nothing
+ * is shown that the tool itself did not compute.
  */
 let blinkPair = null, blinkTimer = 0, blinkSide = 0;
 function blinkFrames() {
   blinkPair ||= (async () => {
-    const t = S.targets.find(x => x.slug === 'barnard');
+    const t = S.targets.find(x => x.slug === 'pluto' && x.eph);
     if (!t) return null;
     const frames = []; let head = null;
-    await C.loadStream(dataUrl(t, `d${t.view?.det || 5}.ndjson`), line => {
+    await C.loadStream(dataUrl(t, 'd1.ndjson'), line => {
       if (line.t === 'head') head = line;
       else if (line.t === 'frame') { if (line.b64) { line.data = C.decodeF16(line.b64); delete line.b64; } frames.push(line); }
     });
     if (!head?.grid || frames.length < 4) return null;
     frames.sort((a, b) => a.mjd - b.mjd);
-    const visits = C.splitEpochs(frames, 60);
-    if (visits.length < 2) return null;
     const n = head.grid.n, npx = n * n, crop = Math.round(n * 0.74), x0 = (n - crop) >> 1, px = 5;      // most of the stamp, 5 screen pixels per image pixel
+    // the stops of the telescope that caught the body inside the part shown, with two exposures or more
+    const by = new Map();
+    for (const f of frames) {
+      const p = ephAt(t.eph, f.mjd);
+      if (!p || f.cov < 0.95) continue;
+      const [x, y] = C.skyToGrid(head.grid, p[0], p[1]);
+      if (x < x0 + 6 || y < x0 + 6 || x > x0 + crop - 7 || y > x0 + crop - 7) continue;
+      const k = Movers.stopOf(f.id); if (!by.has(k)) by.set(k, []); by.get(k).push(f);
+    }
+    const stops = [...by.values()].filter(v => v.length >= 2).map(v => ({ frames: v, mid: v.reduce((s, f) => s + f.mjd, 0) / v.length }));
+    // of those, the two nearest to six days apart, with three exposures each if that can be had
+    let pair = null;
+    for (const a of stops) for (const b of stops) {
+      if (b.mid <= a.mid) continue;
+      const score = Math.abs(b.mid - a.mid - 6) - 0.2 * Math.min(a.frames.length, b.frames.length, 3);
+      if (!pair || score < pair.score) pair = { a, b, score };
+    }
+    if (!pair) return null;
     const all = C.robustStats(C.medianStack(frames.filter((_, i) => i % Math.ceil(frames.length / 60) === 0), npx));
     const top = Math.max(all.p(0.9996), 60 * all.sig);         // one brightness scale for both pictures; high, so that the bright star stays a dot
-    return [visits[0], visits[visits.length - 1]].map(v => {
-      const img = C.medianStack(v.frames, npx), sig = C.robustStats(img).sig;
+    const days = pair.b.mid - pair.a.mid;
+    return Object.assign([pair.a, pair.b].map(v => {
+      // two exposures: the fainter of the two at each pixel, which leaves cosmic-ray hits out; three or more: their median
+      const img = v.frames.length >= 3 ? C.medianStack(v.frames, npx) : Float32Array.from(v.frames[0].data, (q, p) => (v.frames[1].data[p] < q ? v.frames[1].data[p] : q));
+      const sig = C.robustStats(img).sig;
       const lo = -2 * sig, soft = 3 * sig, norm = Math.asinh((Math.max(top, 10 * sig) - lo) / soft);
       const small = document.createElement('canvas'); small.width = small.height = crop;
       const sx = small.getContext('2d'), im = sx.createImageData(crop, crop);
@@ -1840,8 +2092,8 @@ function blinkFrames() {
       const canvas = document.createElement('canvas'); canvas.width = canvas.height = crop * px;
       const cx = canvas.getContext('2d'); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
       cx.drawImage(small, 0, 0, crop * px, crop * px);
-      return { canvas, label: C.fmtMonth(v.mid) };
-    });
+      return { canvas, label: C.fmtRange(v.mid, v.mid) };
+    }), { days });
   })().catch(() => null);
   return blinkPair;
 }
@@ -1859,7 +2111,8 @@ async function showExample(on) {
   };
   const flip = () => { blinkSide = 1 - blinkSide; draw(); };
   const byHand = T('blink.flip');
-  $('blinkcap').textContent = `${T('blink.caption', { a: pair[0].label, b: pair[1].label })} ${calmMotion() ? byHand : ''}`;
+  // six days apart, as Tombaugh's two plates were: said only when these two are
+  $('blinkcap').textContent = `${T('blink.caption', { a: pair[0].label, b: pair[1].label })} ${pair.days > 5.5 && pair.days < 6.5 ? T('blink.pluto') : ''} ${calmMotion() ? byHand : ''}`;
   $('blinkstage').onclick = () => { if (blinkTimer) { clearInterval(blinkTimer); blinkTimer = 0; $('blinkcap').textContent += ` ${byHand}`; } flip(); };
   blinkSide = 0; draw(); el.hidden = false; document.body.classList.add('example');
   if (!calmMotion()) blinkTimer = setInterval(flip, 850);          // a blink comparator: a hard flip, not a fade
@@ -1914,7 +2167,7 @@ function relayout() {
 }
 function tourGo(i) {
   coachEnd();
-  if (!tourSteps.length) tourSteps = buildTour(S.targets, T);
+  if (!tourSteps.length) tourSteps = buildTour(S.targets, T, nameOf);
   if (i < 0) return;
   if (i >= tourSteps.length) return tourEnd();
   tourIdx = i;
@@ -2069,14 +2322,39 @@ $('tourclose').onclick = tourEnd;
 $('hidewelcome').onclick = () => { $('welcome').hidden = true; };
 
 // ------------------------------------------------------------ article sheets
-let sheetOpener = null;
+let sheetOpener = null, sheetTok = 0;
 function openSheet(id) {
-  if (!SHEETS[id]) return;
+  if (!SHEETS[id] && !PAGE_FILES[id]) return;
   sheetOpener = document.activeElement;
-  const wrap = $('sheetwrap'), sh = $('sheet');
-  sh.innerHTML = `<button type="button" class="close" aria-label="${NAV ? G('Close') : 'Close'}">×</button>${SHEETS[id]()}`;
-  sh.querySelector('.close').onclick = closeSheet;
+  const wrap = $('sheetwrap'), sh = $('sheet'), tok = ++sheetTok;
+  const fill = html => {
+    sh.innerHTML = `<button type="button" class="close" aria-label="${NAV ? G('Close') : 'Close'}">×</button>${html}`;
+    sh.querySelector('.close').onclick = closeSheet;
+    // the page's invitation to the tour starts it here, over the same map
+    sh.querySelectorAll('.docgo a').forEach(a => { a.onclick = e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); closeSheet(); tourGo(0); }; });
+  };
+  fill(SHEETS[id] ? SHEETS[id]() : '');
   wrap.hidden = false; wrap.scrollTop = 0; sh.focus();
+  if (!SHEETS[id]) pageWords(id).then(html => { if (tok === sheetTok && !wrap.hidden) fill(html); })
+    .catch(() => { if (tok === sheetTok) location.href = pageAddress(id); });          // not to be had as a sheet: the page itself
+}
+/** The address of a page that exists as a plain page only (scripts/build_pages.mjs), in the language in use. */
+const pageAddress = id => new URL((Lang.locale === 'en' ? '' : `${Lang.locale}/`) + PAGE_FILES[id], location.href).href;
+const pageCache = new Map();
+/** The words of such a page, for showing over the map: its article, without the links that lead around the plain pages. */
+function pageWords(id) {
+  if (!pageCache.has(id)) {
+    const url = pageAddress(id);
+    pageCache.set(id, fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); }).then(text => {
+      const art = new DOMParser().parseFromString(text, 'text/html').querySelector('article');
+      art.querySelector('.docmore')?.remove();
+      for (const el of art.querySelectorAll('[src]')) el.setAttribute('src', new URL(el.getAttribute('src'), url).href);          // addresses in the page are relative to the page
+      for (const el of art.querySelectorAll('a[href]')) el.setAttribute('href', new URL(el.getAttribute('href'), url).href);
+      return art.innerHTML;
+    }));
+    pageCache.get(id).catch(() => pageCache.delete(id));
+  }
+  return pageCache.get(id);
 }
 function closeSheet() {
   $('sheetwrap').hidden = true;
@@ -2093,11 +2371,11 @@ $('sheet').addEventListener('keydown', e => {
   if (e.shiftKey && (document.activeElement === first || document.activeElement === $('sheet'))) { e.preventDefault(); last.focus(); }
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 });
-// The three pages also exist as plain pages with addresses of their own (scripts/build_pages.mjs): a plain click
-// opens the words over the map, a click meant for a new tab or window follows the link.
-const PAGE_FILES = { spherex: 'what-is-spherex.html', how: 'how-it-works.html', about: 'about.html' };
+// The pages also exist as plain pages with addresses of their own (scripts/build_pages.mjs): a plain click opens
+// the words over the map, a click meant for a new tab or window follows the link. The three whose words are in
+// pages.js are shown from there; "Planet X", written by that script from the tour's words, is read from its plain page.
 document.querySelectorAll('[data-sheet]').forEach(b => {
-  b.href = (NAV ? `${Lang.lang}/` : '') + PAGE_FILES[b.dataset.sheet];
+  b.href = SHEETS[b.dataset.sheet] ? (NAV ? `${Lang.lang}/` : '') + PAGE_FILES[b.dataset.sheet] : pageAddress(b.dataset.sheet);
   b.onclick = e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); closeMenu(); openSheet(b.dataset.sheet); };
 });
 if (NAV) {          // the three pages are in the language in use: so are their names in the top bar
@@ -2154,6 +2432,7 @@ async function saveTourOffline(full) {
   for (const t of S.targets) {
     const d = t.view?.det || 2;
     files.push(dataUrl(t, `d${d}.ndjson`), dataUrl(t, 'gaia.json'));       // what each tour step shows first
+    if (t.eph && !full) for (let k = 1; k <= 6; k++) if (k !== d) files.push(dataUrl(t, `d${k}.ndjson`));      // a body is shown stop by stop, across the detectors
     if (t.wikiCard?.thumb) files.push(t.wikiCard.thumb);
     if (t.wikiCard && Lang.locale !== 'en') Info.wikipediaIn(Lang.locale, t.wikiCard);          // asked once here, the encyclopedia card in the page's language is kept for offline use too
   }
@@ -2191,7 +2470,7 @@ const TOUR_SAVED = esc(T('off.saved'));
  * are kept on this device like any position already opened, and open without a connection too.
  */
 async function offerLastObjects(say) {
-  if (!tourSteps.length) tourSteps = buildTour(S.targets, T);          // the tour may not have been started yet
+  if (!tourSteps.length) tourSteps = buildTour(S.targets, T, nameOf);          // the tour may not have been started yet
   const list = (tourSteps.at(-1)?.tryNext || []).map(placeNow);
   if (!list.length || !('caches' in window)) return;
   const kept = await Promise.all(list.map(o => Store.has(liveKey(o.ra, o.dec, TRY_SIZE, 'kept'))));
@@ -2290,9 +2569,10 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     }
   }
   const det = +q.get('det') || undefined, mode = q.get('mode') || undefined;
+  S.wantBody = +q.get('body') || 0;          // a passing body that the link was following: taken up again once the search has found it
   const t = S.targets.find(x => x.slug === q.get('target'));
   if (t) return go({ ra: t.ra, dec: t.dec, size: t.size, target: t, info: t.info || null, ...(t.view || {}), ...(det ? { det } : {}), ...(mode ? { mode } : {}) });
   if (q.has('ra') && q.has('dec')) return go({ ra: +q.get('ra'), dec: +q.get('dec'), size: +(q.get('fov') || q.get('size') || 5), det, mode });
   if (q.has('tour')) tourGo(0);
-  if (SHEETS[location.hash.slice(1)]) openSheet(location.hash.slice(1));
+  if (PAGE_FILES[location.hash.slice(1)]) openSheet(location.hash.slice(1));
 })();

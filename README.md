@@ -42,6 +42,14 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   catalogue, and the few that moved or changed are listed and marked. On the test fields this blind check
   finds Barnard's Star (10.5 arcseconds north), Epsilon Indi B (6.1 arcseconds south-east) and the fading of
   RW Aurigae, and nothing else.
+- **What passed through?** Every exposure of the field is also searched for bodies of the solar system: dots
+  that are at one place for a few minutes, in several exposures, and gone from there on other days. SPHEREx
+  stops, takes up to four exposures two minutes apart, and looks at each place with two of its detectors at
+  once, so a real body is in several independent images where a cosmic-ray hit is in one. Each body found is
+  named through SkyBoT (IMCCE, Paris Observatory) and can be followed from stop to stop: the ring goes with
+  it, the images show it moving against the stars, and its own spectrum is built. In the field that Pluto
+  crossed in October 2025 the search finds Pluto and two main-belt asteroids, (6747) Ozegahara and
+  (1218) Aster.
 - **Is it real, or the camera?** Every exposure carries the processing pipeline's own flags for each pixel:
   cosmic-ray hits, overloaded pixels, left-over charge, reflections of bright stars, and more. In the
   *Exposures* view, "This image" reads them on request (a few hundred kilobytes), says which are set at the
@@ -49,14 +57,18 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   you press on the image. The names and their meaning are read from the file itself, so a flag added by a
   later data release appears without a change to the site.
 - **What is it made of?** Click a star to get its spectrum from 0.75 to 5 microns and a table of the dips
-  found where water, methane, carbon monoxide and carbon dioxide absorb.
+  found where water, methane, carbon monoxide and carbon dioxide absorb. A body of the solar system shines
+  by reflected sunlight: its measurements are divided by the Sun's spectrum and checked for the bands of
+  methane ice instead. Pluto shows them: 40 per cent at 1.3 to 1.4 microns, 47 at 2.2 to 2.4, 57 at 3.2 to 3.6.
 - **Check it elsewhere.** One click opens the same coordinates in SIMBAD, WiseView (Backyard Worlds), ESASky,
-  the Legacy Survey viewer and the VizieR photometry viewer.
+  the Legacy Survey viewer and the VizieR photometry viewer. A body of the solar system links to its orbit
+  at NASA/JPL and at the Minor Planet Center.
 - **Take it with you.** Copy a link to the exact view, save the image or a video of the sequence, or download
   every measurement as a CSV file.
-- **Take the guided tour.** Twelve short steps, in plain language, from "what is SPHEREx" through the five
-  test objects of the challenge. One step shows two real SPHEREx pictures of the same patch of sky, a year
-  apart, flipping the way Clyde Tombaugh flipped his photographs: one dot moves. Two steps are about Planet X:
+- **Take the guided tour.** Thirteen short steps, in plain language, from "what is SPHEREx" through the five
+  test objects of the challenge to Pluto. One step shows two real SPHEREx pictures of the same patch of sky,
+  six days apart, flipping the way Clyde Tombaugh flipped his plates: one dot moves, and it is Pluto. The
+  last object is Pluto in the tool itself, found by its own search. Two steps are about Planet X:
   what was predicted and why, that nobody has seen it, and a ladder of brightness from Sirius down to the
   prediction that shows what a magnitude is and why a single SPHEREx exposure stops about 16 to 250 times
   short of it. At the first object, numbered pointers lead from the tour's card to the parts of the panel,
@@ -158,6 +170,21 @@ talking directly to NASA's open data.
   Luhman 16 are measured moving at 5.3 and 2.8 arcseconds per year, against catalogue values of 5.1 and 2.8.
   The blind field check finds Luhman 16 from raw coordinates, and rejects a close pair of stars in the same
   field that a naive position comparison would report as moving.
+- **Passing bodies.** The search was run on nine fields read from the archive (17 November 2026). In six
+  fields of 10 arcminutes along the ecliptic it reported 14 bodies: SkyBoT lists a catalogued body within
+  3 arcseconds of every one of them (visual magnitudes 14.0 to 18.8), and nothing was reported that it does
+  not list. In three fields of 5 arcminutes at ecliptic latitudes of 17, 29 and 52 degrees it reported none, and none
+  in the fields of the five test objects.
+  Each of the six fields was centred on a body known to be there: Pluto was found at all 19 stops of the
+  telescope that caught it, about half an arcsecond from the path JPL computes; (1467) Mashona (magnitude
+  14.0) at 3 of 3, (5379) Abehiroshi (17.2) at 4 of 4, (13232) Prabhakar (17.6) at 1 of 2, (19694) Dunkelman
+  (18.4) at 1 of 4, and (6563) Steinheim (18.6) at neither of 2: the search reaches about magnitude 18.
+  Speeds measured from the tracks agree with the orbits: 21.0 against 20.8 arcseconds an hour for Ozegahara,
+  23.5 against 23.6 for Aster. What was turned away on the way: charge left in a detector by a bright star
+  (missing from the first exposure of every stop, and back at the same place at every stop of a visit),
+  cosmic-ray hits that fell on one place twice, which the pipeline's own flags mark, and faint stars that
+  show only at one end of a detector's range of wavelengths, which are there again whenever the telescope
+  returns in that colour.
 - **Pixel flags.** The FLAGS layer of an exposure is a Rice-compressed image; the page has its own decoder.
   For two whole exposures (4.16 million pixels each) its output is identical to Astropy's, pixel for pixel.
   For the stamps of three test objects, the flags the page assigns to each pixel were recomputed
@@ -240,6 +267,7 @@ python -m venv .venv
 .venv/Scripts/python scripts/build_index.py          # bring the sky index up to date (downloads only what is new)
 .venv/Scripts/python scripts/prebuild.py             # rebuild the five showcase objects
 .venv/Scripts/python scripts/prebuild.py --meta      # refresh only their descriptions and catalogue facts
+node scripts/build_body.mjs pluto                    # rebuild Pluto: its path from JPL Horizons, its field from the archive
 ```
 
 The `backend/` folder also contains an optional FastAPI service with the same pipeline in Python
@@ -260,7 +288,8 @@ web/js/plot.js        the scatter plots on a canvas: axes, error bars, hover too
 web/js/sky.js         the explorable sky map (Aladin Lite + IRSA sky maps)
 web/js/rice.js        Rice decompression, for the flags layer of an exposure
 web/js/healpix.js     which sky-map tiles a view needs (HEALPix)
-web/js/info.js        identification (SIMBAD), Wikipedia card, links to other tools
+web/js/movers.js      bodies of the solar system passing through a field: the dots that are not always there
+web/js/info.js        identification (SIMBAD), names of solar-system bodies (SkyBoT), Wikipedia card, links to other tools
 web/js/tour.js        guided tour: the steps and what the map does at each
 web/js/lang.js        the words of the front page, the tour and the walk through the panel, in six languages
 web/js/lang/          the measurement panel in Turkish, Spanish, German, French and Polish (one file each)
@@ -277,16 +306,18 @@ web/planet-x.html     Planet X, Pluto and SPHEREx: the guided tour's story as a 
                       SPHEREx exposures six days apart (generated)
 web/barnards-star.html, web/epsilon-indi-b.html, web/wise-0855.html, web/rw-aurigae.html, web/r-draconis.html
                       the five test objects as plain pages, each with its SPHEREx pictures (generated)
+web/pluto.html        Pluto as a plain page: one SPHEREx picture for every stop of the telescope that caught it (generated)
 web/tr/, web/es/, web/de/, web/fr/, web/pl/   the same pages in the other languages (generated)
 web/img/              those pictures: real SPHEREx images, made by scripts/build_images.py
 web/robots.txt, web/sitemap.xml   for search engines (the sitemap is generated with the pages)
 web/db83ba526cb561c174feda741610f139.txt   the IndexNow key: Bing, Yandex and others read it to check that a
                       notice of new pages (scripts/indexnow.py) comes from this site
 web/index/            the sky index (generated)
-web/data/             the five showcase objects (generated)
+web/data/             the showcase objects: the five test objects and Pluto (generated)
 web/vendor/aladin.js  Aladin Lite 3.8.2 (CDS, GPL-3.0), unmodified
 web/fonts/            IBM Plex and Instrument Serif (SIL Open Font License)
-scripts/              build_index.py, prebuild.py; build_pages.mjs writes the plain information pages
+scripts/              build_index.py, prebuild.py; build_body.mjs builds Pluto with the site's own reader (Node);
+                      build_pages.mjs writes the plain information pages
                       from web/js/pages.js, the tour's words and the showcase objects (run it with Node after
                       changing any of them); build_images.py makes their pictures from the showcase data;
                       indexnow.py tells search engines which pages changed
@@ -317,6 +348,16 @@ No build step: plain HTML, CSS and JavaScript modules.
   is used for any flag the site does not know.
 - A dip at a molecule's wavelength is a hint, not a detection: other molecules and the shape of the spectrum
   itself can produce one.
+- The search for passing bodies reaches about magnitude 18, and a body has to be caught at two moments of
+  one stop, or by both detectors of a pair at one moment: fainter bodies and bodies in a single exposure are
+  missed. In front of a star a body is found only where a track already leads to it. A sighting that is not
+  part of a straight track of three stops is kept only after the pipeline's flags of its dots have been read,
+  which needs a connection. The orbits it is compared with are computed for the centre of the Earth; seen
+  from SPHEREx a main-belt asteroid lies up to a few arcseconds from there. A dot that SkyBoT does not know
+  can still be a fault of the image.
+- The ice bands of a body of the solar system are measured on its light divided by a black body of 5772 K
+  standing in for the Sun, from the few exposures of one visit; the band beyond 3 microns is set against its
+  short-wavelength side alone, because methane ice leaves no bright stretch on the other.
 - A star close to saturating the camera is located less faithfully: Barnard's Star is 1.7 arcseconds off its
   prediction in its first visit in one detector, while its other visits agree to 0.2 to 0.4.
 - The all-sky map is coarser (about 13 arcseconds per pixel) than the images loaded for a selected spot.
@@ -337,6 +378,8 @@ No build step: plain HTML, CSS and JavaScript modules.
   for the test objects and through VizieR (CDS and its mirror at Harvard) everywhere else.
 - Object identification and name resolution: SIMBAD and Sesame, CDS, Strasbourg, and their mirrors at the
   Center for Astrophysics, Harvard & Smithsonian.
+- Bodies of the solar system: named by SkyBoT, IMCCE, Observatoire de Paris (Berthier et al. 2006); Pluto's
+  path through its field is from JPL Horizons.
 - Sky atlas component: Aladin Lite, CDS (GPL-3.0).
 - Encyclopedia text and thumbnails: Wikipedia (CC BY-SA), shown with a link to the article.
 - Software: Astropy, NumPy, SciPy, PyVO, FastAPI.

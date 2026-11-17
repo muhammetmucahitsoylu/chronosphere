@@ -326,6 +326,18 @@ table.t td i { display: inline-block; width: 8px; height: 8px; border-radius: 50
 .flags li { display: flex; gap: 4px 10px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); }
 .flags button { border: 1px solid var(--gold); color: var(--gold); border-radius: 999px; padding: 3px 12px; font-size: 13px; min-height: 30px; white-space: nowrap; }
 .flags button:hover { background: #f2c14e22; }
+/* bodies of the solar system found passing through the field */
+#movers { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+#movers:empty { display: none; }
+#movers .hint { margin-top: 0; }
+#movers .flags + .hint { margin-top: 8px; }
+.bodies button[aria-pressed=true] { background: var(--gold); color: var(--bg); font-weight: 600; }
+.seg button[data-mode=trail] { grid-column: 1 / -1; }
+.bodybox { border: 1px solid var(--gold); border-radius: 10px; padding: 11px 14px 12px; min-width: 0; }
+.bodybox .kind { margin: 0; font: 500 11px var(--mono); letter-spacing: 1.2px; text-transform: uppercase; color: var(--gold); }
+.bodybox h2 { margin: 3px 0 0; font: 400 26px/1.1 var(--serif); }
+.bodybox p { margin: 6px 0 0; font-size: 14px; line-height: 1.45; color: #dcd4c7; }
+.bodybox .ghost { margin-top: 10px; min-height: 34px; padding: 5px 14px; font-size: 13.5px; }
 .plotwrap { position: relative; }
 .plotwrap canvas { width: 100%; height: 220px; display: block; cursor: pointer; touch-action: pan-y; }
 .tip { position: absolute; background: #0a0908f2; border: 1px solid var(--line-2); border-radius: 6px; padding: 3px 8px; font: 11.5px var(--mono); pointer-events: none; white-space: nowrap; z-index: 3; }
@@ -370,6 +382,17 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
 .statgrid b { display: block; font: 400 30px/1 var(--serif); color: var(--ember); }
 .statgrid span { display: block; margin-top: 6px; font-size: 13px; color: var(--ink-2); line-height: 1.35; }
 .sheet .fine { font-size: 13.5px; color: var(--ink-2); }
+/* the pages written by scripts/build_pages.mjs: their pictures, the ladder of brightness, the invitation at the end */
+.sheet h3 { font: 500 13px/1.4 var(--mono); letter-spacing: 1px; text-transform: uppercase; color: var(--ink-3); margin: 22px 0 0; }
+.docfig { margin: 22px 0 6px; }
+.docfig img { display: block; width: 100%; max-width: 420px; height: auto; border-radius: 10px; background: #000; image-rendering: auto; }
+.docfig figcaption { margin-top: 8px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+.docrungs { list-style: none; padding: 0 !important; margin: 10px 0 0; }
+.docrungs li { display: flex; gap: 14px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); margin: 0; }
+.docrungs li b { font: 500 15px var(--mono); min-width: 4.5em; color: var(--ink); }
+.docrungs li.limit { border-bottom: 1px dashed var(--ember); color: var(--ember); font: 500 12px var(--mono); letter-spacing: 1px; text-transform: uppercase; padding: 10px 0 4px; }
+.docgo { margin-top: 22px !important; }
+.docgo .cta { display: inline-flex; align-items: center; text-decoration: none; white-space: normal; text-align: center; max-width: 100%; }          /* a long name wraps instead of leaving the screen */
 .sheet .fine a { overflow-wrap: anywhere; }
 .filterfig { margin: 18px 0 0; }
 .filterfig svg { width: 100%; height: auto; display: block; }
@@ -400,8 +423,15 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
 }
 
 /* ---------- narrower desktops ---------- */
-@media (max-width: 1180px) {
+@media (max-width: 1320px) {
   .navlinks a[data-sheet=how] { display: none; }
+}
+/* narrow laptops, tablets and phones: the pages move into a menu, so that the search box keeps its width */
+@media (max-width: 1100px) {
+  .menubtn { display: flex; }
+  .navlinks { display: none; position: absolute; right: 10px; top: 52px; z-index: 50; flex-direction: column; align-items: stretch; gap: 0; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; padding: 6px; box-shadow: 0 16px 40px #000c; min-width: 200px; }
+  .nav.open .navlinks { display: flex; }
+  .navlinks a[data-sheet], .navlinks a[data-sheet=how] { display: block; text-align: left; padding: 11px 12px; font-size: 15px; color: var(--ink); min-height: 44px; }
 }
 
 /* ---------- phones and small tablets: one scrolling column ---------- */
@@ -415,10 +445,6 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
   #search { order: 3; flex-basis: 100%; max-width: none; }
   .nav { margin-left: auto; gap: 6px; }
   .nav .cta { margin-left: 0; padding: 7px 14px; min-height: 38px; font-size: 14px; }
-  .menubtn { display: flex; }
-  .navlinks { display: none; position: absolute; right: 10px; top: 52px; z-index: 50; flex-direction: column; align-items: stretch; gap: 0; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; padding: 6px; box-shadow: 0 16px 40px #000c; min-width: 200px; }
-  .nav.open .navlinks { display: flex; }
-  .navlinks a[data-sheet], .navlinks a[data-sheet=how] { display: block; text-align: left; padding: 11px 12px; font-size: 15px; color: var(--ink); min-height: 44px; }
 
   .app, .app[data-panel=open] { display: block; }
   .app[data-panel=closed] .mapwrap { height: calc(100vh - var(--toph, 104px)); height: calc(100dvh - var(--toph, 104px)); min-height: 400px; }

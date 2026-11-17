@@ -14,10 +14,10 @@ const POINTS = {
   ],
 };
 // What the presenter says while each test object is on screen is under `tour.<object>` in lang.js.
-const STORIES = ['barnard', 'epsindib', 'wise0855', 'rwaur', 'rdra'];
+const STORIES = ['barnard', 'epsindib', 'wise0855', 'rwaur', 'rdra', 'pluto'];
 
-/** `t(key)` gives the words for a key in the language in use. */
-export function buildTour(targets, t) {
+/** `t(key)` gives the words for a key in the language in use, `name(object)` what an object is called in it. */
+export function buildTour(targets, t, name = o => o.label) {
   // In the texts of the steps, *words between asterisks* are set in italics.
   const steps = [
     {
@@ -30,7 +30,7 @@ export function buildTour(targets, t) {
     },
     {
       title: t('tour.3.title'), text: t('tour.3.text'),
-      demo: 'blink',                                    // the worked example shown with this step: two real SPHEREx pictures, flipping
+      demo: 'blink',                                    // the worked example shown with this step: two real SPHEREx pictures of Pluto, flipping
       prep: api => api.example(),                       // made ready while the step before is on screen
       run: api => { api.closePanel(); api.sweep(false); api.slice(25); },
     },
@@ -52,7 +52,7 @@ export function buildTour(targets, t) {
   ];
   for (const o of targets) {
     steps.push({
-      title: o.label, text: STORIES.includes(o.slug) ? t(`tour.${o.slug}`) : `${o.blurb} ${o.look || ''}`,
+      title: name(o), text: STORIES.includes(o.slug) ? t(`tour.${o.slug}`) : `${o.blurb} ${o.look || ''}`,
       points: (POINTS[o.slug] || []).map(p => ({ ...p, label: t(`${p.key}.label`), text: t(`${p.key}.text`) })),
       prep: api => { api.warm(o.ra, o.dec, w => api.viewFov(o.size, w)); api.preload(o); },      // made ready while the previous step is on screen
       run: api => { api.sweep(false); api.open(o); },

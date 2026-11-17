@@ -55,6 +55,7 @@ export default {
       <li><b>Pasma cząsteczek.</b> Zacieniowane paski pokazują, gdzie pospolite cząsteczki pochłaniają światło. Tabela podaje, jak głęboki spadek tam zmierzono.</li>
       <li><b>Porównanie z sąsiadami.</b> Pod krzywą jasności zmiana zakreślonego miejsca między wizytami jest zestawiana ze zwykłymi gwiazdami na tych samych obrazach. Jeśli one pozostały stałe, a miejsce nie, zmiana jest prawdziwa, a nie jest kaprysem kamery. To samo robi się dla jego położenia.</li>
       <li><b>Każda gwiazda sprawdzona.</b> Pod obrazami każda wyraźna gwiazda w polu jest badana pod kątem ruchu i zmian jasności, bez użycia jakiegokolwiek katalogu. Te nieliczne, które się wyróżniają, są wypisane i oznaczone rombem. Oznaczenie to powód, by spojrzeć, a nie wynik.</li>
+      <li><b>Ciała przechodzące przez pole.</b> Pod obrazami każda ekspozycja jest przeszukiwana pod kątem punktów, które przez kilka minut są w jednym miejscu, a w inne dni ich tam nie ma: planetoid, komet, planet karłowatych. SPHEREx zatrzymuje się, wykonuje do czterech ekspozycji w odstępie dwóch minut, a dwa z jego sześciu detektorów zawsze patrzą w tej samej chwili na ten sam fragment nieba. Prawdziwe ciało widać więc naraz na kilku niezależnych obrazach; trafienie promienia kosmicznego tylko na jednym. Każde znalezione ciało nazywa SkyBoT, serwis Obserwatorium Paryskiego, który wie, gdzie w danej chwili było każde skatalogowane ciało; można je śledzić od postoju do postoju, z jego własnym widmem.</li>
     </ul>
     <h2>Czego ci nie powie</h2>
     <ul>
@@ -62,6 +63,7 @@ export default {
       <li>Pomiary używają prostego, stałego koła i służą do poznawania, a nie do publikacji. Bardzo jasne gwiazdy nasycają detektor; dla nich mierzy się zamiast tego słabą zewnętrzną poświatę gwiazdy, a każdy detektor dołącza się do sąsiedniego: ogólny kształt widma jest poprawny, jego poziom i drobne szczegóły są przybliżone.</li>
       <li>Spadek na długości fali cząsteczki to wskazówka, a nie wykrycie.</li>
       <li>Położenia zwykłych gwiazd powtarzają się z dokładnością do kilku dziesiątych sekundy łuku, ale gwiazda bliska nasycenia kamery może w pojedynczej wizycie odbiegać o sekundę łuku lub więcej.</li>
+      <li>Wyszukiwanie przechodzących ciał sięga do około 18. wielkości gwiazdowej. W sześciu polach testowych wzdłuż płaszczyzny Układu Słonecznego wskazało czternaście ciał o jasności od 14 do 18,8 wielkości gwiazdowej i SkyBoT znał każde z nich; w trzech polach daleko od tej płaszczyzny nie wskazało żadnego. Punkt, którego nie zna żaden katalog, wciąż może być wadą obrazu: to powód, by spojrzeć jeszcze raz.</li>
       <li>Nic tutaj nie jest twierdzeniem o odkryciu. Coś, co wygląda na nowe, to powód, by sprawdzić to w innych narzędziach, do których prowadzą odnośniki przy każdym obiekcie.</li>
     </ul>`,
 

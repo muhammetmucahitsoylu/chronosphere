@@ -82,6 +82,7 @@ const ENGLISH = {
       <li><b>Molecule bands.</b> Shaded strips mark where common molecules absorb light. The table reports how deep a dip was measured there.</li>
       <li><b>Checked against its neighbours.</b> Under the brightness curve, the change of the circled spot between visits is set against ordinary stars in the same images. If they stayed steady and the spot did not, the change is real and not a quirk of the camera. The same is done for its position.</li>
       <li><b>Every star, checked.</b> Under the images, every clear star of the field is tested for motion and for brightness changes, without using any catalogue. The few that stand out are listed and marked with a diamond. A flag is a reason to look, not a finding.</li>
+      <li><b>Passing bodies.</b> Under the images, every exposure is searched for dots that are at one place for a few minutes and gone from there on other days: asteroids, comets, dwarf planets. SPHEREx stops, takes up to four exposures two minutes apart, and two of its six detectors always look at the same sky at the same moment. A real body therefore shows in several independent images at once; a cosmic-ray hit shows in one. Each body found is named by SkyBoT, a service of Paris Observatory that knows where every catalogued body was at that moment, and can be followed from stop to stop, with its own spectrum.</li>
     </ul>
     <h2>What it cannot tell you</h2>
     <ul>
@@ -89,6 +90,7 @@ const ENGLISH = {
       <li>Measurements use a simple fixed circle and are meant for exploring, not for publication. Very bright stars overload the detector; for those, the star's faint outer glow is measured instead and each detector is joined to its neighbour: the overall shape of the spectrum is right, its level and fine detail are approximate.</li>
       <li>A dip at a molecule's wavelength is a hint, not a detection.</li>
       <li>Positions repeat to a few tenths of an arcsecond for ordinary stars, but a star close to overloading the camera can be off by an arcsecond or more in a single visit.</li>
+      <li>The search for passing bodies reaches about magnitude 18. In six test fields along the plane of the solar system it reported fourteen bodies, of magnitude 14 to 18.8, and SkyBoT knew every one of them; in three fields far from that plane it reported none. A dot that no catalogue knows may still be a fault in the image: it is a reason to look again.</li>
       <li>Nothing here claims a discovery. Something that looks new is a reason to check it in the other tools linked from every object.</li>
     </ul>`,
 

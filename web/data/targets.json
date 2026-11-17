@@ -7,7 +7,7 @@
   "blurb": "The star whose place in the sky changes fastest: 10.4 arcseconds per year, about 1.7 SPHEREx pixels.",
   "ra": 269.446074,
   "dec": 4.770706,
-  "size": 5.0,
+  "size": 5,
   "resolved": {
    "name": "NAME Barnard's star",
    "otype": "BY*",
@@ -103,7 +103,7 @@
   },
   "wikiCard": {
    "title": "Barnard's Star",
-   "extract": "Barnard's Star is a small red dwarf star in the constellation of Ophiuchus. At a distance of 5.96 light-years (1.83\u00a0pc) from Earth, it is the fourth-nearest-known individual star to the Sun after the three components of the Alpha Centauri system, and is the closest star in the northern celestial hemisphere. Its stellar mass is about 16% of the Sun's, and it has 19% of the Sun's diameter. Despite its proximity, the star has a dim apparent visual magnitude of +9.5 and is invisible to the unaided eye; it is much brighter in the infrared than in visible light.",
+   "extract": "Barnard's Star is a small red dwarf star in the constellation of Ophiuchus. At a distance of 5.96 light-years (1.83 pc) from Earth, it is the fourth-nearest-known individual star to the Sun after the three components of the Alpha Centauri system, and is the closest star in the northern celestial hemisphere. Its stellar mass is about 16% of the Sun's, and it has 19% of the Sun's diameter. Despite its proximity, the star has a dim apparent visual magnitude of +9.5 and is invisible to the unaided eye; it is much brighter in the infrared than in visible light.",
    "description": "Red dwarf star in the constellation Ophiuchus",
    "url": "https://en.wikipedia.org/wiki/Barnard's_Star",
    "thumb": "data/barnard/thumb.jpg"
@@ -124,7 +124,7 @@
   "blurb": "Two brown dwarfs orbiting a nearby star, moving 4.7 arcseconds per year. SPHEREx sees the pair as one dot.",
   "ra": 331.098399,
   "dec": -56.801256,
-  "size": 5.0,
+  "size": 5,
   "resolved": {
    "name": "* eps Ind B",
    "otype": "BD*",
@@ -203,7 +203,7 @@
   },
   "wikiCard": {
    "title": "Epsilon Indi",
-   "extract": "Epsilon Indi, Latinized from \u03b5 Indi, is a star system located at a distance of approximately 12 light-years from Earth in the southern constellation of Indus. The star has an orange hue and is faintly visible to the naked eye with an apparent visual magnitude of 4.674. It consists of a K-type main-sequence star, \u03b5 Indi A, and two brown dwarfs, \u03b5 Indi Ba and \u03b5 Indi Bb, in a wide orbit around it. The brown dwarfs were discovered in 2003. \u03b5 Indi Ba is an early T dwarf (T1) and \u03b5 Indi Bb a late T dwarf (T6) separated by 0.6 arcseconds, with a projected distance of 1460 AU from their primary star.",
+   "extract": "Epsilon Indi, Latinized from ε Indi, is a star system located at a distance of approximately 12 light-years from Earth in the southern constellation of Indus. The star has an orange hue and is faintly visible to the naked eye with an apparent visual magnitude of 4.674. It consists of a K-type main-sequence star, ε Indi A, and two brown dwarfs, ε Indi Ba and ε Indi Bb, in a wide orbit around it. The brown dwarfs were discovered in 2003. ε Indi Ba is an early T dwarf (T1) and ε Indi Bb a late T dwarf (T6) separated by 0.6 arcseconds, with a projected distance of 1460 AU from their primary star.",
    "description": "Star system in the constellation of Indus",
    "url": "https://en.wikipedia.org/wiki/Epsilon_Indi",
    "thumb": "data/epsindib/thumb.jpg"
@@ -224,7 +224,7 @@
   "blurb": "The coldest known brown dwarf, 7.4 light-years away, moving 8.2 arcseconds per year.",
   "ra": 133.757787,
   "dec": -7.242023,
-  "size": 5.0,
+  "size": 5,
   "resolved": {
    "name": "WISEA J085510.74-071442.5",
    "otype": "BD*",
@@ -232,7 +232,7 @@
    "dec2000": -7.247048,
    "pmra": -8123.7,
    "pmdec": 673.2,
-   "plx": 439.0,
+   "plx": 439,
    "epoch": 2026.87,
    "ra": 133.7577874444936,
    "dec": -7.242023463741767
@@ -271,7 +271,7 @@
    "mode": "bands"
   },
   "look": "The images step through the wavelengths. Below 4 microns the circle holds only the edge of an ordinary star just to its west. In the two longest-wavelength detectors a second source appears that is not in the Gaia catalogue: that is WISE 0855. In the colour picture it is the red dot. Switch to Visits in D6 to see it move.",
-  "wiki": "WISE 0855\u22120714",
+  "wiki": "WISE 0855−0714",
   "info": {
    "oid": 8596164,
    "mainId": "WISEA J085510.74-071442.5",
@@ -297,8 +297,8 @@
    "others": []
   },
   "wikiCard": {
-   "title": "WISE 0855\u22120714",
-   "extract": "WISE 0855\u22120714 is a brown dwarf of spectral class Y4, located 7.4 light-years from the Sun in the constellation Hydra. It is the fourth-closest stellar or substellar system to the Sun and was discovered by Kevin Luhman in 2013 using data from the Wide-field Infrared Survey Explorer (WISE). It is the coldest brown dwarf found yet, having a temperature of about 276\u00a0K. It has an estimated mass between 3 and 10 Jupiter masses, which makes it a planetary-mass object below the 13-Jupiter-mass rough limit for deuterium fusion.",
+   "title": "WISE 0855−0714",
+   "extract": "WISE 0855−0714 is a brown dwarf of spectral class Y4, located 7.4 light-years from the Sun in the constellation Hydra. It is the fourth-closest stellar or substellar system to the Sun and was discovered by Kevin Luhman in 2013 using data from the Wide-field Infrared Survey Explorer (WISE). It is the coldest brown dwarf found yet, having a temperature of about 276 K. It has an estimated mass between 3 and 10 Jupiter masses, which makes it a planetary-mass object below the 13-Jupiter-mass rough limit for deuterium fusion.",
    "description": "Brown dwarf in the constellation Hydra",
    "url": "https://en.wikipedia.org/wiki/WISE_0855%E2%88%920714",
    "thumb": "data/wise0855/thumb.jpg"
@@ -306,7 +306,7 @@
   "type": "Brown dwarf",
   "sp": "Y",
   "dist": {
-   "plx": 439.0,
+   "plx": 439,
    "err": 2.4,
    "src": "parallax from Kirkpatrick et al. 2021"
   }
@@ -319,7 +319,7 @@
   "blurb": "A young star, still surrounded by dust, whose brightness changes unpredictably.",
   "ra": 76.956589,
   "dec": 30.401286,
-  "size": 5.0,
+  "size": 5,
   "resolved": {
    "name": "V* RW Aur",
    "otype": "TT*",
@@ -405,7 +405,7 @@
   },
   "wikiCard": {
    "title": "RW Aurigae",
-   "extract": "RW Aurigae is a young binary system in the constellation of Auriga about 530\u00a0light years away, belonging to the Taurus-Auriga association of the \nTaurus Molecular Cloud. RW Aurigae B was discovered in 1944.",
+   "extract": "RW Aurigae is a young binary system in the constellation of Auriga about 530 light years away, belonging to the Taurus-Auriga association of the \nTaurus Molecular Cloud. RW Aurigae B was discovered in 1944.",
    "description": "Young binary star system in the constellation Auriga",
    "url": "https://en.wikipedia.org/wiki/RW_Aurigae",
    "thumb": "data/rwaur/thumb.jpg"
@@ -431,7 +431,7 @@
   "blurb": "A red giant that swells and shrinks, brightening and fading over about 245 days.",
   "ra": 248.16722,
   "dec": 66.755025,
-  "size": 5.0,
+  "size": 5,
   "resolved": {
    "name": "V* R Dra",
    "otype": "Mi*",
@@ -508,6 +508,406 @@
    "plx": 1.2509,
    "err": 0.0648,
    "src": "Gaia DR3 parallax"
+  }
+ },
+ {
+  "slug": "pluto",
+  "query": "Pluto",
+  "label": "Pluto",
+  "wiki": "Pluto",
+  "type": "Dwarf planet",
+  "kind": "body",
+  "size": 5,
+  "view": {
+   "det": 2,
+   "mode": "trail"
+  },
+  "blurb": "The dwarf planet that Clyde Tombaugh found in 1930 by comparing two photographs. SPHEREx caught it here in October 2025, moving on from one stop of the telescope to the next.",
+  "look": "Each image is one stop of the telescope, in time order. The stars stay where they are; the dot in the ring moves west along the dotted line, the path that NASA’s JPL computes from Pluto’s orbit. Under the images, the tool’s own search for moving dots reports what it found without being told where to look.",
+  "ra": 304.137228,
+  "dec": -23.617171,
+  "built": "2026-11-17T18:30:37Z",
+  "summary": {
+   "total": 514,
+   "avail": {
+    "1": 70,
+    "2": 87,
+    "3": 99,
+    "4": 71,
+    "5": 87,
+    "6": 100
+   },
+   "releases": {
+    "spherex_dr1": 429,
+    "spherex_qr3": 85
+   },
+   "epochs": [
+    [
+     60790.13024902344,
+     60796.38537597656
+    ],
+    [
+     60942.95196533203,
+     60966.242614746094
+    ],
+    [
+     61152.11120605469,
+     61173.70153808594
+    ],
+    [
+     61307.186767578125,
+     61317.30334472656
+    ]
+   ]
+  },
+  "info": {
+   "name": "Pluto",
+   "type": "Dwarf planet",
+   "body": true
+  },
+  "body": {
+   "number": 134340,
+   "mag": 14.5,
+   "sun": 35.36,
+   "earth": 35.07,
+   "moved": 84,
+   "from": 60951.958,
+   "to": 60960.417,
+   "source": "JPL Horizons"
+  },
+  "eph": [
+   [
+    60948,
+    304.173875,
+    -23.61248
+   ],
+   [
+    60948.25,
+    304.172142,
+    -23.61277
+   ],
+   [
+    60948.5,
+    304.170439,
+    -23.613053
+   ],
+   [
+    60948.75,
+    304.168763,
+    -23.613328
+   ],
+   [
+    60949,
+    304.167117,
+    -23.613595
+   ],
+   [
+    60949.25,
+    304.1655,
+    -23.613854
+   ],
+   [
+    60949.5,
+    304.163913,
+    -23.614104
+   ],
+   [
+    60949.75,
+    304.162356,
+    -23.614346
+   ],
+   [
+    60950,
+    304.160829,
+    -23.61458
+   ],
+   [
+    60950.25,
+    304.159334,
+    -23.614806
+   ],
+   [
+    60950.5,
+    304.157869,
+    -23.615024
+   ],
+   [
+    60950.75,
+    304.156436,
+    -23.615235
+   ],
+   [
+    60951,
+    304.155035,
+    -23.615439
+   ],
+   [
+    60951.25,
+    304.153665,
+    -23.615636
+   ],
+   [
+    60951.5,
+    304.152326,
+    -23.615826
+   ],
+   [
+    60951.75,
+    304.151019,
+    -23.61601
+   ],
+   [
+    60952,
+    304.149743,
+    -23.616188
+   ],
+   [
+    60952.25,
+    304.148498,
+    -23.61636
+   ],
+   [
+    60952.5,
+    304.147284,
+    -23.616526
+   ],
+   [
+    60952.75,
+    304.1461,
+    -23.616687
+   ],
+   [
+    60953,
+    304.144946,
+    -23.616841
+   ],
+   [
+    60953.25,
+    304.143821,
+    -23.61699
+   ],
+   [
+    60953.5,
+    304.142726,
+    -23.617132
+   ],
+   [
+    60953.75,
+    304.14166,
+    -23.617268
+   ],
+   [
+    60954,
+    304.140623,
+    -23.617397
+   ],
+   [
+    60954.25,
+    304.139615,
+    -23.617519
+   ],
+   [
+    60954.5,
+    304.138636,
+    -23.617633
+   ],
+   [
+    60954.75,
+    304.137686,
+    -23.61774
+   ],
+   [
+    60955,
+    304.136766,
+    -23.61784
+   ],
+   [
+    60955.25,
+    304.135875,
+    -23.617931
+   ],
+   [
+    60955.5,
+    304.135014,
+    -23.618014
+   ],
+   [
+    60955.75,
+    304.134184,
+    -23.618089
+   ],
+   [
+    60956,
+    304.133384,
+    -23.618155
+   ],
+   [
+    60956.25,
+    304.132616,
+    -23.618214
+   ],
+   [
+    60956.5,
+    304.131879,
+    -23.618264
+   ],
+   [
+    60956.75,
+    304.131174,
+    -23.618307
+   ],
+   [
+    60957,
+    304.130501,
+    -23.618342
+   ],
+   [
+    60957.25,
+    304.129861,
+    -23.61837
+   ],
+   [
+    60957.5,
+    304.129253,
+    -23.618391
+   ],
+   [
+    60957.75,
+    304.128677,
+    -23.618406
+   ],
+   [
+    60958,
+    304.128134,
+    -23.618414
+   ],
+   [
+    60958.25,
+    304.127622,
+    -23.618416
+   ],
+   [
+    60958.5,
+    304.127143,
+    -23.618412
+   ],
+   [
+    60958.75,
+    304.126695,
+    -23.618402
+   ],
+   [
+    60959,
+    304.126279,
+    -23.618386
+   ],
+   [
+    60959.25,
+    304.125894,
+    -23.618365
+   ],
+   [
+    60959.5,
+    304.125539,
+    -23.618338
+   ],
+   [
+    60959.75,
+    304.125215,
+    -23.618304
+   ],
+   [
+    60960,
+    304.124921,
+    -23.618265
+   ],
+   [
+    60960.25,
+    304.124656,
+    -23.618218
+   ],
+   [
+    60960.5,
+    304.124422,
+    -23.618165
+   ],
+   [
+    60960.75,
+    304.124217,
+    -23.618105
+   ],
+   [
+    60961,
+    304.124043,
+    -23.618038
+   ],
+   [
+    60961.25,
+    304.123898,
+    -23.617962
+   ],
+   [
+    60961.5,
+    304.123784,
+    -23.617879
+   ],
+   [
+    60961.75,
+    304.123701,
+    -23.617788
+   ],
+   [
+    60962,
+    304.123649,
+    -23.617689
+   ],
+   [
+    60962.25,
+    304.123628,
+    -23.617581
+   ],
+   [
+    60962.5,
+    304.123639,
+    -23.617466
+   ],
+   [
+    60962.75,
+    304.123682,
+    -23.617342
+   ],
+   [
+    60963,
+    304.123758,
+    -23.61721
+   ],
+   [
+    60963.25,
+    304.123867,
+    -23.617071
+   ],
+   [
+    60963.5,
+    304.124009,
+    -23.616925
+   ],
+   [
+    60963.75,
+    304.124184,
+    -23.616771
+   ],
+   [
+    60964,
+    304.124392,
+    -23.616611
+   ]
+  ],
+  "wikiCard": {
+   "title": "Pluto",
+   "extract": "Pluto is a dwarf planet in the Kuiper belt, a ring of bodies beyond the orbit of Neptune. It is the ninth-largest and tenth-most-massive known object to directly orbit the Sun. It is the largest known trans-Neptunian object by volume by a small margin, but is less massive than Eris, which is denser, making it the second most massive trans-Neptunian object. Like other Kuiper belt objects, Pluto is made primarily of ice and rock and is much smaller than the inner planets. Pluto has roughly one-sixth the mass of the Moon and one-third of its volume. Originally considered a planet, its status was changed when astronomers adopted a new definition of the word with new criteria.",
+   "description": "Largest dwarf planet in the Solar System",
+   "url": "https://en.wikipedia.org/wiki/Pluto",
+   "thumb": "data/pluto/thumb.jpg"
   }
  }
 ]

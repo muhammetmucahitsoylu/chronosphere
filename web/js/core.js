@@ -418,6 +418,20 @@ export const MOLECULES = [
   { name: 'Carbon monoxide', f: 'CO', band: [4.56, 4.80], side: [[4.46, 4.54], [4.90, 4.98]], glow: 'Hydrogen gas (Pfund β)' },
 ];
 
+/**
+ * Where ices on the surface of a cold body of the solar system absorb sunlight, with comparison windows on either
+ * side. Methane ice covers Pluto, Eris and Makemake; its bands are the ones seen in Pluto's spectrum since the 1970s.
+ */
+export const ICES = [
+  { name: 'Methane ice', f: 'CH₄', band: [1.30, 1.43], side: [[1.22, 1.29], [1.50, 1.60]] },
+  { name: 'Methane ice', f: 'CH₄', band: [1.62, 1.83], side: [[1.50, 1.60], [1.92, 2.08]] },
+  { name: 'Methane ice', f: 'CH₄', band: [2.15, 2.45], side: [[1.92, 2.08], [2.55, 2.80]] },
+  // Beyond 3 microns methane ice leaves no bright stretch to compare with on the long side: the band is set against the short side alone.
+  { name: 'Methane ice', f: 'CH₄', band: [3.15, 3.60], side: [[2.55, 2.80], null] },
+];
+/** How bright sunlight is at a wavelength (microns), up to a constant: a black body at the Sun's 5772 K, in the units the measurements use. */
+const sunlight = lam => 1 / (lam ** 3 * (Math.exp(14387.77 / (lam * 5772)) - 1));
+
 function medMad(v) {
   if (!v.length) return null;
   const s = [...v].sort((a, b) => a - b), med = s[s.length >> 1];
@@ -425,13 +439,23 @@ function medMad(v) {
   return { med, err: 1.4826 * dev[dev.length >> 1] / Math.sqrt(v.length), n: v.length };
 }
 /** Depth of each band relative to the spectrum on either side (1 = fully absorbed, 0 = flat). */
-export function bandDepths(pts) {
-  const inRange = r => pts.filter(p => !p.halo && p.lam >= r[0] && p.lam <= r[1]).map(p => p.flux);
-  return MOLECULES.map(m => {
+export function bandDepths(pts, table = MOLECULES, body = false) {
+  // A body of the solar system is seen during one visit only, at a few stops of the telescope: fewer measurements
+  // have to do, and each median is trusted no further than the measurements it is made of.
+  // It shines by sunlight thrown back, which itself fades towards longer wavelengths: its measurements are divided
+  // by the Sun's own spectrum first, so that a surface which reflects all colours alike comes out level.
+  const needCore = body ? 3 : 5, needSide = body ? 3 : 4;
+  const inRange = r => pts.filter(p => !p.halo && p.lam >= r[0] && p.lam <= r[1]).map(p => (body ? { flux: p.flux / sunlight(p.lam), err: p.err / sunlight(p.lam) } : p));
+  const stat = v => {
+    const m = medMad(v.map(p => p.flux));
+    if (m && body) { const e = v.map(p => p.err).sort((a, b) => a - b); m.err = Math.max(m.err, e[e.length >> 1] / Math.sqrt(v.length)); }
+    return m;
+  };
+  return table.map(m => {
     if (pts.some(p => p.halo && p.lam >= m.band[0] && p.lam <= m.band[1])) return { ...m, depth: null, why: 'star too bright to tell' };
-    const core = medMad(inRange(m.band));
-    const sides = m.side.map(r => (r ? { c: (r[0] + r[1]) / 2, ...(medMad(inRange(r)) || { n: 0 }) } : { n: 0 })).filter(x => x.n >= 4);
-    if (!core || core.n < 5 || sides.length < m.side.filter(Boolean).length) return { ...m, depth: null };
+    const core = stat(inRange(m.band));
+    const sides = m.side.map(r => (r ? { c: (r[0] + r[1]) / 2, ...(stat(inRange(r)) || { n: 0 }) } : { n: 0 })).filter(x => x.n >= needSide);
+    if (!core || core.n < needCore || sides.length < m.side.filter(Boolean).length) return { ...m, depth: null };
     const mid = (m.band[0] + m.band[1]) / 2;
     let cont, cerr;
     if (sides.length === 2 && sides[0].med > 0 && sides[1].med > 0) {

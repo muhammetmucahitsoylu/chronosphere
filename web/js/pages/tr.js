@@ -55,6 +55,7 @@ export default {
       <li><b>Molekül bantları.</b> Gölgeli şeritler yaygın moleküllerin ışığı soğurduğu yerleri gösterir. Tablo, orada ne kadar soğurma ölçüldüğünü bildirir.</li>
       <li><b>Komşularıyla karşılaştırma.</b> Parlaklık eğrisinin altında, halka içindeki noktanın ziyaretler arasındaki değişimi aynı görüntülerdeki sıradan yıldızlarla karşılaştırılır. Onlar sabit kalmış, nokta kalmamışsa değişim gerçektir, kameranın bir kusuru değildir. Aynısı konumu için de yapılır.</li>
       <li><b>Her yıldız denetlenir.</b> Görüntülerin altında, alandaki her net yıldız hiçbir katalog kullanılmadan hareket ve parlaklık değişimi açısından sınanır. Öne çıkan birkaçı listelenir ve bir baklava işaretiyle gösterilir. İşaret, bakmak için bir nedendir, bir bulgu değil.</li>
+      <li><b>Alandan geçen cisimler.</b> Görüntülerin altında her poz, birkaç dakika boyunca aynı yerde görünüp başka günlerde orada olmayan noktalar için taranır: asteroitler, kuyruklu yıldızlar, cüce gezegenler. SPHEREx durur, iki dakika arayla en çok dört poz çeker; altı dedektöründen ikisi de her an gökyüzünün aynı yerine bakar. Bu yüzden gerçek bir cisim aynı anda birkaç bağımsız görüntüde görünür; bir kozmik ışın çarpması ise yalnızca birinde. Bulunan her cismin adını, kataloglanmış her cismin o anda nerede olduğunu bilen SkyBoT (Paris Gözlemevi’nin bir hizmeti) verir; cisim duraktan durağa izlenebilir ve kendi tayfı çıkarılır.</li>
     </ul>
     <h2>Size söyleyemeyecekleri</h2>
     <ul>
@@ -62,6 +63,7 @@ export default {
       <li>Ölçümler basit, sabit bir daire kullanır ve keşif içindir, yayın için değil. Çok parlak yıldızlar dedektörü doyurur; onlarda bunun yerine yıldızın sönük dış ışıması ölçülür ve her dedektör komşusuna eklenir: tayfın genel biçimi doğrudur, düzeyi ve ince ayrıntısı yaklaşıktır.</li>
       <li>Bir molekülün dalga boyundaki soğurma izi bir ipucudur, kesin bir tespit değil.</li>
       <li>Sıradan yıldızlarda konumlar yay saniyesinin onda birkaçı kadar bir doğrulukla yinelenir; ama kamerayı doyurmaya yakın bir yıldız tek bir ziyarette bir yay saniyesi ya da daha fazla sapabilir.</li>
+      <li>Alandan geçen cisim araması yaklaşık 18. kadire kadar iner. Güneş Sistemi düzlemi boyunca altı deneme alanında, 14 ile 18,8 kadir arasında on dört cisim bildirdi ve SkyBoT bunların hepsini tanıyordu; o düzlemden uzaktaki üç alanda hiçbir şey bildirmedi. Hiçbir kataloğun tanımadığı bir nokta yine de görüntüdeki bir kusur olabilir: yeniden bakmak için bir nedendir.</li>
       <li>Buradaki hiçbir şey bir keşif iddiası değildir. Yeni görünen bir şey, onu her cisimden bağlantısı verilen öteki araçlarda denetlemek için bir nedendir.</li>
     </ul>`,
 

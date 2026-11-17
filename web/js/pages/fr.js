@@ -55,6 +55,7 @@ export default {
       <li><b>Bandes moléculaires.</b> Des bandes ombrées marquent les endroits où les molécules courantes absorbent la lumière. Le tableau indique la profondeur du creux mesuré à cet endroit.</li>
       <li><b>Comparé à ses voisines.</b> Sous la courbe de luminosité, le changement du point entouré entre les visites est comparé à celui des étoiles ordinaires des mêmes images. Si elles sont restées stables et pas le point, le changement est réel et non un caprice de la caméra. On fait de même pour sa position.</li>
       <li><b>Chaque étoile, vérifiée.</b> Sous les images, chaque étoile nette du champ est testée en mouvement et en variation de luminosité, sans utiliser aucun catalogue. Les quelques-unes qui ressortent sont listées et marquées d’un losange. Un signalement est une raison de regarder, pas un résultat.</li>
+      <li><b>Corps de passage.</b> Sous les images, chaque pose est examinée à la recherche de points qui restent quelques minutes au même endroit et n’y sont plus les autres jours : astéroïdes, comètes, planètes naines. SPHEREx s’arrête, prend jusqu’à quatre poses à deux minutes d’intervalle, et deux de ses six détecteurs regardent toujours la même région du ciel au même instant. Un corps réel apparaît donc sur plusieurs images indépendantes à la fois ; l’impact d’un rayon cosmique, sur une seule. Chaque corps trouvé est nommé par SkyBoT, un service de l’Observatoire de Paris qui sait où se trouvait chaque corps catalogué à cet instant, et peut être suivi d’arrêt en arrêt, avec son propre spectre.</li>
     </ul>
     <h2>Ce qu’il ne peut pas vous dire</h2>
     <ul>
@@ -62,6 +63,7 @@ export default {
       <li>Les mesures utilisent un simple cercle fixe et servent à explorer, pas à publier. Les étoiles très brillantes saturent le détecteur ; pour elles, on mesure à la place la faible lueur extérieure de l’étoile et chaque détecteur est raccordé à son voisin : la forme générale du spectre est juste, son niveau et le détail fin sont approximatifs.</li>
       <li>Un creux à la longueur d’onde d’une molécule est un indice, pas une détection.</li>
       <li>Les positions se répètent à quelques dixièmes de seconde d’arc pour les étoiles ordinaires, mais une étoile proche de la saturation de la caméra peut s’écarter d’une seconde d’arc ou plus lors d’une seule visite.</li>
+      <li>La recherche de corps de passage atteint environ la magnitude 18. Dans six champs d’essai le long du plan du système solaire, elle a signalé quatorze corps, de magnitude 14 à 18,8, et SkyBoT les connaissait tous ; dans trois champs éloignés de ce plan, elle n’en a signalé aucun. Un point qu’aucun catalogue ne connaît peut malgré tout être un défaut de l’image : c’est une raison de regarder à nouveau.</li>
       <li>Rien ici ne prétend à une découverte. Quelque chose qui paraît nouveau est une raison de le vérifier dans les autres outils proposés pour chaque objet.</li>
     </ul>`,
 

@@ -55,6 +55,7 @@ export default {
       <li><b>Molekülbänder.</b> Schattierte Streifen zeigen, wo häufige Moleküle Licht absorbieren. Die Tabelle gibt an, wie tief die dort gemessene Senke ist.</li>
       <li><b>Mit den Nachbarn verglichen.</b> Unter der Helligkeitskurve wird die Änderung der eingekreisten Stelle zwischen den Besuchen gewöhnlichen Sternen in denselben Bildern gegenübergestellt. Blieben sie konstant und die Stelle nicht, ist die Änderung echt und keine Eigenheit der Kamera. Dasselbe geschieht für ihre Position.</li>
       <li><b>Jeder Stern, geprüft.</b> Unter den Bildern wird jeder klare Stern des Feldes auf Bewegung und auf Helligkeitsänderungen getestet, ohne irgendeinen Katalog zu benutzen. Die wenigen, die auffallen, werden aufgelistet und mit einer Raute markiert. Eine Markierung ist ein Grund hinzusehen, kein Befund.</li>
+      <li><b>Durchziehende Körper.</b> Unter den Bildern wird jede Aufnahme nach Punkten durchsucht, die ein paar Minuten lang an einer Stelle stehen und dort an anderen Tagen fehlen: Asteroiden, Kometen, Zwergplaneten. SPHEREx hält an, macht bis zu vier Aufnahmen im Abstand von zwei Minuten, und zwei seiner sechs Detektoren blicken stets im selben Moment auf dieselbe Himmelsstelle. Ein echter Körper zeigt sich deshalb in mehreren unabhängigen Bildern zugleich, der Treffer eines kosmischen Strahls nur in einem. Jeden gefundenen Körper benennt SkyBoT, ein Dienst des Pariser Observatoriums, der weiß, wo jeder katalogisierte Körper in diesem Moment stand; man kann ihm von Halt zu Halt folgen, mit eigenem Spektrum.</li>
     </ul>
     <h2>Was es Ihnen nicht sagen kann</h2>
     <ul>
@@ -62,6 +63,7 @@ export default {
       <li>Die Messungen verwenden einen einfachen festen Kreis und sind zum Erkunden gedacht, nicht zur Veröffentlichung. Sehr helle Sterne übersteuern den Detektor; bei ihnen wird stattdessen das schwache äußere Leuchten des Sterns gemessen und jeder Detektor an seinen Nachbarn angeschlossen: Die Gesamtform des Spektrums stimmt, sein Niveau und die feinen Einzelheiten sind Näherungen.</li>
       <li>Eine Senke bei der Wellenlänge eines Moleküls ist ein Hinweis, kein Nachweis.</li>
       <li>Positionen wiederholen sich bei gewöhnlichen Sternen auf wenige Zehntel Bogensekunden, aber ein Stern nahe der Übersteuerung der Kamera kann in einem einzelnen Besuch um eine Bogensekunde oder mehr abweichen.</li>
+      <li>Die Suche nach durchziehenden Körpern reicht bis etwa zur 18. Magnitude. In sechs Testfeldern entlang der Ebene des Sonnensystems meldete sie vierzehn Körper der Magnituden 14 bis 18,8, und SkyBoT kannte jeden davon; in drei Feldern fern dieser Ebene meldete sie keinen. Ein Punkt, den kein Katalog kennt, kann trotzdem ein Bildfehler sein: Er ist ein Grund, noch einmal hinzusehen.</li>
       <li>Nichts hier erhebt den Anspruch einer Entdeckung. Etwas, das neu aussieht, ist ein Grund, es in den anderen Werkzeugen zu prüfen, die bei jedem Objekt verlinkt sind.</li>
     </ul>`,
 

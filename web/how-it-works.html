@@ -31,16 +31,6 @@
   .doctop { justify-content: space-between; }
   .doctop .cta { text-decoration: none; display: inline-flex; align-items: center; }
   .doc { padding: 5vh 16px 8vh; }
-  .sheet h3 { font: 500 13px/1.4 var(--mono); letter-spacing: 1px; text-transform: uppercase; color: var(--ink-3); margin: 22px 0 0; }
-  .docfig { margin: 22px 0 6px; }
-  .docfig img { display: block; width: 100%; max-width: 420px; height: auto; border-radius: 10px; background: #000; image-rendering: auto; }
-  .docfig figcaption { margin-top: 8px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
-  .docrungs { list-style: none; padding: 0 !important; margin: 10px 0 0; }
-  .docrungs li { display: flex; gap: 14px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); margin: 0; }
-  .docrungs li b { font: 500 15px var(--mono); min-width: 4.5em; color: var(--ink); }
-  .docrungs li.limit { border-bottom: 1px dashed var(--ember); color: var(--ember); font: 500 12px var(--mono); letter-spacing: 1px; text-transform: uppercase; padding: 10px 0 4px; }
-  .docgo { margin-top: 22px !important; }
-  .docgo .cta { display: inline-flex; align-items: center; text-decoration: none; white-space: normal; text-align: center; max-width: 100%; }          /* a long name wraps instead of leaving the screen */
   .docmore { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14.5px; }
   .docmore a { color: var(--ink-2); text-underline-offset: 3px; }
   .docmore a:hover, .docmore a[aria-current] { color: var(--ink); }
@@ -79,6 +69,7 @@
       <li><b>Molecule bands.</b> Shaded strips mark where common molecules absorb light. The table reports how deep a dip was measured there.</li>
       <li><b>Checked against its neighbours.</b> Under the brightness curve, the change of the circled spot between visits is set against ordinary stars in the same images. If they stayed steady and the spot did not, the change is real and not a quirk of the camera. The same is done for its position.</li>
       <li><b>Every star, checked.</b> Under the images, every clear star of the field is tested for motion and for brightness changes, without using any catalogue. The few that stand out are listed and marked with a diamond. A flag is a reason to look, not a finding.</li>
+      <li><b>Passing bodies.</b> Under the images, every exposure is searched for dots that are at one place for a few minutes and gone from there on other days: asteroids, comets, dwarf planets. SPHEREx stops, takes up to four exposures two minutes apart, and two of its six detectors always look at the same sky at the same moment. A real body therefore shows in several independent images at once; a cosmic-ray hit shows in one. Each body found is named by SkyBoT, a service of Paris Observatory that knows where every catalogued body was at that moment, and can be followed from stop to stop, with its own spectrum.</li>
     </ul>
     <h2>What it cannot tell you</h2>
     <ul>
@@ -86,6 +77,7 @@
       <li>Measurements use a simple fixed circle and are meant for exploring, not for publication. Very bright stars overload the detector; for those, the star's faint outer glow is measured instead and each detector is joined to its neighbour: the overall shape of the spectrum is right, its level and fine detail are approximate.</li>
       <li>A dip at a molecule's wavelength is a hint, not a detection.</li>
       <li>Positions repeat to a few tenths of an arcsecond for ordinary stars, but a star close to overloading the camera can be off by an arcsecond or more in a single visit.</li>
+      <li>The search for passing bodies reaches about magnitude 18. In six test fields along the plane of the solar system it reported fourteen bodies, of magnitude 14 to 18.8, and SkyBoT knew every one of them; in three fields far from that plane it reported none. A dot that no catalogue knows may still be a fault in the image: it is a reason to look again.</li>
       <li>Nothing here claims a discovery. Something that looks new is a reason to check it in the other tools linked from every object.</li>
     </ul>
     <nav class="docmore" aria-label="Chronosphere">
@@ -99,6 +91,7 @@
       <a href="wise-0855.html">WISE 0855</a>
       <a href="rw-aurigae.html">RW Aurigae</a>
       <a href="r-draconis.html">R Draconis</a>
+      <a href="pluto.html">Pluto</a>
       <span></span>
       <a href="how-it-works.html" lang="en" hreflang="en" aria-current="true">English</a>
       <a href="tr/how-it-works.html" lang="tr" hreflang="tr">Türkçe</a>

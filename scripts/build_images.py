@@ -1,6 +1,6 @@
 """Pictures for the plain pages and for link previews: real SPHEREx images, made from the same data the site shows.
 
-    python scripts/build_images.py                          # the five test objects (web/data) -> web/img/<slug>.gif and .jpg
+    python scripts/build_images.py                          # the showcase objects (web/data) -> web/img/<slug>.gif and .jpg
     python scripts/build_images.py --pluto DIR EPHEM.json   # Pluto, six days apart -> web/img/pluto-blink.gif and .jpg
 
 DIR holds Pluto's field as d1..d6.ndjson in the site's own format (read from the archive with the site's reader,
@@ -96,8 +96,8 @@ def picture(t, scale, rings=(), label="", sub="", crop=None):
     return im
 
 
-def save_gif(frames, path, ms=900):
-    pal = [f.convert("P", palette=Image.ADAPTIVE, colors=128) for f in frames]
+def save_gif(frames, path, ms=900, colors=128):
+    pal = [f.convert("P", palette=Image.ADAPTIVE, colors=colors) for f in frames]
     pal[0].save(path, save_all=True, append_images=pal[1:], duration=ms, loop=0, optimize=True, disposal=2)
 
 
@@ -199,6 +199,48 @@ def showcase(t):
     print(f"{t['slug']}: {len(pics)} pictures ({', '.join(series)}), {(OUT / (t['slug'] + '.gif')).stat().st_size // 1024} kB gif")
 
 
+def body(t):
+    """A body of the solar system: one picture for every stop of the telescope that caught it, the ring on its path
+    (the entry's `eph`, from JPL Horizons). The detectors D1 to D3 are used, where it shines by reflected sunlight."""
+    eph = t["eph"]
+    def at(mjd):
+        for p, q in zip(eph, eph[1:]):
+            if p[0] <= mjd <= q[0]:
+                f = (mjd - p[0]) / (q[0] - p[0])
+                return p[1] + f * (q[1] - p[1]), p[2] + f * (q[2] - p[2])
+    stops = {}
+    for det in (1, 2, 3):
+        head, frames = read(WEB / "data" / t["slug"] / f"d{det}.ndjson")
+        g, n = head["grid"], head["grid"]["n"]
+        deep = median(frames[:: max(1, len(frames) // 60)], n)
+        top = max(np.nanpercentile(deep, 99.7), 25 * robust_sig(deep))
+        for f in frames:
+            p = at(f["mjd"])
+            if p is None:
+                continue
+            x, y = to_grid(g, *p)
+            if not (4 < x < n - 5 and 4 < y < n - 5) or not np.isfinite(f["data"].reshape(n, n)[int(round(y)), int(round(x))]):
+                continue
+            s = stops.setdefault(f["id"].rsplit("_", 1)[0], {"det": det, "top": top, "frames": [], "xy": []})
+            s["frames"].append(f); s["xy"].append((x, y))
+    scale, ring = max(3, round(420 / n)), 18 / g["scale"]
+    pics, labels = [], []
+    for s in sorted(stops.values(), key=lambda s: s["frames"][0]["mjd"]):
+        fr = s["frames"]
+        if len(fr) < 2:                                 # a single exposure carries its cosmic-ray hits: left out of the picture series
+            continue
+        # three exposures or more: their median; two: the fainter of the two at each pixel, which leaves cosmic-ray hits out
+        img = median(fr, n) if len(fr) != 2 else np.fmin(fr[0]["data"].reshape(n, n), fr[1]["data"].reshape(n, n))
+        x, y = np.mean([p[0] for p in s["xy"]]), np.mean([p[1] for p in s["xy"]])
+        mid = sum(f["mjd"] for f in fr) / len(fr)
+        labels.append(date(mid))
+        pics.append(picture(stretch(img, s["top"]), scale, [(x, n - 1 - y, ring)], date(mid), f"SPHEREx D{s['det']}"))
+    OUT.mkdir(exist_ok=True)
+    save_gif(pics, OUT / f"{t['slug']}.gif", 600, 40)          # many pictures: fewer shades of grey keep the file small
+    preview(pics, f"{t['label']} · SPHEREx · {labels[0]} → {labels[-1]}", OUT / f"{t['slug']}.jpg")
+    print(f"{t['slug']}: {len(pics)} pictures, one per stop of the telescope ({labels[0]} to {labels[-1]}), {(OUT / (t['slug'] + '.gif')).stat().st_size // 1024} kB gif")
+
+
 def pluto(src, eph_path):
     eph = json.load(open(eph_path, encoding="utf-8"))["eph"]
     def at(mjd):
@@ -236,5 +278,8 @@ if __name__ == "__main__":
     if sys.argv[1:2] == ["--pluto"]:
         pluto(sys.argv[2], sys.argv[3])
     else:
+        want = sys.argv[1:]
         for t in json.load(open(WEB / "data" / "targets.json", encoding="utf-8")):
-            showcase(t)
+            if want and t["slug"] not in want:
+                continue
+            (body if t.get("eph") else showcase)(t)

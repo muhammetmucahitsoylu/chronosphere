@@ -1,4 +1,5 @@
 """Pre-build the five challenge test targets into static files under web/data/.
+(Pluto, a body of the solar system with a path instead of a place, is built by scripts/build_body.mjs.)
 
 The web app loads these instantly and without any server; every other
 position goes through the live API. Re-run this script to refresh the
@@ -144,6 +145,7 @@ def main():
             except Exception as e:
                 print(f"  {t['slug']}: info not baked ({e})")
             merged.append(entry)
+        merged += [o for o in old.values() if o["slug"] not in {t["slug"] for t in TARGETS}]      # built elsewhere (scripts/build_body.mjs): kept as they are
         idx_path.write_text(json.dumps(merged, indent=1), encoding="utf-8")
         print("metadata refreshed")
         return
@@ -185,6 +187,7 @@ def main():
                 print(f"   {cat}: FAILED {e}", flush=True)
         index.append(entry)
         idx_path.write_text(json.dumps(index, indent=1))
+    index += [o for o in old.values() if o["slug"] not in {t["slug"] for t in TARGETS}]      # built elsewhere (scripts/build_body.mjs): kept as they are
     idx_path.write_text(json.dumps(index, indent=1))
     print("done", flush=True)
 

@@ -37,7 +37,7 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<noscript><p style="margin:0;padding:14px 18px;background:#1b1512;color:#f3eee6;font:15px/1.5 system-ui,sans-serif">Chronosphere reads NASA's SPHEREx images in your browser, so it needs JavaScript. Turn it on for this site and reload the page. To read about it meanwhile: <a href="what-is-spherex.html" style="color:#ff7b39">What is SPHEREx?</a> · <a href="how-it-works.html" style="color:#ff7b39">How it works</a> · <a href="about.html" style="color:#ff7b39">About</a></p></noscript>
+<noscript><p style="margin:0;padding:14px 18px;background:#1b1512;color:#f3eee6;font:15px/1.5 system-ui,sans-serif">Chronosphere reads NASA's SPHEREx images in your browser, so it needs JavaScript. Turn it on for this site and reload the page. To read about it meanwhile: <a href="planet-x.html" style="color:#ff7b39">Planet X, Pluto and SPHEREx</a> · <a href="what-is-spherex.html" style="color:#ff7b39">What is SPHEREx?</a> · <a href="how-it-works.html" style="color:#ff7b39">How it works</a> · <a href="about.html" style="color:#ff7b39">About</a></p></noscript>
 <header class="top" id="top">
   <a class="brand" href="./" aria-label="Chronosphere, home">
     <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><circle cx="13" cy="17" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="19" cy="14" r="8" fill="var(--ember)"/></svg>
@@ -52,6 +52,7 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
   <nav class="nav" id="nav" aria-label="About this site">
     <div class="navlinks" id="navlinks" lang="en">
       <!-- links to the pages as plain pages (a search engine, a new tab); a plain click opens the same words over the map -->
+      <a href="planet-x.html" data-sheet="planetx" data-t="tour.px.title">Planet X</a>
       <a href="what-is-spherex.html" data-sheet="spherex">What is SPHEREx?</a>
       <a href="how-it-works.html" data-sheet="how">How it works</a>
       <a href="about.html" data-sheet="about">About</a>
@@ -85,7 +86,7 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
           <button type="button" class="cta" id="tourbtn2" data-t="hero.tour">Take the two-minute tour</button>
           <button type="button" class="ghost" id="hidewelcome" data-t="hero.explore">Explore freely</button>
         </div>
-        <p class="startwith"><span data-t="hero.start">Or start with</span> <!-- the five test objects, written out so the text does not jump when data/targets.json arrives; the page's code replaces them with the same list --><span id="examples"><button type="button">Barnard's Star</button><button type="button">Epsilon Indi B</button><button type="button">WISE 0855</button><button type="button">RW Aurigae</button><button type="button">R Draconis</button></span></p>
+        <p class="startwith"><span data-t="hero.start">Or start with</span> <!-- the five test objects, written out so the text does not jump when data/targets.json arrives; the page's code replaces them with the same list --><span id="examples"><button type="button">Barnard's Star</button><button type="button">Epsilon Indi B</button><button type="button">WISE 0855</button><button type="button">RW Aurigae</button><button type="button">R Draconis</button><button type="button">Pluto</button></span></p>
         <p class="offline" id="offline"></p>
       </div>
 
@@ -99,7 +100,7 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
       </div>
       <div id="mapnote" class="mapnote" hidden></div>
       <figure class="mapui blink" id="blink" hidden>
-        <button type="button" class="blinkstage" id="blinkstage" aria-label="Two SPHEREx images of the same patch of sky, taken about a year apart. Press to flip between them.">
+        <button type="button" class="blinkstage" id="blinkstage" aria-label="Two SPHEREx images of the same patch of sky, taken days apart. Press to flip between them.">
           <canvas id="blinkcv" width="300" height="300"></canvas>
           <span class="blinkdate" id="blinkdate"></span>
         </button>
@@ -135,6 +136,7 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
 
     <div class="cols">
       <div class="lead">
+        <div id="bodybox" class="bodybox" hidden></div>
         <div id="lookbox" class="lookbox"></div>
         <section id="findings" class="findings" aria-live="polite" hidden></section>
       </div>
@@ -167,6 +169,7 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
           <button data-mode="diff" title="A later visit minus an earlier one.">Difference</button>
           <button data-mode="bands" title="The same sky in each of the six detectors, from 0.75 to 5 microns.">Wavelengths</button>
           <button data-mode="deep" title="All exposures added together: the deepest image.">Deep</button>
+          <button data-mode="trail" hidden title="One image for every stop of the telescope that caught the body: the stars stay, the body moves on.">Passing body</button>
         </div>
         <p id="explain" class="hint"></p>
         <div class="detwrap">
@@ -200,6 +203,7 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
         </div>
         <div id="motion"></div>
         <div id="scan"></div>
+        <div id="movers"></div>
       </section>
       <div class="more">
         <section id="wikibox" class="block wikibox" hidden></section>

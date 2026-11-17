@@ -3,7 +3,7 @@
 //   - the three information pages ("What is SPHEREx?", "How it works", "About"), from web/js/pages.js and
 //     web/js/pages/<code>.js: the same words the site shows as sheets over the map;
 //   - "Planet X, Pluto and SPHEREx", from the guided tour's own words in web/js/lang.js;
-//   - one page for each of the five test objects, from web/data/targets.json, the tour and the panel's dictionaries.
+//   - one page for each of the five test objects and for Pluto, from web/data/targets.json, the tour and the panel's dictionaries.
 // The pictures they show are made by scripts/build_images.py. After changing any of these words, run
 //   node scripts/build_pages.mjs
 //
@@ -17,7 +17,7 @@ const HERE = dirname(fileURLToPath(import.meta.url)), WEB = join(HERE, '..', 'we
 const SITE = 'https://chronospherex.com/';
 const SHEET_FILES = { spherex: 'what-is-spherex.html', how: 'how-it-works.html', about: 'about.html' };
 const ENGLISH_NAV = { spherex: 'What is SPHEREx?', how: 'How it works', about: 'About' };
-const OBJECT_FILES = { barnard: 'barnards-star.html', epsindib: 'epsilon-indi-b.html', wise0855: 'wise-0855.html', rwaur: 'rw-aurigae.html', rdra: 'r-draconis.html' };
+const OBJECT_FILES = { barnard: 'barnards-star.html', epsindib: 'epsilon-indi-b.html', wise0855: 'wise-0855.html', rwaur: 'rw-aurigae.html', rdra: 'r-draconis.html', pluto: 'pluto.html' };
 const FILES = { ...SHEET_FILES, planetx: 'planet-x.html', ...OBJECT_FILES };
 const TARGETS = JSON.parse(readFileSync(join(WEB, 'data', 'targets.json'), 'utf8'));
 const TOUR_KEYS = ['tour.3.title', 'tour.3.text', 'tour.px.title', 'tour.px.text', 'tour.faint.title', 'tour.faint.text', 'tour.4.title', 'tour.4.text',
@@ -34,7 +34,7 @@ const DOC = {
     plutoAlt: 'Two SPHEREx exposures of the same patch of sky, taken six days apart in October 2025 and shown in turn. One dot moves: Pluto.',
     plutoCap: 'Pluto in SPHEREx images of 6 and 12 October 2025, shown in turn: the one dot that moves, 50 arcseconds in six days. Tombaugh’s two plates were also six days apart, taken on 23 and 29 January 1930.',
     title: n => `${n} in SPHEREx images`, alt: (n, how) => `SPHEREx images of ${n}: ${how}`,
-    how: { visit: 'one picture per visit', month: 'one picture per month', det: 'one picture per detector, from 0.75 to 5 microns' },
+    how: { visit: 'one picture per visit', month: 'one picture per month', det: 'one picture per detector, from 0.75 to 5 microns', stop: 'one picture for every stop of the telescope that caught it' },
     openIt: n => `Open ${n} in Chronosphere`, facts: (k, a, b) => `SPHEREx has ${k} exposures of this spot, from ${a} to ${b}.`,
   },
   tr: {
@@ -44,7 +44,7 @@ const DOC = {
     plutoAlt: 'Aynı gökyüzü parçasının Ekim 2025’te altı gün arayla çekilmiş iki SPHEREx pozu, sırayla gösteriliyor. Bir nokta yer değiştiriyor: Plüton.',
     plutoCap: '6 ve 12 Ekim 2025 tarihli SPHEREx görüntülerinde Plüton, sırayla gösteriliyor: yeri değişen tek nokta, altı günde 50 yay saniyesi. Tombaugh’un iki fotoğraf plakası da altı gün arayla, 23 ve 29 Ocak 1930’da çekilmişti.',
     title: n => `SPHEREx görüntülerinde ${n}`, alt: (n, how) => `${n}, SPHEREx görüntüleri: ${how}`,
-    how: { visit: 'her ziyaret için bir resim', month: 'her ay için bir resim', det: '0,75 ile 5 mikron arasında her dedektör için bir resim' },
+    how: { visit: 'her ziyaret için bir resim', month: 'her ay için bir resim', det: '0,75 ile 5 mikron arasında her dedektör için bir resim', stop: 'teleskobun onu yakaladığı her durak için bir resim' },
     openIt: n => `Chronosphere’de aç: ${n}`, facts: (k, a, b) => `SPHEREx’in bu noktaya ait ${k} pozu var: ${a} ile ${b} arasında.`,
   },
   es: {
@@ -54,7 +54,7 @@ const DOC = {
     plutoAlt: 'Dos exposiciones de SPHEREx de la misma zona del cielo, tomadas con seis días de diferencia en octubre de 2025 y mostradas por turnos. Un punto se mueve: Plutón.',
     plutoCap: 'Plutón en imágenes de SPHEREx del 6 y el 12 de octubre de 2025, mostradas por turnos: el único punto que se mueve, 50 segundos de arco en seis días. Las dos placas de Tombaugh también se tomaron con seis días de diferencia, el 23 y el 29 de enero de 1930.',
     title: n => `${n} en imágenes de SPHEREx`, alt: (n, how) => `Imágenes de SPHEREx de ${n}: ${how}`,
-    how: { visit: 'una imagen por visita', month: 'una imagen por mes', det: 'una imagen por detector, de 0,75 a 5 micras' },
+    how: { visit: 'una imagen por visita', month: 'una imagen por mes', det: 'una imagen por detector, de 0,75 a 5 micras', stop: 'una imagen por cada parada del telescopio que lo captó' },
     openIt: n => `Abrir ${n} en Chronosphere`, facts: (k, a, b) => `SPHEREx tiene ${k} exposiciones de este punto, del ${a} al ${b}.`,
   },
   de: {
@@ -64,7 +64,7 @@ const DOC = {
     plutoAlt: 'Zwei SPHEREx-Aufnahmen derselben Himmelsgegend, im Oktober 2025 im Abstand von sechs Tagen aufgenommen und abwechselnd gezeigt. Ein Punkt wandert: Pluto.',
     plutoCap: 'Pluto auf SPHEREx-Aufnahmen vom 6. und 12. Oktober 2025, abwechselnd gezeigt: der einzige Punkt, der wandert, 50 Bogensekunden in sechs Tagen. Auch Tombaughs zwei Fotoplatten lagen sechs Tage auseinander, aufgenommen am 23. und 29. Januar 1930.',
     title: n => `${n} auf SPHEREx-Aufnahmen`, alt: (n, how) => `SPHEREx-Aufnahmen von ${n}: ${how}`,
-    how: { visit: 'eine Aufnahme pro Besuch', month: 'eine Aufnahme pro Monat', det: 'eine Aufnahme pro Detektor, von 0,75 bis 5 Mikrometer' },
+    how: { visit: 'eine Aufnahme pro Besuch', month: 'eine Aufnahme pro Monat', det: 'eine Aufnahme pro Detektor, von 0,75 bis 5 Mikrometer', stop: 'ein Bild für jeden Halt des Teleskops, bei dem er erfasst wurde' },
     openIt: n => `${n} in Chronosphere öffnen`, facts: (k, a, b) => `SPHEREx hat ${k} Aufnahmen dieser Stelle, vom ${a} bis zum ${b}.`,
   },
   fr: {
@@ -74,7 +74,7 @@ const DOC = {
     plutoAlt: 'Deux poses SPHEREx de la même région du ciel, prises à six jours d’intervalle en octobre 2025 et montrées tour à tour. Un point se déplace : Pluton.',
     plutoCap: 'Pluton sur des images SPHEREx des 6 et 12 octobre 2025, montrées tour à tour : le seul point qui se déplace, 50 secondes d’arc en six jours. Les deux plaques de Tombaugh avaient elles aussi été prises à six jours d’intervalle, les 23 et 29 janvier 1930.',
     title: n => `${n} sur les images SPHEREx`, alt: (n, how) => `Images SPHEREx de ${n} : ${how}`,
-    how: { visit: 'une image par visite', month: 'une image par mois', det: 'une image par détecteur, de 0,75 à 5 microns' },
+    how: { visit: 'une image par visite', month: 'une image par mois', det: 'une image par détecteur, de 0,75 à 5 microns', stop: 'une image pour chaque arrêt du télescope qui l’a saisie' },
     openIt: n => `Ouvrir ${n} dans Chronosphere`, facts: (k, a, b) => `SPHEREx a ${k} poses de ce point, du ${a} au ${b}.`,
   },
   pl: {
@@ -84,12 +84,12 @@ const DOC = {
     plutoAlt: 'Dwie ekspozycje SPHEREx tego samego fragmentu nieba, wykonane w październiku 2025 roku w odstępie sześciu dni i pokazywane na zmianę. Jeden punkt się przesuwa: to Pluton.',
     plutoCap: 'Pluton na zdjęciach SPHEREx z 6 i 12 października 2025 roku, pokazywanych na zmianę: jedyny punkt, który się przesuwa, o 50 sekund łuku w sześć dni. Dwie klisze Tombaugha również dzieliło sześć dni: wykonano je 23 i 29 stycznia 1930 roku.',
     title: n => `${n} na zdjęciach SPHEREx`, alt: (n, how) => `Zdjęcia SPHEREx: ${n}, ${how}`,
-    how: { visit: 'jedno zdjęcie na wizytę', month: 'jedno zdjęcie na miesiąc', det: 'jedno zdjęcie na detektor, od 0,75 do 5 mikrometrów' },
+    how: { visit: 'jedno zdjęcie na wizytę', month: 'jedno zdjęcie na miesiąc', det: 'jedno zdjęcie na detektor, od 0,75 do 5 mikrometrów', stop: 'jedno zdjęcie na każdy postój teleskopu, który go uchwycił' },
     openIt: n => `Otwórz w Chronosphere: ${n}`, facts: (k, a, b) => `SPHEREx ma ${k} ekspozycji tego miejsca, od ${a} do ${b}.`,
   },
 };
 // Object names as each language writes them (the tour's ladder already names Barnard's Star in every language).
-const NAME = (code, o, words) => (o.slug === 'barnard' ? words['ladder.r3'] : o.label);
+const NAME = (code, o, words) => (o.slug === 'barnard' ? words['ladder.r3'] : o.slug === 'pluto' ? words['ladder.r4'] : o.label);
 const PX_SOURCES = [
   ['NASA: Hypothetical Planet X', 'https://science.nasa.gov/solar-system/planet-x/'],
   ['NASA: Pluto', 'https://science.nasa.gov/dwarf-planets/pluto/'],
@@ -163,7 +163,7 @@ function content(code, id) {
     return { body, title: D.pxTitle, lead: D.pxLead, image: 'img/pluto-blink.jpg' };
   }
   const o = TARGETS.find(t => OBJECT_FILES[t.slug] && t.slug === id), name = NAME(code, o, w);
-  const how = o.view.mode === 'bands' ? D.how.det : o.slug === 'rdra' ? D.how.month : D.how.visit;
+  const how = o.view.mode === 'trail' ? D.how.stop : o.view.mode === 'bands' ? D.how.det : o.slug === 'rdra' ? D.how.month : D.how.visit;
   const eps = o.summary.epochs, facts = D.facts(new Intl.NumberFormat(code).format(o.summary.total), mjdDate(eps[0][0], code), mjdDate(eps[eps.length - 1][1], code));
   const open = `${up}?target=${o.slug}${code === 'en' ? '' : `&lang=${code}`}`;
   const simbad = `https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${encodeURIComponent(o.info?.mainId || o.query)}`;
@@ -178,7 +178,9 @@ function content(code, id) {
     <p>${esc(w[o.look])}</p>
     <p>${esc(facts)}</p>
     <p class="docgo"><a class="cta" href="${open}">${esc(D.openIt(name))}</a></p>
-    <p class="fine">${esc(D.sources)}: <a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noopener">SPHEREx, NASA/JPL-Caltech, IRSA</a> · <a href="${simbad}" target="_blank" rel="noopener">SIMBAD</a> · <a href="https://www.cosmos.esa.int/web/gaia/dr3" target="_blank" rel="noopener">Gaia DR3</a>${wiki ? ` · <a href="${wiki}" target="_blank" rel="noopener">Wikipedia</a>` : ''}</p>`;
+    <p class="fine">${esc(D.sources)}: <a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noopener">SPHEREx, NASA/JPL-Caltech, IRSA</a> · ${o.eph
+      ? `<a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener">JPL Horizons</a> · <a href="https://ssp.imcce.fr/webservices/skybot/" target="_blank" rel="noopener">SkyBoT, IMCCE</a>`
+      : `<a href="${simbad}" target="_blank" rel="noopener">SIMBAD</a> · <a href="https://www.cosmos.esa.int/web/gaia/dr3" target="_blank" rel="noopener">Gaia DR3</a>`}${wiki ? ` · <a href="${wiki}" target="_blank" rel="noopener">Wikipedia</a>` : ''}</p>`;
   return { body, title: D.title(name), lead: `${w[o.blurb]} ${D.alt(name, how)}.`, image: `img/${o.slug}.jpg` };
 }
 
@@ -220,16 +222,6 @@ ${codes.map(c => `<link rel="alternate" hreflang="${c}" href="${SITE}${path(c, i
   .doctop { justify-content: space-between; }
   .doctop .cta { text-decoration: none; display: inline-flex; align-items: center; }
   .doc { padding: 5vh 16px 8vh; }
-  .sheet h3 { font: 500 13px/1.4 var(--mono); letter-spacing: 1px; text-transform: uppercase; color: var(--ink-3); margin: 22px 0 0; }
-  .docfig { margin: 22px 0 6px; }
-  .docfig img { display: block; width: 100%; max-width: 420px; height: auto; border-radius: 10px; background: #000; image-rendering: auto; }
-  .docfig figcaption { margin-top: 8px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
-  .docrungs { list-style: none; padding: 0 !important; margin: 10px 0 0; }
-  .docrungs li { display: flex; gap: 14px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); margin: 0; }
-  .docrungs li b { font: 500 15px var(--mono); min-width: 4.5em; color: var(--ink); }
-  .docrungs li.limit { border-bottom: 1px dashed var(--ember); color: var(--ember); font: 500 12px var(--mono); letter-spacing: 1px; text-transform: uppercase; padding: 10px 0 4px; }
-  .docgo { margin-top: 22px !important; }
-  .docgo .cta { display: inline-flex; align-items: center; text-decoration: none; white-space: normal; text-align: center; max-width: 100%; }          /* a long name wraps instead of leaving the screen */
   .docmore { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14.5px; }
   .docmore a { color: var(--ink-2); text-underline-offset: 3px; }
   .docmore a:hover, .docmore a[aria-current] { color: var(--ink); }

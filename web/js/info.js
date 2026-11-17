@@ -324,3 +324,40 @@ export async function fieldStars(ra, dec, radiusArcmin) {
   return { cat: 'simbad', epoch: 2000.0, sources: rows.map(r => ({ id: r.main_id, ra: r.ra, dec: r.dec, pmra: r.pmra, pmdec: r.pmdec, plx: r.plx_value,
     g: r.G ?? r.V ?? (Math.hypot(r.pmra || 0, r.pmdec || 0) > 100 ? 10 : 17) })) };
 }
+
+// ------------------------------------------------------------ bodies of the solar system
+const DWARFS = { 1: 'Ceres', 134340: 'Pluto', 136199: 'Eris', 136108: 'Haumea', 136472: 'Makemake' };
+/**
+ * The catalogued bodies of the solar system near a place at a moment, nearest first: asteroids, comets, planets.
+ * From SkyBoT (IMCCE, Paris Observatory), which works out where each of them was, seen from the centre of the Earth.
+ * [] when there is none; throws when the service cannot be reached.
+ */
+export async function skybot(ra, dec, mjd, radiusArcsec = 60, signal) {
+  const u = `https://ssp.imcce.fr/webservices/skybot/api/conesearch.php?-ep=${(mjd + 2400000.5).toFixed(5)}&-ra=${ra.toFixed(5)}&-dec=${dec.toFixed(5)}&-rs=${radiusArcsec}&-mime=json&-output=all&-observer=500&-filter=0&-objFilter=111`;
+  const r = await fetch(u, { signal });
+  if (r.status === 204) return [];                         // nothing there
+  if (!r.ok) throw new Error(`SkyBoT ${r.status}`);
+  const text = await r.text();
+  if (!text.trim()) return [];
+  const js = JSON.parse(text);
+  if (!Array.isArray(js)) throw new Error('SkyBoT: unexpected answer');
+  const num = v => (v === null || v === undefined || v === '' ? NaN : +v);
+  return js.map(o => ({ num: o.Num || null, name: String(o.Name || '').trim(), cls: String(o.Class || ''), v: num(o['VMag (mag)']), d: num(o['d (arcsec)']),
+    rate: Math.hypot(num(o['dRA (arcsec/h)']), num(o['dDEC (arcsec/h)'])), dg: num(o['dg (ua)']), dh: num(o['dh (ua)']) })).sort((a, b) => a.d - b.d);
+}
+/** Where to check a body of the solar system: its number, or its name or designation when it has none. */
+export function bodyLinks(id) {
+  const q = encodeURIComponent(id);
+  return [
+    { label: 'NASA/JPL', title: G`Its orbit and what is known about it, in NASA's Small-Body Database`, url: `https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=${q}` },
+    { label: 'Minor Planet Center', title: G`Its observations and its orbit at the Minor Planet Center, which keeps the record for the world's observatories`, url: `https://www.minorplanetcenter.net/db_search/show_object?object_id=${q}` },
+  ];
+}
+/** The name people know a body by: "Pluto", "(6747) Ozegahara", "2015 TX457". */
+export const bodyName = o => (DWARFS[o.num] ? DWARFS[o.num] : o.num ? `(${o.num}) ${o.name}` : o.name);
+/** What kind of body it is, in plain words, from the class SkyBoT gives ("MB>Outer", "KBO>Resonant>3:2", "NEA>Apollo"…). */
+export function bodyKind(o) {
+  const c = o.cls;
+  return G(DWARFS[o.num] ? 'Dwarf planet' : /^MB/.test(c) ? 'Main-belt asteroid' : /^KBO/.test(c) ? 'Kuiper-belt object' : /^NEA/.test(c) ? 'Near-Earth asteroid'
+    : /^Trojan/.test(c) ? 'Jupiter trojan' : /^Centaur/.test(c) ? 'Centaur' : /^Mars-Crosser/.test(c) ? 'Mars-crossing asteroid' : /comet|period/i.test(c) ? 'Comet' : /planet/i.test(c) ? 'Planet' : 'Asteroid');
+}

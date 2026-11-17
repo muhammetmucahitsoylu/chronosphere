@@ -55,6 +55,7 @@ export default {
       <li><b>Bandas moleculares.</b> Las franjas sombreadas marcan dónde absorben luz las moléculas comunes. La tabla indica qué profundidad tiene la caída medida allí.</li>
       <li><b>Comparado con sus vecinas.</b> Bajo la curva de brillo, el cambio del punto rodeado entre visitas se compara con las estrellas corrientes de las mismas imágenes. Si ellas se mantuvieron constantes y el punto no, el cambio es real y no una rareza de la cámara. Lo mismo se hace con su posición.</li>
       <li><b>Cada estrella, comprobada.</b> Bajo las imágenes, cada estrella nítida del campo se pone a prueba en movimiento y en cambios de brillo, sin usar ningún catálogo. Las pocas que destacan se listan y se marcan con un rombo. Una marca es un motivo para mirar, no un hallazgo.</li>
+      <li><b>Cuerpos de paso.</b> Bajo las imágenes, cada exposición se examina en busca de puntos que están unos minutos en un mismo lugar y que otros días ya no están allí: asteroides, cometas, planetas enanos. SPHEREx se detiene, toma hasta cuatro exposiciones separadas por dos minutos, y dos de sus seis detectores miran siempre la misma zona del cielo en el mismo instante. Por eso un cuerpo real aparece a la vez en varias imágenes independientes; el impacto de un rayo cósmico, solo en una. A cada cuerpo encontrado le pone nombre SkyBoT, un servicio del Observatorio de París que sabe dónde estaba cada cuerpo catalogado en ese momento, y se le puede seguir de parada en parada, con su propio espectro.</li>
     </ul>
     <h2>Lo que no puede decirte</h2>
     <ul>
@@ -62,6 +63,7 @@ export default {
       <li>Las medidas usan un círculo fijo sencillo y sirven para explorar, no para publicar. Las estrellas muy brillantes saturan el detector; en ellas se mide en su lugar el débil resplandor exterior de la estrella y cada detector se une a su vecino: la forma general del espectro es correcta, su nivel y el detalle fino son aproximados.</li>
       <li>Una caída en la longitud de onda de una molécula es un indicio, no una detección.</li>
       <li>Las posiciones se repiten con una precisión de unas décimas de segundo de arco en las estrellas corrientes, pero una estrella cerca de saturar la cámara puede desviarse un segundo de arco o más en una sola visita.</li>
+      <li>La búsqueda de cuerpos de paso llega hasta la magnitud 18 aproximadamente. En seis campos de prueba a lo largo del plano del sistema solar señaló catorce cuerpos, de magnitud 14 a 18,8, y SkyBoT los conocía todos; en tres campos alejados de ese plano no señaló ninguno. Un punto que ningún catálogo conoce puede ser aun así un defecto de la imagen: es un motivo para volver a mirar.</li>
       <li>Nada de lo que hay aquí pretende ser un descubrimiento. Algo que parece nuevo es un motivo para comprobarlo en las otras herramientas enlazadas desde cada objeto.</li>
     </ul>`,
 
