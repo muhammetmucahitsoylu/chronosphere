@@ -275,12 +275,15 @@ web/what-is-spherex.html, web/how-it-works.html, web/about.html
                       engine or a browser without scripts can read (generated)
 web/tr/, web/es/, web/de/, web/fr/, web/pl/   the same three pages in the other languages (generated)
 web/robots.txt, web/sitemap.xml   for search engines (the sitemap is generated with the pages)
+web/db83ba526cb561c174feda741610f139.txt   the IndexNow key: Bing, Yandex and others read it to check that a
+                      notice of new pages (scripts/indexnow.py) comes from this site
 web/index/            the sky index (generated)
 web/data/             the five showcase objects (generated)
 web/vendor/aladin.js  Aladin Lite 3.8.2 (CDS, GPL-3.0), unmodified
 web/fonts/            IBM Plex and Instrument Serif (SIL Open Font License)
 scripts/              build_index.py, prebuild.py; build_pages.mjs writes the plain information pages
-                      from web/js/pages.js (run it with Node after changing a page)
+                      from web/js/pages.js (run it with Node after changing a page); indexnow.py tells
+                      search engines which pages changed
 backend/              Python reference pipeline and optional API
 ```
 
