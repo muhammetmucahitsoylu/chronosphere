@@ -37,7 +37,7 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<noscript><p style="margin:0;padding:14px 18px;background:#1b1512;color:#f3eee6;font:15px/1.5 system-ui,sans-serif">Chronosphere reads NASA's SPHEREx images in your browser, so it needs JavaScript. Turn it on for this site and reload the page. To read about it meanwhile: <a href="planet-x.html" style="color:#ff7b39">Planet X, Pluto and SPHEREx</a> · <a href="what-is-spherex.html" style="color:#ff7b39">What is SPHEREx?</a> · <a href="how-it-works.html" style="color:#ff7b39">How it works</a> · <a href="about.html" style="color:#ff7b39">About</a></p></noscript>
+<noscript><p style="margin:0;padding:14px 18px;background:#1b1512;color:#f3eee6;font:15px/1.5 system-ui,sans-serif">Chronosphere reads NASA's SPHEREx images in your browser, so it needs JavaScript. Turn it on for this site and reload the page. To read about it meanwhile: <a href="planet-x.html" style="color:#ff7b39">Planet X, Pluto and SPHEREx</a> · <a href="find-asteroids.html" style="color:#ff7b39">Asteroid hunt</a> · <a href="what-is-spherex.html" style="color:#ff7b39">What is SPHEREx?</a> · <a href="how-it-works.html" style="color:#ff7b39">How it works</a> · <a href="about.html" style="color:#ff7b39">About</a></p></noscript>
 <header class="top" id="top">
   <a class="brand" href="./" aria-label="Chronosphere, home">
     <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><circle cx="13" cy="17" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="19" cy="14" r="8" fill="var(--ember)"/></svg>
@@ -53,6 +53,7 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
     <div class="navlinks" id="navlinks" lang="en">
       <!-- links to the pages as plain pages (a search engine, a new tab); a plain click opens the same words over the map -->
       <a href="planet-x.html" data-sheet="planetx" data-t="tour.px.title">Planet X</a>
+      <a href="find-asteroids.html" data-sheet="hunt">Asteroid hunt</a>
       <a href="what-is-spherex.html" data-sheet="spherex">What is SPHEREx?</a>
       <a href="how-it-works.html" data-sheet="how">How it works</a>
       <a href="about.html" data-sheet="about">About</a>
@@ -84,6 +85,7 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
         <p class="lede" data-t="hero.lede">Stars drift. Some flicker. Cold worlds hide in colours our eyes cannot see. Pick any point of this map to watch that spot change over time, and find out what it is.</p>
         <div class="herobtns">
           <button type="button" class="cta" id="tourbtn2" data-t="hero.tour">Take the two-minute tour</button>
+          <button type="button" class="ghost" id="huntbtn" data-t="hero.hunt">Find an asteroid</button>
           <button type="button" class="ghost" id="hidewelcome" data-t="hero.explore">Explore freely</button>
         </div>
         <p class="startwith"><span data-t="hero.start">Or start with</span> <!-- the five test objects, written out so the text does not jump when data/targets.json arrives; the page's code replaces them with the same list --><span id="examples"><button type="button">Barnard's Star</button><button type="button">Epsilon Indi B</button><button type="button">WISE 0855</button><button type="button">RW Aurigae</button><button type="button">R Draconis</button><button type="button">Pluto</button></span></p>
@@ -136,6 +138,7 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
 
     <div class="cols">
       <div class="lead">
+        <div id="huntbox" class="bodybox huntbox" hidden></div>
         <div id="bodybox" class="bodybox" hidden></div>
         <div id="lookbox" class="lookbox"></div>
         <section id="findings" class="findings" aria-live="polite" hidden></section>
@@ -199,7 +202,14 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
           <button type="button" id="savepng" title="Save the image as shown, with its markings">Save image</button>
           <button type="button" id="savevideo" title="Save one loop of the sequence as a video file">Save video</button>
           <button type="button" id="savecsv" title="Every measurement of the circled spot: date, wavelength, brightness, exposure">Measurements (CSV)</button>
+          <button type="button" id="saveades" hidden title="The places measured for the body being followed, in the format the Minor Planet Center takes (ADES)">Positions (ADES)</button>
           <span id="exportnote" class="hint" role="status"></span>
+        </div>
+        <div id="reportask" class="reportask" hidden>
+          <label for="reporter">Your name for the report, as the Minor Planet Center writes names: initials and surname, for example J. Smith. It is written into the file and kept on this device only.</label>
+          <input id="reporter" type="text" maxlength="60" autocomplete="name" spellcheck="false">
+          <button type="button" id="reportsave">Save the file</button>
+          <button type="button" id="reportcancel">Cancel</button>
         </div>
         <div id="motion"></div>
         <div id="scan"></div>

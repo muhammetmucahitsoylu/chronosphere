@@ -1,6 +1,6 @@
-// The three information pages in Turkish. The English text is in ../pages.js: keep the two in step.
+// The four information pages in Turkish. The English text is in ../pages.js: keep the two in step.
 export default {
-  nav: { spherex: 'SPHEREx nedir?', how: 'Nasıl çalışır?', about: 'Hakkında' },
+  nav: { hunt: 'Asteroit avı', spherex: 'SPHEREx nedir?', how: 'Nasıl çalışır?', about: 'Hakkında' },
   figure: {
     label: 'Rengi bir kenarından ötekine değişen bir filtre; aynı yıldız her pozda başka bir renge düşer',
     exposure: 'poz',
@@ -63,9 +63,50 @@ export default {
       <li>Ölçümler basit, sabit bir daire kullanır ve keşif içindir, yayın için değil. Çok parlak yıldızlar dedektörü doyurur; onlarda bunun yerine yıldızın sönük dış ışıması ölçülür ve her dedektör komşusuna eklenir: tayfın genel biçimi doğrudur, düzeyi ve ince ayrıntısı yaklaşıktır.</li>
       <li>Bir molekülün dalga boyundaki soğurma izi bir ipucudur, kesin bir tespit değil.</li>
       <li>Sıradan yıldızlarda konumlar yay saniyesinin onda birkaçı kadar bir doğrulukla yinelenir; ama kamerayı doyurmaya yakın bir yıldız tek bir ziyarette bir yay saniyesi ya da daha fazla sapabilir.</li>
-      <li>Alandan geçen cisim araması yaklaşık 18. kadire kadar iner. Güneş Sistemi düzlemi boyunca altı deneme alanında, 14 ile 18,8 kadir arasında on dört cisim bildirdi ve SkyBoT bunların hepsini tanıyordu; o düzlemden uzaktaki üç alanda hiçbir şey bildirmedi. Hiçbir kataloğun tanımadığı bir nokta yine de görüntüdeki bir kusur olabilir: yeniden bakmak için bir nedendir.</li>
+      <li>Alandan geçen cisim araması yaklaşık 18. kadire kadar iner. Güneş Sistemi düzlemi boyunca sekiz deneme alanında, 14 ile 18,8 kadir arasında yirmi cisim bildirdi ve SkyBoT bunların hepsini tanıyordu; o düzlemden uzaktaki ya da yıldızların çevresindeki sekiz alanda hiçbir şey bildirmedi. Hiçbir kataloğun tanımadığı bir nokta yine de görüntüdeki bir kusur olabilir: yeniden bakmak için bir nedendir.</li>
       <li>Buradaki hiçbir şey bir keşif iddiası değildir. Yeni görünen bir şey, onu her cisimden bağlantısı verilen öteki araçlarda denetlemek için bir nedendir.</li>
     </ul>`,
+
+    hunt: () => `
+    <p class="eyebrow">Asteroit avı</p>
+    <h1>SPHEREx görüntülerinde asteroit bulun</h1>
+    <p class="lead">Asteroitler, kuyruklu yıldızlar ve cüce gezegenler SPHEREx görüntülerinden durmadan geçer: birkaç dakika aynı yerde duran, ertesi gün orada olmayan noktalar. Birini nasıl bulursunuz, bulunca elinize ne geçer ve bulunan cisim nereye bildirilir, hepsi burada.</p>
+    <p class="docgo"><a class="cta" href="./?hunt" data-do="hunt">Ava başla</a></p>
+    <h2>Bulmanın üç yolu</h2>
+    <ul>
+      <li><b>Alanı araç seçsin.</b> “Asteroit bul” düğmesi, numara almış ilk üç bin asteroitten birini rastgele seçer ve SPHEREx bakarken onun geçtiği bir gökyüzü parçasını açar. Aramaya ne hangi asteroit olduğu ne de nerede olduğu söylenir. Arama o parçanın bütün pozlarını, yaklaşık üç yüz pozu okur ve oradan nelerin geçtiğini bildirir. Bu, iki ile dört dakika sürer.</li>
+      <li><b>Adıyla isteyin.</b> Arama kutusuna bir ad ya da numara yazın: Ceres, 433 Eros, Plüton, Uranüs, 2P/Encke. Araç yörüngeye bakar, SPHEREx’in o cismi gördüğü günleri bulur ve halka cismin üzerindeyken o gökyüzü parçasını açar.</li>
+      <li><b>Herhangi bir yere bakın.</b> Hangi yeri açarsanız açın, o yerin pozlarında geçen cisimler aranır ve bulunanlar görüntülerin altında listelenir. Cisimlerin çoğu tutulum yakınında, yani gezegenlerin gökyüzünde izlediği kuşakta dolaşır.</li>
+    </ul>
+    <h2>Cisim, görüntü kusurundan nasıl ayırt edilir?</h2>
+    <p>SPHEREx durur, ikişer dakika arayla en çok dört poz alır; altı dedektöründen ikisi de her an gökyüzünün aynı yerine bakar. Bu yüzden bir cisim aynı yerde, birbirinden bağımsız birkaç görüntüde birden görünür; teleskop saatler sonra geri döndüğünde ise orada olmaz. Yıldız her seferinde oradadır. Kozmik ışın izi yalnızca tek bir görüntüde görülür.</p>
+    <p>Arama, yanıtı bilinen alanlarda denendi. Tutulum boyunca sekiz alanda yirmi cisim bildirdi; hepsi de doğru yerde duran, kataloglanmış cisimlerdi. Tutulumdan uzaktaki ya da yıldızların çevresindeki sekiz başka alanda hiçbir şey bildirmedi. Arama yaklaşık 18. kadire kadar iner.</p>
+    <h2>Elinize ne geçer?</h2>
+    <ul>
+      <li><b>Bir ad.</b> Bulunan her cisim, kataloglanmış her cismin o anda nerede olduğunu bilen SkyBoT hizmetinde (Paris Gözlemevi) aranır.</li>
+      <li><b>Hareketi.</b> İzlemek için bir cisme basın: teleskobun her durağı için bir görüntü, cisimle birlikte ilerleyen halka, ne kadar yol aldığı ve ne kadar hızlı gittiği.</li>
+      <li><b>Tayfı.</b> Her poz onu 0,75 ile 5 mikron arasında başka bir kızılötesi renkte yakalar. Yerden yapılan asteroit renk taramaları 2,5 mikron dolayında biter; SPHEREx bunun ötesine, su içeren minerallerin ve buzların iz bıraktığı yere kadar gider. Plüton’un tayfında metan buzu görülür.</li>
+      <li><b>Saklayabileceğiniz dosyalar.</b> Her dalga boyundaki parlaklığı bir tablo olarak (CSV) ve ölçülen konumları, her pozda uydunun nerede olduğuyla birlikte, Minor Planet Center’ın biçiminde (ADES).</li>
+    </ul>
+    <h2>Bulduğunuz cisim yeni mi?</h2>
+    <p>Neredeyse kesinlikle hayır; bunu avdan sonra değil, önce bilmek daha iyi. Tek bir SPHEREx pozu yaklaşık 18. kadire kadar olan asteroitleri görür. Her gece yeni asteroit arayan taramalar ise ana kuşağı bundan kat kat sönük cisimlere kadar katalogladı; yani SPHEREx’in görebildikleri çoktan bulundu. Denemelerimizde aramanın bildirdiği her cisim bilinen bir cisimdi.</p>
+    <p>SkyBoT’un adlandıramadığı bir nokta çoğu zaman bir görüntü kusurudur. Ona inanmadan önce:</p>
+    <ol>
+      <li><b>İzleyin.</b> Gerçek bir cisim üç ya da daha çok durakta, düz bir çizgi üzerinde ve değişmeyen bir hızla bulunur.</li>
+      <li><b>Bakın.</b> “Pozlar” görünümünde çevresindeki yıldızlara benzemeli ve bir durağın her görüntüsünde yer almalıdır.</li>
+      <li><b>Minor Planet Center’a sorun.</b> Adsız bir noktanın kutusunda, yeri ve anı doldurulmuş olarak merkezin MPChecker aracına giden bir bağlantı vardır. Bu araç oranın yakınında bilinen her cismi listeler; geçen hafta bulunanları da.</li>
+    </ol>
+    <h2>Bulunan cisim nereye bildirilir?</h2>
+    <p>Yeni asteroitler ve kuyruklu yıldızlar Küçük Gezegen Merkezi’ne (Minor Planet Center, MPC) bildirilir. Merkez, Uluslararası Astronomi Birliği’ne bağlı olarak dünyanın her yerindeki gözlemevlerinin ölçtüğü konumları toplar ve yörüngeleri hesaplar. Gerekenler:</p>
+    <ul>
+      <li><b>Merkezin biçiminde konumlar.</b> Cismin aynı geceden en az iki konumu, ADES adlı biçimde. “Konumlar (ADES)” düğmesi bu dosyayı yazar: zamanlar, konumlar, bunların ne kadar iyi bilindiği ve her poz için SPHEREx’in nerede olduğu; çünkü yörüngedeki bir teleskop yakın bir cismi Dünya’nın merkezinden biraz farklı bir açıdan görür. SPHEREx, MPC’nin listesinde 288 numaralı gözlemevidir.</li>
+      <li><b>Önce MPC’ye yazmak.</b> SPHEREx görüntüleri, başkasının teleskobundan gelen arşiv verisidir. MPC böyle veriler için, herhangi bir şey gönderilmeden önce yardım masası üzerinden kendisine yazılmasını ister. Dosya, o yazıya eklenecek şeydir.</li>
+      <li><b>Sabır.</b> Yalnızca bir gece görülen bir cisim, başka gözlemlerle birleştirilene kadar doğrulanmamış izler dosyasında bekler. Yörüngesi belli olunca geçici bir ad alır. Yörünge kesinleşince, ana kuşak asteroitlerinde yaklaşık dört dönüşten sonra, bir numara verilir. Keşfin kime ait olduğu o zaman belirlenir ve kâşif ancak o zaman bir ad önerebilir; ada Uluslararası Astronomi Birliği’nin bir çalışma grubu karar verir.</li>
+    </ul>
+    <p>Amacınız yeni bir asteroit keşfetmekse: NASA’nın Uluslararası Astronomik Arama İş Birliği (IASC), gönüllülere Pan-STARRS teleskobunun yeni görüntülerini taramaları için verir ve buluşlarını MPC’ye bildirir.</p>
+    <h2>SPHEREx’in kattığı</h2>
+    <p>Bu görüntülerde yeni olan asteroit değil, ışığıdır. SPHEREx’in yüz binden fazla asteroit ve kuyruklu yıldızı 102 kızılötesi renkte kaydetmesi bekleniyor; görevin çevresindeki bir iş birliği de bunların tayf kataloğunu hazırlıyor. Bu araçla herhangi birine bugün, teleskobun duraklarını tek tek izleyerek bakabilirsiniz.</p>
+    <p class="fine">Kaynaklar: <a href="https://www.minorplanetcenter.net/about" target="_blank" rel="noopener">Minor Planet Center</a> · <a href="https://docs.minorplanetcenter.net/mpc-ops-docs/astrometry/" target="_blank" rel="noopener">MPC: konum bildirme kılavuzu</a> · <a href="https://docs.minorplanetcenter.net/mpc-ops-docs/data-and-services/sarc/" target="_blank" rel="noopener">MPC: arşiv gözlemleri</a> · <a href="https://docs.minorplanetcenter.net/mpc-ops-docs/astrometry/discoveries-and-credit/" target="_blank" rel="noopener">MPC: keşif, hak sahipliği ve adlandırma</a> · <a href="https://minorplanetcenter.net/cgi-bin/checkmp.cgi" target="_blank" rel="noopener">MPChecker</a> · <a href="https://ssp.imcce.fr/webservices/skybot/" target="_blank" rel="noopener">SkyBoT</a>, <a href="https://ssp.imcce.fr/webservices/miriade/" target="_blank" rel="noopener">Miriade</a> (IMCCE, Paris Gözlemevi) · <a href="https://irsa.ipac.caltech.edu/data/SPHEREx/docs/SPHEREx_Expsupp_QR.pdf" target="_blank" rel="noopener">SPHEREx Explanatory Supplement</a> · <a href="https://meetingorganizer.copernicus.org/EPSC2026/EPSC2026-797.html" target="_blank" rel="noopener">Mahlke vd. 2026</a> · <a href="https://arxiv.org/abs/2010.07822" target="_blank" rel="noopener">Hendler &amp; Malhotra 2020</a> · <a href="https://science.nasa.gov/get-involved/citizen-science/new-way-you-can-discover-asteroids/" target="_blank" rel="noopener">NASA: IASC</a></p>`,
 
     about: () => `
     <p class="eyebrow">Hakkında</p>

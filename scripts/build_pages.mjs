@@ -1,7 +1,7 @@
 // Plain pages with addresses of their own, in all six languages, so that a search engine, a link preview or a
 // browser without scripts can read what the site otherwise shows only through its code:
-//   - the three information pages ("What is SPHEREx?", "How it works", "About"), from web/js/pages.js and
-//     web/js/pages/<code>.js: the same words the site shows as sheets over the map;
+//   - the four information pages ("Asteroid hunt", "What is SPHEREx?", "How it works", "About"), from web/js/pages.js
+//     and web/js/pages/<code>.js: the same words the site shows as sheets over the map;
 //   - "Planet X, Pluto and SPHEREx", from the guided tour's own words in web/js/lang.js;
 //   - one page for each of the five test objects and for Pluto, from web/data/targets.json, the tour and the panel's dictionaries.
 // The pictures they show are made by scripts/build_images.py. After changing any of these words, run
@@ -15,8 +15,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url)), WEB = join(HERE, '..', 'web');
 const SITE = 'https://chronospherex.com/';
-const SHEET_FILES = { spherex: 'what-is-spherex.html', how: 'how-it-works.html', about: 'about.html' };
-const ENGLISH_NAV = { spherex: 'What is SPHEREx?', how: 'How it works', about: 'About' };
+const SHEET_FILES = { hunt: 'find-asteroids.html', spherex: 'what-is-spherex.html', how: 'how-it-works.html', about: 'about.html' };
+const ENGLISH_NAV = { hunt: 'Asteroid hunt', spherex: 'What is SPHEREx?', how: 'How it works', about: 'About' };
 const OBJECT_FILES = { barnard: 'barnards-star.html', epsindib: 'epsilon-indi-b.html', wise0855: 'wise-0855.html', rwaur: 'rw-aurigae.html', rdra: 'r-draconis.html', pluto: 'pluto.html' };
 const FILES = { ...SHEET_FILES, planetx: 'planet-x.html', ...OBJECT_FILES };
 const TARGETS = JSON.parse(readFileSync(join(WEB, 'data', 'targets.json'), 'utf8'));
@@ -136,7 +136,8 @@ for (const code of codes) if (code !== 'en') all[code] = read(code);
 function content(code, id) {
   const { sheets, words: w, nav } = all[code], D = DOC[code];
   if (SHEET_FILES[id]) {
-    const body = sheets[id];
+    // a sheet's invitation into the site itself (href="./?hunt") leads there from the plain page, in its language
+    const body = sheets[id].replace(/href="\.\/\?(\w+)"/g, (m, what) => `href="${code === 'en' ? './' : '../'}?${what}${code === 'en' ? '' : `&lang=${code}`}"`);
     return { body, title: plain((body.match(/<h1>([\s\S]*?)<\/h1>/) || [])[1] || nav[id]), lead: plain((body.match(/<p class="lead">([\s\S]*?)<\/p>/) || [])[1] || ''), image: 'preview.png' };
   }
   const up = code === 'en' ? '' : '../';

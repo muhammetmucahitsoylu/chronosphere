@@ -5,7 +5,7 @@ anything, and watch that spot change over time. Chronosphere tells you what the 
 exposure of it like a little video so that motion and brightness changes stand out, builds its 102-band
 spectrum on the spot, and checks whether what you see is real.
 
-Live: https://chronospherex.com/ · guided tour: add `?tour`
+Live: https://chronospherex.com/ · guided tour: add `?tour` · an asteroid hunt: add `?hunt`
 
 Seven slides about it: https://chronospherex.com/chronosphere-slides.pdf
 
@@ -50,6 +50,23 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   it, the images show it moving against the stars, and its own spectrum is built. In the field that Pluto
   crossed in October 2025 the search finds Pluto and two main-belt asteroids, (6747) Ozegahara and
   (1218) Aster.
+- **Find an asteroid.** Three ways. *Find an asteroid*, on the front page, takes one of the first three
+  thousand numbered asteroids at random, finds a patch of sky it crossed while SPHEREx was looking (its orbit
+  from Miriade, IMCCE; the exposures from the sky index) and opens it without telling the search which
+  asteroid it is or where it was. About three hundred exposures are read, the panel says what is being done
+  and then what was found, and the find is shown at once, moving from stop to stop. Or type a body's name or
+  number into the search box (Ceres, 433 Eros, Uranus, 2P/Encke; also Plüton, Urano, Cérès): the days on which
+  SPHEREx had it in view are listed, and the patch of sky it crossed opens with the ring on it. Typed
+  *Uranus*, the page opens the planet's field of February 2026, and its search finds, unasked, the moons
+  Titania and Oberon circling it. Or open any place: its exposures are searched all the same.
+- **And when one is found?** A catalogued body is nothing to report; what is new is what SPHEREx measured of
+  it, and that can be saved: its spectrum as a table, and its measured places as a report in the Minor Planet
+  Center's ADES format, with SPHEREx's observatory code (288) and, for every exposure, where the spacecraft
+  was, read from the exposure's own header. A dot that SkyBoT cannot name gets three steps instead: look at
+  it in the single exposures, ask the Minor Planet Center's own MPChecker (one link, with the place and the
+  moment filled in), and only then the report file. The page *Asteroid hunt*, in six languages, says how to
+  find one, what is to be had, and where and how a find is reported; it says first that a discovery is not
+  to be expected, because bodies as bright as SPHEREx can see were catalogued long ago.
 - **Is it real, or the camera?** Every exposure carries the processing pipeline's own flags for each pixel:
   cosmic-ray hits, overloaded pixels, left-over charge, reflections of bright stars, and more. In the
   *Exposures* view, "This image" reads them on request (a few hundred kilobytes), says which are set at the
@@ -74,12 +91,12 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   short of it. At the first object, numbered pointers lead from the tour's card to the parts of the panel,
   and Next walks through the panel before the tour moves on. The tour is saved on the device and runs
   without a connection; the four further objects its last step offers are read live from the archive, and
-  one press keeps those too.
+  one press keeps those too. With a connection the last step also offers a hunt.
 - **Learn the panel.** "How to read this panel", on every object, walks through its nine parts one at a time:
   the part is lit, the rest dimmed, and a card says what it shows and what can be done with it. The tour
   takes the same walk at its first object.
 - **In six languages.** The front page, the guided tour, the walk through the panel, the measurement panel
-  itself with the sentences it writes from the numbers, and the three information pages are in English,
+  itself with the sentences it writes from the numbers, and the four information pages are in English,
   Turkish, Spanish, German, French and Polish (the picker is in the top bar; `?lang=tr` in an address does
   the same). Dates, counted nouns and the encyclopedia card follow the language. The words live in
   `web/js/lang.js` and in one file per language under `web/js/lang/` and `web/js/pages/`: adding a language
@@ -100,7 +117,7 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 | Add or subtract images from different times | Visits, Deep sum and Difference modes |
 | Choose the field of view | 3 to 40 arcminutes |
 | Overlay other telescopes | Gaia DR3 with proper-motion arrows and WISE sources, for any position; 2MASS, WISE and DSS sky maps |
-| Coordinates in the URL | `?ra=269.446&dec=4.771&fov=5&det=5&mode=epochs`; add `&embed=1` for a bare viewer to place in an iframe; `?tour` starts the tour |
+| Coordinates in the URL | `?ra=269.446&dec=4.771&fov=5&det=5&mode=epochs`; add `&embed=1` for a bare viewer to place in an iframe; `?tour` starts the tour, `?hunt` a hunt, `?sso=Ceres` opens a body of the solar system by name |
 | Display metadata | Date, wavelength, detector, release, exposure id, sky level, noise, coverage, PSF width, masked pixels, the pipeline's flags for each pixel by name (cosmic-ray hit, overflow, persistence, ghost and the rest, read from the file's FLAGS layer and drawn on the image) and a link to the source FITS file for every exposure |
 
 ## How it works
@@ -170,21 +187,67 @@ talking directly to NASA's open data.
   Luhman 16 are measured moving at 5.3 and 2.8 arcseconds per year, against catalogue values of 5.1 and 2.8.
   The blind field check finds Luhman 16 from raw coordinates, and rejects a close pair of stars in the same
   field that a naive position comparison would report as moving.
-- **Passing bodies.** The search was run on nine fields read from the archive (17 November 2026). In six
-  fields of 10 arcminutes along the ecliptic it reported 14 bodies: SkyBoT lists a catalogued body within
-  3 arcseconds of every one of them (visual magnitudes 14.0 to 18.8), and nothing was reported that it does
-  not list. In three fields of 5 arcminutes at ecliptic latitudes of 17, 29 and 52 degrees it reported none, and none
-  in the fields of the five test objects.
-  Each of the six fields was centred on a body known to be there: Pluto was found at all 19 stops of the
+- **Passing bodies.** The search was run on sixteen fields (17 and 18 November 2026). In eight fields of 10
+  arcminutes along the ecliptic it reported 20 bodies: SkyBoT lists a catalogued body within 3 arcseconds of
+  every one of them (visual magnitudes 14.0 to 18.8), and nothing was reported that it does not list. In
+  three fields of 5 arcminutes at ecliptic latitudes of 17, 29 and 52 degrees it reported none, and none in
+  the fields of the five test objects.
+  Six of the eight fields were centred on a body known to be there: Pluto was found at all 19 stops of the
   telescope that caught it, about half an arcsecond from the path JPL computes; (1467) Mashona (magnitude
   14.0) at 3 of 3, (5379) Abehiroshi (17.2) at 4 of 4, (13232) Prabhakar (17.6) at 1 of 2, (19694) Dunkelman
   (18.4) at 1 of 4, and (6563) Steinheim (18.6) at neither of 2: the search reaches about magnitude 18.
+  The other two were picked by the hunt itself, and the search was not told what to expect: it found
+  (1292) Luce (15.9) at 5 of 5 stops and (716) Berkeley (16.4) at 2 of 3, and beside them four fainter
+  bodies, of magnitude 17.8 to 18.7. A third hunt, started from the front page's button, picked
+  (1824) Haworth (16.4) near the point where its path turns back, read 264 exposures in 101 seconds and found
+  it at 12 stops over a week.
   Speeds measured from the tracks agree with the orbits: 21.0 against 20.8 arcseconds an hour for Ozegahara,
-  23.5 against 23.6 for Aster. What was turned away on the way: charge left in a detector by a bright star
-  (missing from the first exposure of every stop, and back at the same place at every stop of a visit),
-  cosmic-ray hits that fell on one place twice, which the pipeline's own flags mark, and faint stars that
-  show only at one end of a detector's range of wavelengths, which are there again whenever the telescope
-  returns in that colour.
+  23.5 against 23.6 for Aster, 17.3 against 16.9 for Luce. What was turned away on the way: charge left in a
+  detector by a bright star (missing from the first exposure of every stop, and back at the same place at
+  every stop of a visit), cosmic-ray hits that fell on one place twice, which the pipeline's own flags mark,
+  faint stars that show only at one end of a detector's range of wavelengths, which are there again whenever
+  the telescope returns in that colour, and dots that are in one of the two long-wavelength detectors only:
+  sunlight thrown back is brighter at the short end, where the test bodies stand out two to five times more
+  clearly, so a dot that is strongest in D5 or D6 while the partner detector shows less than half as much is
+  a fault of that detector (one such dot, which SkyBoT and the Minor Planet Center's checker both did not
+  know, was reported in a field before this rule). A body in front of a faint star used to be passed over;
+  now a strong dot there counts in a second round, under stricter rules (three images, two of them in one
+  detector, and next to nothing at that place on other days): Berkeley's second stop is found this way, and
+  the sixteen fields give the same bodies as before otherwise. Seven more fields, opened by name the same
+  day, gave the body asked for each time and six others, every one catalogued. One of them first showed a
+  second dot that no catalogue knew: a faint source that is there in three of eight exposures of the same
+  colour at other times. The test in the same colour now turns a dot away at a third of them, when that is
+  three exposures or more, where it took half; among the test bodies that share never passes 29 per cent.
+  Uranus, opened by name, is found at 13 of the 14 stops that caught it, 0.4 arcseconds from its path, and
+  with it Titania (magnitude 14.2) at 12 stops and Oberon (14.4) at 10, which SkyBoT names. A moon circles
+  its planet and a slow asteroid turns back, so the search, which joins what moves in a straight line, finds
+  such a body in pieces: pieces that SkyBoT gives one name are shown as one body.
+- **Bodies by name, and where the spacecraft was.** A path computed for the centre of the Earth is not where
+  SPHEREx sees a body: from 650 km up, a main-belt asteroid lies a few arcseconds to the side. Every exposure
+  gives the position of the spacecraft in its header (X_SC, Y_SC, Z_SC, with GEOCENTER as origin; the axes
+  are not named). Read as the equatorial axes of the star positions and turned by the Earth's rotation, that
+  position falls within a degree of the ground track the same header gives, in twelve exposures spread over
+  the mission; what remains in longitude, 0.32 degrees on average, is the precession since the year 2000
+  (0.33 degrees), as it should be for axes fixed to the stars.
+  Shifting a body's path by that position brings it onto the dots the search found. For seven bodies opened
+  by name (155 exposures) the dots lie a median 1.16 arcseconds from the path as the centre of the Earth sees
+  it, and 0.80 from the path as the spacecraft sees it. It matters most where the shift is large: (1292) Luce,
+  1.96 au away, 2.30 against 0.62; (1467) Mashona, 2.47 au, 2.01 against 0.81; (433) Eros, 1.15 au, 2.10
+  against 0.86. For Pluto, 35 au away, the shift is a tenth of an arcsecond and changes nothing (0.85 and
+  0.81). What is left, about 0.8 arcseconds, is how well a dot can be placed on images resampled from pixels
+  of 6.15 arcseconds; the reports state 0.7 arcseconds in each coordinate for a clear dot, more for a faint one.
+- **Picking a field for a hunt.** Twelve picks in a row: eleven gave a field, after one to six asteroids
+  tried and 1 to 10 seconds; one gave none (ten asteroids are tried now, where six were). The two fields then
+  read in full are the two hunts above.
+- **Names.** Sixteen names typed into the search box: "Sirius", "Vega", "Mira" (a star, and asteroid 3633),
+  "61 Cygni" (a star; asteroid 61 is Danaë), "Proxima Centauri", "M31" and "Luhman 16" open the star or
+  galaxy; "Ceres", "433 Eros", "(1467) Mashona", "asteroid Iris", "Uranüs", "2P/Encke" and "Vesta" open the
+  body; "Apophis", which SPHEREx has not had in view, and a word that is no name are answered in words. The
+  23 ways of writing coordinates and the 25 names that must stay names give the same result as before.
+- **The report file.** The files the page writes for a numbered body, a provisional designation, a comet
+  and a dot without a name were put through the IAU's own checker (the `iau-ades` package, `valsubmit`,
+  against the schema for submissions): all pass. Its first try did not: a line of comment may hold a
+  hundred characters. None of these files has been sent to the Minor Planet Center.
 - **Pixel flags.** The FLAGS layer of an exposure is a Rice-compressed image; the page has its own decoder.
   For two whole exposures (4.16 million pixels each) its output is identical to Astropy's, pixel for pixel.
   For the stamps of three test objects, the flags the page assigns to each pixel were recomputed
@@ -289,18 +352,20 @@ web/js/sky.js         the explorable sky map (Aladin Lite + IRSA sky maps)
 web/js/rice.js        Rice decompression, for the flags layer of an exposure
 web/js/healpix.js     which sky-map tiles a view needs (HEALPix)
 web/js/movers.js      bodies of the solar system passing through a field: the dots that are not always there
+web/js/bodies.js      a body by name: its path (Miriade), the days SPHEREx had it in view, the shift to where the
+                      spacecraft was, the report in the Minor Planet Center's format, a field for a hunt
 web/js/info.js        identification (SIMBAD), names of solar-system bodies (SkyBoT), Wikipedia card, links to other tools
 web/js/tour.js        guided tour: the steps and what the map does at each
 web/js/lang.js        the words of the front page, the tour and the walk through the panel, in six languages
 web/js/lang/          the measurement panel in Turkish, Spanish, German, French and Polish (one file each)
-web/js/pages.js       the "What is SPHEREx?", "How it works" and "About" pages, in English
-web/js/pages/         the same three pages in the other five languages (one file each)
+web/js/pages.js       the "Asteroid hunt", "What is SPHEREx?", "How it works" and "About" pages, in English
+web/js/pages/         the same four pages in the other five languages (one file each)
 web/sw.js             service worker: offline cache
 web/404.html          what a wrong address shows, with the way back to the map
 web/manifest.webmanifest, web/icon-192.png, web/icon-512.png, web/apple-touch-icon.png, web/favicon.ico
                       the site's name and icon for home screens and browser tabs
-web/what-is-spherex.html, web/how-it-works.html, web/about.html
-                      the three information pages as plain pages with addresses of their own, which a search
+web/find-asteroids.html, web/what-is-spherex.html, web/how-it-works.html, web/about.html
+                      the four information pages as plain pages with addresses of their own, which a search
                       engine or a browser without scripts can read (generated)
 web/planet-x.html     Planet X, Pluto and SPHEREx: the guided tour's story as a plain page, with Pluto in two
                       SPHEREx exposures six days apart (generated)
@@ -350,11 +415,29 @@ No build step: plain HTML, CSS and JavaScript modules.
   itself can produce one.
 - The search for passing bodies reaches about magnitude 18, and a body has to be caught at two moments of
   one stop, or by both detectors of a pair at one moment: fainter bodies and bodies in a single exposure are
-  missed. In front of a star a body is found only where a track already leads to it. A sighting that is not
-  part of a straight track of three stops is kept only after the pipeline's flags of its dots have been read,
-  which needs a connection. The orbits it is compared with are computed for the centre of the Earth; seen
-  from SPHEREx a main-belt asteroid lies up to a few arcseconds from there. A dot that SkyBoT does not know
-  can still be a fault of the image.
+  missed. In front of a star a body is found only when it is strong (15 times the noise, in three images),
+  or where a track already leads to it. A body that shows in the two long-wavelength detectors only (the gas
+  of a comet, a very dark and warm body) is turned away with the faults of those detectors. A sighting that
+  is not part of a straight track of three stops is kept only after the pipeline's flags of its dots have been
+  read, which needs a connection. SkyBoT's places, which name the bodies found, are computed for the centre of
+  the Earth; seen from SPHEREx a main-belt asteroid lies up to a few arcseconds from there (the path of a body
+  opened by name is shifted to where the spacecraft was; the comparison with SkyBoT is not). A dot that SkyBoT
+  does not know can still be a fault of the image.
+- A hunt reads about three hundred exposures, a few hundred megabytes, and takes two to four minutes; it
+  needs the orbit service (Miriade) and the archive. Its field is picked for an asteroid of magnitude 16.5 or
+  brighter that stayed in it for three stops of the telescope: of the two hunts read in full, one found its
+  asteroid at all five stops and one at two of three. A hunt finds catalogued bodies: asteroids bright
+  enough for a single SPHEREx exposure have been known for years.
+- The places written into a report are centroids on images resampled to 3.1-arcsecond pixels from pixels of
+  6.15: good to about 0.7 arcseconds for a clear dot, and stated as such in the file. The file is a draft in
+  the right format, not a submission: the Minor Planet Center asks to be contacted before archival
+  observations are sent, the reporter's name has to be put into it, and whether positions of this accuracy
+  are wanted for a body it already knows is for the Center to say.
+- A body opened by name is shown where it stayed inside one field for the most stops of the telescope; a
+  fast one, such as a near-Earth asteroid, is caught at one or two. Planets and their moons are named, but
+  not linked to an orbit page, and no report is written for them: the Minor Planet Center collects the
+  positions of minor planets, comets and the far-out small moons, not of planets and their large moons. The
+  brightest planets have not been tried.
 - The ice bands of a body of the solar system are measured on its light divided by a black body of 5772 K
   standing in for the Sun, from the few exposures of one visit; the band beyond 3 microns is set against its
   short-wavelength side alone, because methane ice leaves no bright stretch on the other.
@@ -378,8 +461,10 @@ No build step: plain HTML, CSS and JavaScript modules.
   for the test objects and through VizieR (CDS and its mirror at Harvard) everywhere else.
 - Object identification and name resolution: SIMBAD and Sesame, CDS, Strasbourg, and their mirrors at the
   Center for Astrophysics, Harvard & Smithsonian.
-- Bodies of the solar system: named by SkyBoT, IMCCE, Observatoire de Paris (Berthier et al. 2006); Pluto's
-  path through its field is from JPL Horizons.
+- Bodies of the solar system: named by SkyBoT, their paths from Miriade, both IMCCE, Observatoire de Paris
+  (Berthier et al. 2006, 2009); Pluto's path through its showcase field is from JPL Horizons. SPHEREx's
+  observatory code, MPChecker and the rules for reporting: IAU Minor Planet Center. The report format: ADES
+  (IAU; checked with its `iau-ades` tools).
 - Sky atlas component: Aladin Lite, CDS (GPL-3.0).
 - Encyclopedia text and thumbnails: Wikipedia (CC BY-SA), shown with a link to the article.
 - Software: Astropy, NumPy, SciPy, PyVO, FastAPI.

@@ -1,6 +1,6 @@
-// The three information pages in German. The English text is in ../pages.js: keep the two in step.
+// The four information pages in German. The English text is in ../pages.js: keep the two in step.
 export default {
-  nav: { spherex: 'Was ist SPHEREx?', how: 'So funktioniert es', about: 'Über uns' },
+  nav: { hunt: 'Asteroidenjagd', spherex: 'Was ist SPHEREx?', how: 'So funktioniert es', about: 'Über uns' },
   figure: {
     label: 'Ein Filter, dessen Farbe sich von einem Rand zum anderen ändert; derselbe Stern fällt in jeder Aufnahme auf eine andere Farbe',
     exposure: 'Aufnahme',
@@ -63,9 +63,50 @@ export default {
       <li>Die Messungen verwenden einen einfachen festen Kreis und sind zum Erkunden gedacht, nicht zur Veröffentlichung. Sehr helle Sterne übersteuern den Detektor; bei ihnen wird stattdessen das schwache äußere Leuchten des Sterns gemessen und jeder Detektor an seinen Nachbarn angeschlossen: Die Gesamtform des Spektrums stimmt, sein Niveau und die feinen Einzelheiten sind Näherungen.</li>
       <li>Eine Senke bei der Wellenlänge eines Moleküls ist ein Hinweis, kein Nachweis.</li>
       <li>Positionen wiederholen sich bei gewöhnlichen Sternen auf wenige Zehntel Bogensekunden, aber ein Stern nahe der Übersteuerung der Kamera kann in einem einzelnen Besuch um eine Bogensekunde oder mehr abweichen.</li>
-      <li>Die Suche nach durchziehenden Körpern reicht bis etwa zur 18. Magnitude. In sechs Testfeldern entlang der Ebene des Sonnensystems meldete sie vierzehn Körper der Magnituden 14 bis 18,8, und SkyBoT kannte jeden davon; in drei Feldern fern dieser Ebene meldete sie keinen. Ein Punkt, den kein Katalog kennt, kann trotzdem ein Bildfehler sein: Er ist ein Grund, noch einmal hinzusehen.</li>
+      <li>Die Suche nach durchziehenden Körpern reicht bis etwa zur 18. Magnitude. In acht Testfeldern entlang der Ebene des Sonnensystems meldete sie zwanzig Körper der Magnituden 14 bis 18,8, und SkyBoT kannte jeden davon; in acht Feldern fern dieser Ebene oder rund um Sterne meldete sie keinen. Ein Punkt, den kein Katalog kennt, kann trotzdem ein Bildfehler sein: Er ist ein Grund, noch einmal hinzusehen.</li>
       <li>Nichts hier erhebt den Anspruch einer Entdeckung. Etwas, das neu aussieht, ist ein Grund, es in den anderen Werkzeugen zu prüfen, die bei jedem Objekt verlinkt sind.</li>
     </ul>`,
+
+    hunt: () => `
+    <p class="eyebrow">Asteroidenjagd</p>
+    <h1>Einen Asteroiden auf SPHEREx-Aufnahmen finden</h1>
+    <p class="lead">Asteroiden, Kometen und Zwergplaneten ziehen ständig durch die Aufnahmen von SPHEREx: Punkte, die ein paar Minuten an einer Stelle stehen und am nächsten Tag fort sind. Hier steht, wie man einen findet, was man dann in der Hand hat und wo ein Fund gemeldet wird.</p>
+    <p class="docgo"><a class="cta" href="./?hunt" data-do="hunt">Jagd beginnen</a></p>
+    <h2>Drei Wege, einen zu finden</h2>
+    <ul>
+      <li><b>Das Werkzeug ein Feld wählen lassen.</b> „Einen Asteroiden finden“ nimmt zufällig einen der ersten dreitausend nummerierten Asteroiden und öffnet eine Himmelsgegend, die er durchquert hat, während SPHEREx hinsah. Der Suche wird weder gesagt, welcher Asteroid es ist, noch wo er war. Sie liest jede Aufnahme dieser Gegend, etwa dreihundert, und meldet, was durchgezogen ist. Das dauert zwei bis vier Minuten.</li>
+      <li><b>Nach dem Namen fragen.</b> Tippen Sie einen Namen oder eine Nummer in das Suchfeld: Ceres, 433 Eros, Pluto, Uranus, 2P/Encke. Das Werkzeug schlägt die Bahn nach, findet die Tage, an denen SPHEREx den Körper im Blick hatte, und öffnet diese Himmelsgegend, mit dem Ring schon auf ihm.</li>
+      <li><b>Irgendwo hinsehen.</b> Welche Stelle Sie auch öffnen: Ihre Aufnahmen werden nach durchziehenden Körpern durchsucht, und was gefunden wurde, steht unter den Bildern. Die meisten Körper ziehen nahe der Ekliptik, dem Band am Himmel, auf dem auch die Planeten wandern.</li>
+    </ul>
+    <h2>Woran ein Körper von einem Bildfehler zu unterscheiden ist</h2>
+    <p>SPHEREx hält an, macht bis zu vier Aufnahmen im Abstand von zwei Minuten, und zwei seiner sechs Detektoren sehen immer im selben Moment auf dieselbe Stelle des Himmels. Ein Körper ist deshalb auf mehreren unabhängigen Bildern an einer Stelle und von dort verschwunden, wenn das Teleskop Stunden später zurückkehrt. Ein Stern ist jedes Mal da. Der Treffer eines kosmischen Strahls ist nur auf einem Bild.</p>
+    <p>Die Suche wurde an Feldern erprobt, deren Antwort bekannt ist. In acht Feldern entlang der Ekliptik meldete sie zwanzig Körper, und jeder davon war ein katalogisierter Körper an der richtigen Stelle. In acht weiteren Feldern, abseits der Ekliptik oder rund um Sterne, meldete sie keinen. Sie reicht bis etwa zur 18. Magnitude.</p>
+    <h2>Was man bekommt</h2>
+    <ul>
+      <li><b>Einen Namen.</b> Jeder gefundene Körper wird bei SkyBoT nachgeschlagen, einem Dienst des Pariser Observatoriums, der weiß, wo jeder katalogisierte Körper in diesem Moment war.</li>
+      <li><b>Seine Bewegung.</b> Drücken Sie auf einen Körper, um ihm zu folgen: ein Bild für jeden Halt des Teleskops, der Ring wandert mit, dazu wie weit und wie schnell er gezogen ist.</li>
+      <li><b>Sein Spektrum.</b> Jede Aufnahme hat ihn in einer anderen Infrarotfarbe erfasst, von 0,75 bis 5 Mikrometer. Durchmusterungen der Asteroidenfarben vom Boden aus enden bei etwa 2,5 Mikrometer; SPHEREx reicht weiter, dorthin, wo wasserhaltige Minerale und Eise ihre Spuren hinterlassen. Plutos Spektrum zeigt Methaneis.</li>
+      <li><b>Dateien zum Aufbewahren.</b> Seine Helligkeit bei jeder Wellenlänge als Tabelle (CSV) und seine gemessenen Positionen im Format des Minor Planet Center (ADES), jeweils mit dem Ort des Satelliten bei der Aufnahme.</li>
+    </ul>
+    <h2>Ist er neu?</h2>
+    <p>Mit ziemlicher Sicherheit nicht, und das weiß man besser vor der Jagd als danach. Eine einzelne SPHEREx-Aufnahme reicht bis zu Asteroiden von etwa 18. Magnitude. Die Durchmusterungen, die jede Nacht nach neuen Asteroiden suchen, haben den Hauptgürtel bis zu vielfach schwächeren Körpern katalogisiert; was SPHEREx sehen kann, wurde also längst gefunden. In unseren Tests war jeder Körper, den die Suche meldete, ein bekannter.</p>
+    <p>Ein Punkt, den SkyBoT nicht benennen kann, ist meist ein Bildfehler. Bevor man ihm glaubt:</p>
+    <ol>
+      <li><b>Ihm folgen.</b> Ein echter Körper wird bei drei oder mehr Halten gefunden, auf einer geraden Linie, mit gleichbleibendem Tempo.</li>
+      <li><b>Ihn ansehen.</b> Unter „Aufnahmen“ sollte er aussehen wie die Sterne um ihn herum und auf jedem Bild eines Halts zu sehen sein.</li>
+      <li><b>Das Minor Planet Center fragen.</b> Im Kasten eines namenlosen Punktes führt ein Link zum MPChecker des Zentrums, Ort und Zeitpunkt sind schon eingetragen. Er listet jeden bekannten Körper in der Nähe auf, auch die der letzten Woche.</li>
+    </ol>
+    <h2>Wo ein Fund gemeldet wird</h2>
+    <p>Neue Asteroiden und Kometen werden dem Minor Planet Center (MPC) gemeldet. Es nimmt die Positionen entgegen, die Sternwarten in aller Welt messen, und berechnet die Bahnen, unter dem Dach der Internationalen Astronomischen Union. Was dazu nötig ist:</p>
+    <ul>
+      <li><b>Positionen in seinem Format.</b> Mindestens zwei Positionen des Körpers aus einer Nacht, im Format ADES. „Positionen (ADES)“ schreibt diese Datei: die Zeiten, die Positionen, wie genau sie bekannt sind, und für jede Aufnahme den Ort von SPHEREx, denn ein Teleskop in der Umlaufbahn sieht einen nahen Körper aus einem etwas anderen Winkel als der Erdmittelpunkt. SPHEREx ist in der Liste des MPC die Sternwarte 288.</li>
+      <li><b>Zuerst mit dem MPC sprechen.</b> SPHEREx-Aufnahmen sind Archivdaten vom Teleskop anderer. Für solche Daten bittet das MPC darum, über seinen Helpdesk angeschrieben zu werden, bevor etwas eingereicht wird. Die Datei ist das, was man anhängt.</li>
+      <li><b>Geduld.</b> Ein Körper, der nur in einer Nacht gesehen wurde, wartet in einer Datei unbestätigter Spuren, bis weitere Beobachtungen mit ihm verknüpft werden. Mit einer Bahn erhält er eine vorläufige Bezeichnung. Eine Nummer folgt, sobald die Bahn gesichert ist, bei einem Hauptgürtel-Asteroiden nach etwa vier Wiederkehren. Dann wird auch entschieden, wem die Entdeckung zugeschrieben wird, und erst dann darf der Entdecker einen Namen vorschlagen, über den eine Arbeitsgruppe der Internationalen Astronomischen Union entscheidet.</li>
+    </ul>
+    <p>Wer einen neuen Asteroiden entdecken möchte: Die International Astronomical Search Collaboration (IASC) der NASA gibt Freiwilligen frische Aufnahmen des Pan-STARRS-Teleskops zum Durchsuchen und meldet ihre Funde dem MPC.</p>
+    <h2>Was SPHEREx beiträgt</h2>
+    <p>Neu ist auf diesen Aufnahmen nicht der Asteroid, sondern sein Licht. SPHEREx soll mehr als hunderttausend Asteroiden und Kometen in 102 Infrarotfarben erfassen, und eine Kollaboration rund um die Mission bereitet einen Katalog ihrer Spektren vor. Mit diesem Werkzeug können Sie jeden von ihnen schon heute ansehen, Halt für Halt.</p>
+    <p class="fine">Quellen: <a href="https://www.minorplanetcenter.net/about" target="_blank" rel="noopener">Minor Planet Center</a> · <a href="https://docs.minorplanetcenter.net/mpc-ops-docs/astrometry/" target="_blank" rel="noopener">MPC: Leitfaden zum Melden von Positionen</a> · <a href="https://docs.minorplanetcenter.net/mpc-ops-docs/data-and-services/sarc/" target="_blank" rel="noopener">MPC: Archivbeobachtungen</a> · <a href="https://docs.minorplanetcenter.net/mpc-ops-docs/astrometry/discoveries-and-credit/" target="_blank" rel="noopener">MPC: Entdeckungen, Zuschreibung und Namen</a> · <a href="https://minorplanetcenter.net/cgi-bin/checkmp.cgi" target="_blank" rel="noopener">MPChecker</a> · <a href="https://ssp.imcce.fr/webservices/skybot/" target="_blank" rel="noopener">SkyBoT</a>, <a href="https://ssp.imcce.fr/webservices/miriade/" target="_blank" rel="noopener">Miriade</a> (IMCCE, Pariser Observatorium) · <a href="https://irsa.ipac.caltech.edu/data/SPHEREx/docs/SPHEREx_Expsupp_QR.pdf" target="_blank" rel="noopener">SPHEREx Explanatory Supplement</a> · <a href="https://meetingorganizer.copernicus.org/EPSC2026/EPSC2026-797.html" target="_blank" rel="noopener">Mahlke et al. 2026</a> · <a href="https://arxiv.org/abs/2010.07822" target="_blank" rel="noopener">Hendler &amp; Malhotra 2020</a> · <a href="https://science.nasa.gov/get-involved/citizen-science/new-way-you-can-discover-asteroids/" target="_blank" rel="noopener">NASA: IASC</a></p>`,
 
     about: () => `
     <p class="eyebrow">Über uns</p>

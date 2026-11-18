@@ -169,7 +169,7 @@ export function wikiTitles(ids) {
   return out;
 }
 
-const ASTRO = /\b(star|stars|galaxy|galaxies|nebula|dwarf|cluster|quasar|supernova|constellation|planet|pulsar|binary|variable|astronom|light-years|parsec|magnitude)\b/i;
+const ASTRO = /\b(star|stars|galaxy|galaxies|nebula|dwarf|cluster|quasar|supernova|constellation|planet|pulsar|binary|variable|astronom|light-years|parsec|magnitude|asteroid|asteroids|comet|trojan|centaur)\b/i;
 
 async function wikiSummary(title) {
   const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, '_'))}?redirect=true`);
@@ -353,11 +353,14 @@ export function bodyLinks(id) {
     { label: 'Minor Planet Center', title: G`Its observations and its orbit at the Minor Planet Center, which keeps the record for the world's observatories`, url: `https://www.minorplanetcenter.net/db_search/show_object?object_id=${q}` },
   ];
 }
-/** The name people know a body by: "Pluto", "(6747) Ozegahara", "2015 TX457". */
-export const bodyName = o => (DWARFS[o.num] ? DWARFS[o.num] : o.num ? `(${o.num}) ${o.name}` : o.name);
+/** A planet or one of its moons: SkyBoT numbers them too (7 is Uranus, 703 Titania), but those are not the numbers of minor planets. */
+export const isMajor = o => /^(planet|satellite)/i.test(o?.cls || '');
+/** The name people know a body by: "Pluto", "(6747) Ozegahara", "2015 TX457", "Titania". */
+export const bodyName = o => (DWARFS[o.num] ? DWARFS[o.num] : o.num && !isMajor(o) ? `(${o.num}) ${o.name}` : o.name);
 /** What kind of body it is, in plain words, from the class SkyBoT gives ("MB>Outer", "KBO>Resonant>3:2", "NEA>Apollo"…). */
-export function bodyKind(o) {
+export function bodyKindEn(o) {
   const c = o.cls;
-  return G(DWARFS[o.num] ? 'Dwarf planet' : /^MB/.test(c) ? 'Main-belt asteroid' : /^KBO/.test(c) ? 'Kuiper-belt object' : /^NEA/.test(c) ? 'Near-Earth asteroid'
-    : /^Trojan/.test(c) ? 'Jupiter trojan' : /^Centaur/.test(c) ? 'Centaur' : /^Mars-Crosser/.test(c) ? 'Mars-crossing asteroid' : /comet|period/i.test(c) ? 'Comet' : /planet/i.test(c) ? 'Planet' : 'Asteroid');
+  return DWARFS[o.num] ? 'Dwarf planet' : /^MB/.test(c) ? 'Main-belt asteroid' : /^KBO/.test(c) ? 'Kuiper-belt object' : /^NEA/.test(c) ? 'Near-Earth asteroid'
+    : /^Trojan/.test(c) ? 'Jupiter trojan' : /^Centaur/.test(c) ? 'Centaur' : /^Mars-Crosser/.test(c) ? 'Mars-crossing asteroid' : /comet|period/i.test(c) ? 'Comet' : /^satellite/i.test(c) ? 'Moon of a planet' : /planet/i.test(c) ? 'Planet' : 'Asteroid';
 }
+export const bodyKind = o => G(bodyKindEn(o));

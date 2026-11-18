@@ -59,10 +59,12 @@ function keysOf(m, f) {
   return order.map(v => keyOf(m, f, v));
 }
 
-/** Every exposure whose image centre lies close enough to (ra, dec) that it may cover it. */
-export async function findFrames(ra, dec, signal) {
+/**
+ * The exposures listed in some cells of the index for which `near(ra, dec, mjd)` gives a distance (degrees) from the
+ * place asked about; it returns null for an exposure that is of no interest.
+ */
+async function readCells(cells, near, signal) {
   const m = await manifest(), rec = m.recordBytes || 18;
-  const cells = cellsNear(ra, dec, FIELD_RADIUS, m.cellDeg);
   const bufs = await Promise.all(cells.map(([b, i]) =>
     fetch(`${m.base}c/${b}_${i}.bin?v=${encodeURIComponent(m.built || '')}`, { signal }).then(r => (r.ok ? r.arrayBuffer() : null)).catch(() => null)));
   const out = [];
@@ -70,11 +72,11 @@ export async function findFrames(ra, dec, signal) {
     if (!buf) continue;
     const dv = new DataView(buf);
     for (let o = 0; o + rec <= buf.byteLength; o += rec) {
-      const fra = dv.getFloat32(o, true), fdec = dv.getFloat32(o + 4, true);
-      const d = sepDeg(ra, dec, fra, fdec);
-      if (d > FIELD_RADIUS) continue;
+      const fra = dv.getFloat32(o, true), fdec = dv.getFloat32(o + 4, true), mjd = 60000 + dv.getFloat32(o + 8, true);
+      const d = near(fra, fdec, mjd);
+      if (d === null) continue;
       const sd = dv.getUint8(o + 16), rr = dv.getUint8(o + 17), rel = m.releases[rr & 127];
-      const f = { cra: fra, cdec: fdec, dist: d, mjd: 60000 + dv.getFloat32(o + 8, true), week: m.weeks[dv.getUint16(o + 12, true)],
+      const f = { cra: fra, cdec: fdec, dist: d, mjd, week: m.weeks[dv.getUint16(o + 12, true)],
         seq: dv.getUint16(o + 14, true), sub: sd >> 4, det: sd & 15, coll: rel.name, prefix: rel.prefix, retry: (rr & 128) !== 0 };
       f.id = `${f.week}_${String(f.seq).padStart(4, '0')}_${f.sub}`;
       f.keys = keysOf(m, f);
@@ -82,6 +84,22 @@ export async function findFrames(ra, dec, signal) {
     }
   }
   return out.sort((a, b) => a.mjd - b.mjd || a.det - b.det);
+}
+/** Every exposure whose image centre lies close enough to (ra, dec) that it may cover it. */
+export async function findFrames(ra, dec, signal) {
+  const m = await manifest();
+  return readCells(cellsNear(ra, dec, FIELD_RADIUS, m.cellDeg), (fra, fdec) => { const d = sepDeg(ra, dec, fra, fdec); return d > FIELD_RADIUS ? null : d; }, signal);
+}
+/**
+ * Every exposure that had a moving body well inside its image. `points` are places along the body's path, close
+ * enough together to say which cells of the index to read ([[ra, dec], …]); `at(mjd)` says where the body was at a
+ * moment ([ra, dec], or null outside the days the path covers). An image is 3.5 degrees across whichever way it is
+ * turned: a body within `reach` degrees of its centre is inside it.
+ */
+export async function findAlong(points, at, signal, reach = 1.6) {
+  const m = await manifest(), cells = new Map();
+  for (const [ra, dec] of points) for (const c of cellsNear(ra, dec, reach + 0.5, m.cellDeg)) cells.set(c.join('_'), c);
+  return readCells([...cells.values()], (fra, fdec, mjd) => { const p = at(mjd); if (!p) return null; const d = sepDeg(p[0], p[1], fra, fdec); return d > reach ? null : d; }, signal);
 }
 
 export function epochsOf(mjds, gap = 30) {
@@ -130,17 +148,20 @@ async function range(key, start, end, signal, suffix) {
   throw last;
 }
 
-/** Parse one FITS header starting at byte `off`; returns its cards and where its data begins. */
-function readHeader(bytes, off) {
+/**
+ * Parse one FITS header starting at byte `off`; returns its cards and where its data begins. Long keywords
+ * (HIERARCH XYZ_SC_SYSTEM = …) are kept under their own name. With `part`, the bytes may stop before the header does.
+ */
+function readHeader(bytes, off, part = false) {
   const cards = {}, td = new TextDecoder('ascii');
   let p = off;
   for (;;) {
-    if (p + 80 > bytes.length) throw new Error('header truncated');
+    if (p + 80 > bytes.length) { if (part) break; throw new Error('header truncated'); }
     const card = td.decode(bytes.subarray(p, p + 80)); p += 80;
-    const key = card.slice(0, 8).trim();
+    let key = card.slice(0, 8).trim(), v;
     if (key === 'END') break;
-    if (card[8] !== '=' || !key) continue;
-    let v = card.slice(10);
+    if (key === 'HIERARCH') { const eq = card.indexOf('='); if (eq < 0) continue; key = card.slice(9, eq).trim(); v = card.slice(eq + 1); }
+    else { if (card[8] !== '=' || !key) continue; v = card.slice(10); }
     if (v.trimStart()[0] === "'") { const m = v.match(/'((?:[^']|'')*)'/); cards[key] = m ? m[1].trimEnd() : ''; continue; }
     v = v.split('/')[0].trim();
     cards[key] = v === 'T' ? true : v === 'F' ? false : Number(v.replace(/D/i, 'E'));
@@ -271,10 +292,30 @@ export async function readFrame(f, grid, signal) {
   const pc = Math.floor(n / 2) * n + Math.floor(n / 2);
   return {
     id: f.id, det: f.det, coll: f.coll, mjd: h['MJD-AVG'] ?? f.mjd, date: String(h['DATE-AVG'] || '').slice(0, 19),
-    exp: h.XPOSURE ?? h.EXPTIME ?? null, url: IBE + key,
+    exp: h.XPOSURE ?? h.EXPTIME ?? null, url: IBE + key, ...(spacecraft(h) ? { sc: spacecraft(h) } : {}),
     lam: s0 / npx, lgx: sx / sxx, lgy: sy / sxx, bw: tableAt(t, t.bw, xs[pc] + 1, ys[pc] + 1),
     bg: med, sig, cov, fwhm: +(h.PSF_FWHM || 0).toFixed(2), px: [+xs[pc].toFixed(1), +ys[pc].toFixed(1)], data: out,
   };
+}
+
+/**
+ * Where the spacecraft was at the middle of an exposure, from its header: [x, y, z] in kilometres from the centre of
+ * the Earth, along the axes of the equatorial frame the star positions are given in. (The header names the origin,
+ * GEOCENTER, not the axes. They are these: turned by the Earth's rotation at that moment, the position falls within
+ * a degree of the ground track the same header gives, and what remains in longitude, a third of a degree on average,
+ * is the precession of the Earth's axis since the year 2000: the axes are fixed to the stars.) Null when a file does not say.
+ */
+function spacecraft(h) {
+  const v = [h.X_SC, h.Y_SC, h.Z_SC];
+  return v.every(x => typeof x === 'number' && x === x) && String(h.XYZ_SC_SYSTEM || 'GEOCENTER').trim() === 'GEOCENTER' ? v.map(x => +x.toFixed(2)) : null;
+}
+/** The same for an exposure read earlier, whose record does not carry it (a showcase object, a field kept from an earlier visit to the site): one small request. */
+export async function whereWasIt(f, signal) {
+  if (f.sc) return f.sc;
+  const key = String(f.url || '').startsWith(IBE) ? f.url.slice(IBE.length) : null;
+  if (!key) return null;
+  const head = new Uint8Array(await range(key, 0, 4 * BLOCK - 1, signal)), h1 = readHeader(head, 0);
+  return spacecraft(readHeader(head, h1.next, true).cards);
 }
 
 // ------------------------------------------------------------------ the pipeline's flags of one exposure

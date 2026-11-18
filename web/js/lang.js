@@ -28,6 +28,7 @@ const TEXT = {
     'hero.title': 'The sky is not still.',
     'hero.lede': 'Stars drift. Some flicker. Cold worlds hide in colours our eyes cannot see. Pick any point of this map to watch that spot change over time, and find out what it is.',
     'hero.tour': 'Take the two-minute tour',
+    'hero.hunt': 'Find an asteroid',
     'hero.explore': 'Explore freely',
     'hero.start': 'Or start with',
 
@@ -143,6 +144,7 @@ const TEXT = {
     'hero.title': 'Gökyüzü yerinde durmuyor.',
     'hero.lede': 'Yıldızlar yer değiştirir. Bazıları yanıp söner. Soğuk dünyalar gözümüzün göremediği renklerde saklanır. Bu haritada herhangi bir noktayı seçin, o noktanın zaman içinde nasıl değiştiğini izleyin ve ne olduğunu öğrenin.',
     'hero.tour': 'İki dakikalık tura çıkın',
+    'hero.hunt': 'Asteroit bul',
     'hero.explore': 'Serbestçe keşfedin',
     'hero.start': 'Ya da şununla başlayın:',
 
@@ -258,6 +260,7 @@ const TEXT = {
     'hero.title': 'Der Himmel steht nicht still.',
     'hero.lede': 'Sterne wandern. Manche flackern. Kalte Welten verbergen sich in Farben, die unsere Augen nicht sehen. Wählen Sie einen beliebigen Punkt dieser Karte, sehen Sie zu, wie er sich mit der Zeit verändert, und erfahren Sie, was dort ist.',
     'hero.tour': 'Zur Zwei-Minuten-Tour',
+    'hero.hunt': 'Einen Asteroiden finden',
     'hero.explore': 'Frei erkunden',
     'hero.start': 'Oder beginnen Sie mit',
 
@@ -373,6 +376,7 @@ const TEXT = {
     'hero.title': 'Le ciel ne tient pas en place.',
     'hero.lede': 'Les étoiles dérivent. Certaines vacillent. Des mondes froids se cachent dans des couleurs que nos yeux ne voient pas. Choisissez un point de cette carte pour le voir changer au fil du temps et découvrir ce qu’il est.',
     'hero.tour': 'Faire la visite de deux minutes',
+    'hero.hunt': 'Trouver un astéroïde',
     'hero.explore': 'Explorer librement',
     'hero.start': 'Ou commencez par',
 
@@ -488,6 +492,7 @@ const TEXT = {
     'hero.title': 'Niebo nie stoi w miejscu.',
     'hero.lede': 'Gwiazdy dryfują. Niektóre migoczą. Zimne światy kryją się w barwach, których nasze oczy nie widzą. Wybierz dowolny punkt tej mapy, zobacz, jak zmienia się w czasie, i dowiedz się, czym jest.',
     'hero.tour': 'Zacznij dwuminutową wycieczkę',
+    'hero.hunt': 'Znajdź planetoidę',
     'hero.explore': 'Zwiedzaj swobodnie',
     'hero.start': 'Albo zacznij od',
 
@@ -602,6 +607,7 @@ const TEXT = {
     'hero.title': 'El cielo no está quieto.',
     'hero.lede': 'Las estrellas se desplazan. Algunas parpadean. Mundos fríos se esconden en colores que nuestros ojos no ven. Elige cualquier punto de este mapa para ver cómo cambia con el tiempo y descubrir qué es.',
     'hero.tour': 'Haz la visita de dos minutos',
+    'hero.hunt': 'Buscar un asteroide',
     'hero.explore': 'Explorar libremente',
     'hero.start': 'O empieza con',
 

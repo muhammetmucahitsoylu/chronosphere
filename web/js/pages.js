@@ -1,4 +1,4 @@
-// Long-form pages shown as sheets over the map: what SPHEREx is, how the tool works, who made it.
+// Long-form pages shown as sheets over the map: what SPHEREx is, how to find an asteroid, how the tool works, who made it.
 // Every figure quoted here was checked against its source; the sources are linked at the end of each page.
 // This file holds the English text. The same pages in another language are in pages/<code>.js, in the same shape;
 // a language without such a file gets the English pages.
@@ -90,9 +90,50 @@ const ENGLISH = {
       <li>Measurements use a simple fixed circle and are meant for exploring, not for publication. Very bright stars overload the detector; for those, the star's faint outer glow is measured instead and each detector is joined to its neighbour: the overall shape of the spectrum is right, its level and fine detail are approximate.</li>
       <li>A dip at a molecule's wavelength is a hint, not a detection.</li>
       <li>Positions repeat to a few tenths of an arcsecond for ordinary stars, but a star close to overloading the camera can be off by an arcsecond or more in a single visit.</li>
-      <li>The search for passing bodies reaches about magnitude 18. In six test fields along the plane of the solar system it reported fourteen bodies, of magnitude 14 to 18.8, and SkyBoT knew every one of them; in three fields far from that plane it reported none. A dot that no catalogue knows may still be a fault in the image: it is a reason to look again.</li>
+      <li>The search for passing bodies reaches about magnitude 18. In eight test fields along the plane of the solar system it reported twenty bodies, of magnitude 14 to 18.8, and SkyBoT knew every one of them; in eight fields far from that plane or around stars it reported none. A dot that no catalogue knows may still be a fault in the image: it is a reason to look again.</li>
       <li>Nothing here claims a discovery. Something that looks new is a reason to check it in the other tools linked from every object.</li>
     </ul>`,
+
+  hunt: () => `
+    <p class="eyebrow">Asteroid hunt</p>
+    <h1>Find an asteroid in SPHEREx images</h1>
+    <p class="lead">Asteroids, comets and dwarf planets cross SPHEREx's images all the time: dots that are at one place for a few minutes and gone the next day. Here is how to find one, what you get when you do, and where a find is reported.</p>
+    <p class="docgo"><a class="cta" href="./?hunt" data-do="hunt">Start a hunt</a></p>
+    <h2>Three ways to find one</h2>
+    <ul>
+      <li><b>Let the tool pick a field.</b> “Find an asteroid” takes one of the first three thousand numbered asteroids at random and opens a patch of sky it crossed while SPHEREx was looking. The search is told neither which asteroid nor where it was. It reads every exposure of that patch, about three hundred of them, and reports what passed through. That takes two to four minutes.</li>
+      <li><b>Ask for one by name.</b> Type a name or a number into the search box: Ceres, 433 Eros, Pluto, Uranus, 2P/Encke. The tool looks up the orbit, finds the days on which SPHEREx had the body in view, and opens that patch of sky with the ring already on it.</li>
+      <li><b>Look anywhere.</b> Whichever place you open, its exposures are searched for passing bodies, and what was found is listed under the images. Most bodies travel near the ecliptic, the band of sky the planets move along.</li>
+    </ul>
+    <h2>How a body is told from a fault</h2>
+    <p>SPHEREx stops, takes up to four exposures two minutes apart, and two of its six detectors always look at the same sky at the same moment. A body is therefore in several independent images at one place, and gone from there when the telescope returns hours later. A star is there every time. A cosmic-ray hit is in one image only.</p>
+    <p>The search was tried on fields whose answer is known. In eight fields along the ecliptic it reported twenty bodies, and each of them was a catalogued body at the right place. In eight other fields, away from the ecliptic or around stars, it reported none. It reaches about magnitude 18.</p>
+    <h2>What you get</h2>
+    <ul>
+      <li><b>A name.</b> Each body found is looked up in SkyBoT, a service of Paris Observatory that knows where every catalogued body was at that moment.</li>
+      <li><b>Its motion.</b> Press a body to follow it: one image for every stop of the telescope, the ring moving with it, and how far and how fast it went.</li>
+      <li><b>Its spectrum.</b> Every exposure caught it in a different infrared colour, from 0.75 to 5 microns. Surveys of asteroid colours from the ground end near 2.5 microns; SPHEREx goes on to where water-bearing minerals and ices leave their marks. Pluto's spectrum shows methane ice.</li>
+      <li><b>Files to keep.</b> Its brightness at every wavelength as a table (CSV), and its measured places in the format of the Minor Planet Center (ADES), with where the spacecraft was at each exposure.</li>
+    </ul>
+    <h2>Is it new?</h2>
+    <p>Almost certainly not, and it is better to know that before the hunt than after. A single SPHEREx exposure reaches asteroids of about magnitude 18. The surveys that look for new asteroids every night have catalogued the main belt down to bodies many times fainter, so the ones SPHEREx can see were found long ago. In our tests every body the search reported was a known one.</p>
+    <p>A dot that SkyBoT cannot name is most often a fault in an image. Before believing it:</p>
+    <ol>
+      <li><b>Follow it.</b> A real body is found at three stops or more, on a straight line, at a steady pace.</li>
+      <li><b>Look at it.</b> Under “Exposures” it should look like the stars around it and be in every image of a stop.</li>
+      <li><b>Ask the Minor Planet Center.</b> The box of an unnamed dot links to the Center's MPChecker with the place and the moment filled in. It lists every known body near there, also those found last week.</li>
+    </ol>
+    <h2>Where a find is reported</h2>
+    <p>New asteroids and comets are reported to the Minor Planet Center (MPC). It receives the positions measured by observatories all over the world and works out the orbits, under the International Astronomical Union. What it takes:</p>
+    <ul>
+      <li><b>Positions in its format.</b> At least two places of the body from one night, in the format called ADES. “Positions (ADES)” writes that file: the times, the places, how well they are known and, for each exposure, where SPHEREx was, because a telescope in orbit sees a nearby body from a slightly different angle than the centre of the Earth would. SPHEREx is observatory 288 on the MPC's list.</li>
+      <li><b>A word with the MPC first.</b> SPHEREx images are archival data from someone else's telescope. For such data the MPC asks to be contacted, through its helpdesk, before anything is submitted. The file is what to attach.</li>
+      <li><b>Patience.</b> A body seen on one night only waits in a file of unconfirmed tracks until other observations are linked to it. With an orbit it gets a provisional designation. A number follows once the orbit is secure, for a main-belt asteroid after about four returns. Credit for the discovery is settled then, and only then may the discoverer propose a name, which a working group of the International Astronomical Union decides.</li>
+    </ul>
+    <p>If discovering a new asteroid is what you are after: NASA's International Astronomical Search Collaboration (IASC) gives volunteers fresh images from the Pan-STARRS telescope to search, and reports their finds to the MPC.</p>
+    <h2>What SPHEREx adds</h2>
+    <p>What is new in these images is not the asteroid but its light. SPHEREx is expected to record more than a hundred thousand asteroids and comets in 102 infrared colours, and a collaboration around the mission is preparing a catalogue of their spectra. With this tool you can look at any of them today, one stop of the telescope at a time.</p>
+    <p class="fine">Sources: <a href="https://www.minorplanetcenter.net/about" target="_blank" rel="noopener">Minor Planet Center</a> · <a href="https://docs.minorplanetcenter.net/mpc-ops-docs/astrometry/" target="_blank" rel="noopener">MPC: guide to reporting positions</a> · <a href="https://docs.minorplanetcenter.net/mpc-ops-docs/data-and-services/sarc/" target="_blank" rel="noopener">MPC: archival observations</a> · <a href="https://docs.minorplanetcenter.net/mpc-ops-docs/astrometry/discoveries-and-credit/" target="_blank" rel="noopener">MPC: discoveries, credit and naming</a> · <a href="https://minorplanetcenter.net/cgi-bin/checkmp.cgi" target="_blank" rel="noopener">MPChecker</a> · <a href="https://ssp.imcce.fr/webservices/skybot/" target="_blank" rel="noopener">SkyBoT</a>, <a href="https://ssp.imcce.fr/webservices/miriade/" target="_blank" rel="noopener">Miriade</a> (IMCCE, Paris Observatory) · <a href="https://irsa.ipac.caltech.edu/data/SPHEREx/docs/SPHEREx_Expsupp_QR.pdf" target="_blank" rel="noopener">SPHEREx Explanatory Supplement</a> · <a href="https://meetingorganizer.copernicus.org/EPSC2026/EPSC2026-797.html" target="_blank" rel="noopener">Mahlke et al. 2026</a> · <a href="https://arxiv.org/abs/2010.07822" target="_blank" rel="noopener">Hendler &amp; Malhotra 2020</a> · <a href="https://science.nasa.gov/get-involved/citizen-science/new-way-you-can-discover-asteroids/" target="_blank" rel="noopener">NASA: IASC</a></p>`,
 
   about: () => `
     <p class="eyebrow">About</p>

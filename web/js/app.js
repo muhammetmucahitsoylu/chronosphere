@@ -6,10 +6,11 @@ import { buildTour } from './tour.js';
 import { SHEETS, NAV } from './pages.js';
 import * as Archive from './archive.js';
 import * as Movers from './movers.js';
+import * as Bodies from './bodies.js';
 import * as Lang from './lang.js';
 
 const T = Lang.t, G = Lang.G;          // the words of the front page, the tour and the walk through the panel, in the language in use
-const PAGE_FILES = { planetx: 'planet-x.html', spherex: 'what-is-spherex.html', how: 'how-it-works.html', about: 'about.html' };
+const PAGE_FILES = { planetx: 'planet-x.html', hunt: 'find-asteroids.html', spherex: 'what-is-spherex.html', how: 'how-it-works.html', about: 'about.html' };
 
 const API = (window.CHRONO_API || '').replace(/\/$/, '');
 const $ = id => document.getElementById(id);
@@ -23,6 +24,8 @@ const nExp = n => Lang.N(n, 'exposure');
 // The showcase objects that have a name of their own in other languages (the tour's ladder of brightness names them).
 const NAMED = { barnard: 'ladder.r3', pluto: 'ladder.r4' };
 const nameOf = t => (NAMED[t.slug] && Lang.lang !== 'en' ? T(NAMED[t.slug]) : t.label);
+// SPHEREx's survey began at the end of April 2025: the path of a body of the solar system is asked for from then until today.
+const SURVEY0 = 60785, surveyDays = () => Math.ceil(Date.now() / 864e5 + 40587 - SURVEY0) + 1;
 
 const MODES = {
   epochs: G`One stacked image per SPHEREx visit to this spot, played in a loop. Anything that moved between visits jumps.`,
@@ -79,7 +82,7 @@ const Store = {
   },
 };
 
-async function go({ ra, dec, size, target = null, track = null, det, mode, info = null, fly = true, keepZoom = false }) {
+async function go({ ra, dec, size, target = null, track = null, det, mode, info = null, hunt = null, fly = true, keepZoom = false }) {
   coachEnd();
   S.abort?.abort(); S.abort = new AbortController();
   const gen = ++S.gen;
@@ -87,7 +90,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   Object.assign(S, { ra, dec, size: size || 5, target, track: track || (target && (target.eph ? { name: target.label, eph: target.eph } : target.resolved)) || null,
     head: null, grid: null, dets: {}, seq: [], idx: 0, sel: null, gaia: null, catwise: null, deep: null, off: new Set(), stacks: null, epochs: null, pts: [], bandCache: {}, stackCache: {}, haloDets: [] });
   S.info = info; S.infoState = info ? 'done' : 'loading'; S.wiki = null; S.found = null; S.moved = null; S.find = {};
-  S.movers = null; S.bodyMemo = null;
+  S.movers = null; S.bodyMemo = null; S.scMemo = null; S.hunt = hunt; S.expect = null;
   S.detPicked = !!det; S.autoNote = '';
   S.wantPlay = !calmMotion();          // the sequence starts playing by itself once it has loaded
   S.busyUntil = performance.now() + 9000;
@@ -106,8 +109,8 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   const mapFirst = Sky.isReady() ? Promise.race([Sky.onItsWay(), nap(450)]) : null;
   loadInfo(gen);
   $('fov').value = String(S.size);
-  $('notice').hidden = true; S.failed = null;
-  syncUrl(); renderChips(); renderAbout(); renderModes(); renderDets(); show(); refreshPlots();
+  $('notice').hidden = true; S.failed = null; $('reportask').hidden = true;
+  syncUrl(); renderChips(); renderAbout(); renderModes(); renderDets(); show(); refreshPlots(); renderHunt(); renderMovers();
   setStatus(G`Finding the exposures that cover this spot…`);
   loadCatalog(gen);
   try {
@@ -126,9 +129,9 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
     if (e.name === 'AbortError' || gen !== S.gen) return;
     console.error(e);
     // Say what happened and offer to try again; a returning connection retries by itself.
-    const retry = () => go({ ra, dec, size: S.size, target, track, det: S.det, mode: S.mode, info, fly: false });
+    const retry = () => go({ ra, dec, size: S.size, target, track, det: S.det, mode: S.mode, info, hunt, fly: false });
     S.failed = retry;
-    setStatus('');
+    setStatus(''); renderHunt();
     const el = $('notice');
     el.innerHTML = G`${S.head ? G`The connection dropped while the images were loading.` : G`NASA’s open archive could not be reached just now.`} Objects you have already opened still work offline.<br><button type="button">Try again</button>`;
     el.hidden = false;
@@ -179,6 +182,7 @@ async function loadDet(det, gen) {
       try {
         // Straight from NASA's open data, in this browser: no server of ours is involved.
         S.found ??= Archive.findFrames(S.ra, S.dec, S.abort.signal);
+        S.found.then(v => { if (gen === S.gen && !S.expect) { S.expect = {}; for (const f of v) if (f.dist <= 1.75) S.expect[f.det] = (S.expect[f.det] || 0) + 1; renderHunt(); } }).catch(() => {});
         const lines = [];
         await Archive.stream(S.ra, S.dec, S.size, det, line => { lines.push(line); handle(line); }, S.abort.signal, await S.found);
         if (gen === S.gen) Store.put(key, lines);
@@ -209,6 +213,7 @@ function onData(det) {
   }
   renderDets();
   refreshPlots();
+  renderHunt();
   if (D.done) maybeAutoplay();
 }
 
@@ -369,7 +374,7 @@ function rebuild() {
     idx = i < 0 ? seq.length - 1 : i;
   }
   S.idx = clamp(idx, 0, Math.max(0, seq.length - 1));
-  if (!S.sel) defaultSelection();
+  if (!S.sel && !S.hunt) defaultSelection();          // on a hunt nothing is circled until a body has been found
   $('seek').max = Math.max(0, seq.length - 1);
   renderModes(); renderMotion(); renderScan();
   show();
@@ -389,7 +394,10 @@ function defaultSelection() {
 /** Where the catalogued target should be on a date: its year-2000 position, moved by its proper
  *  motion and, for nearby stars, by its parallax. Returned in grid pixels. */
 function trackPos(mjd) {
-  if (S.track.eph) { const p = ephAt(S.track.eph, mjd); return p ? C.skyToGrid(S.grid, p[0], p[1]) : [NaN, NaN]; }
+  if (S.track.eph) {          // a body of the solar system: its path is given for the centre of the Earth, the spacecraft sees it a little to the side
+    const p = ephAt(S.track.eph, mjd);
+    return p ? C.skyToGrid(S.grid, ...Bodies.fromSpacecraft(p[0], p[1], p[2], scAt(mjd))) : [NaN, NaN];
+  }
   let [ra, dec] = C.propagate({ ra: S.track.ra2000, dec: S.track.dec2000, pmra: S.track.pmra, pmdec: S.track.pmdec }, 2000, C.mjdToYear(mjd));
   const plx = S.target?.dist?.plx ?? S.track.plx;
   if (plx > 20) {
@@ -404,13 +412,38 @@ function selPos(mjd) {
   if (S.sel.follow && S.track) { const p = trackPos(mjd); return p[0] === p[0] ? p : null; }
   return [S.sel.x, S.sel.y];
 }
-/** Where a body of the solar system was at a moment, from its path [[mjd, ra, dec], …]: null outside the days the path covers. */
+/**
+ * Where a body of the solar system was at a moment, seen from the centre of the Earth, from its path
+ * [[mjd, ra, dec, au from Earth], …]: [ra, dec, au] (0 au when the path does not say), null outside the days the path covers.
+ */
 function ephAt(eph, mjd) {
   if (!eph.length || mjd < eph[0][0] || mjd > eph[eph.length - 1][0]) return null;
   let lo = 0, hi = eph.length - 1;
   while (hi - lo > 1) { const m = (lo + hi) >> 1; if (eph[m][0] <= mjd) lo = m; else hi = m; }
   const a = eph[lo], b = eph[hi], t = (mjd - a[0]) / Math.max(b[0] - a[0], 1e-9);
-  return [a[1] + t * (b[1] - a[1]), a[2] + t * (b[2] - a[2])];
+  let dra = b[1] - a[1]; if (dra > 180) dra -= 360; else if (dra < -180) dra += 360;
+  return [a[1] + t * dra, a[2] + t * (b[2] - a[2]), a[3] > 0 ? a[3] + t * (b[3] - a[3]) : 0];
+}
+/**
+ * Where the spacecraft was at a moment ([x, y, z] in km from the centre of the Earth), from the exposures loaded,
+ * which say so in their headers: between two of them taken minutes apart, in a straight line. Null when none was
+ * taken within a few minutes, and for the showcase objects, whose stored exposures do not carry it.
+ */
+function scAt(mjd) {
+  const key = `${S.gen}:${[1, 2, 3, 4, 5, 6].map(d => S.dets[d]?.frames.length || 0).join()}`;
+  if (S.scMemo?.key !== key) {
+    const v = [];
+    for (let d = 1; d <= 6; d++) for (const f of S.dets[d]?.frames || []) if (f.sc) v.push([f.mjd, f.sc[0], f.sc[1], f.sc[2]]);
+    S.scMemo = { key, v: v.sort((a, b) => a[0] - b[0]) };
+  }
+  const v = S.scMemo.v;
+  if (!v.length) return null;
+  let lo = 0, hi = v.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (v[m][0] <= mjd) lo = m; else hi = m; }
+  const a = v[lo], b = v[hi];
+  if (mjd >= a[0] && mjd <= b[0] && b[0] > a[0] && b[0] - a[0] < 0.01) { const t = (mjd - a[0]) / (b[0] - a[0]); return [1, 2, 3].map(k => a[k] + t * (b[k] - a[k])); }
+  const near = Math.abs(a[0] - mjd) <= Math.abs(b[0] - mjd) ? a : b;
+  return Math.abs(near[0] - mjd) < 0.003 ? near.slice(1) : null;
 }
 /**
  * The body of the solar system being followed, if any: the stops of the telescope that caught it, in time order,
@@ -844,7 +877,7 @@ function renderFindings() {
   leadState();
 }
 /** The lead of the panel (what to look for, what the measurements say) takes no room while it has nothing to say. */
-function leadState() { document.querySelector('.cols').classList.toggle('nolook', !$('lookbox').innerHTML && $('findings').hidden && $('bodybox').hidden); }
+function leadState() { document.querySelector('.cols').classList.toggle('nolook', !$('lookbox').innerHTML && $('findings').hidden && $('bodybox').hidden && $('huntbox').hidden); }
 $('findings').addEventListener('click', e => {
   const to = e.target.closest('button')?.dataset.to;
   if (to) $(to)?.scrollIntoView({ behavior: calmMotion() ? 'auto' : 'smooth', block: 'center' });
@@ -1070,7 +1103,7 @@ function renderChips() {
     el.appendChild(b);
   }
   // Suggestions on which the tool has been tried: nearby fast movers, brown dwarfs, a nebula, a galaxy.
-  $('suggest').innerHTML = [...S.targets.map(t => t.label), 'Proxima Centauri', 'Luhman 16', 'Wolf 359', "Teegarden's Star", "Kapteyn's Star", 'NGC 7027', 'Andromeda Galaxy']
+  $('suggest').innerHTML = [...S.targets.map(t => t.label), 'Proxima Centauri', 'Luhman 16', 'Wolf 359', "Teegarden's Star", "Kapteyn's Star", 'NGC 7027', 'Andromeda Galaxy', 'Ceres', '4 Vesta', '433 Eros', 'Uranus', '2P/Encke']
     .map(n => `<option value="${n.replace(/"/g, '&quot;')}">`).join('');
 }
 const openTarget = t => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, info: t.info || null, ...(t.view || { mode: 'epochs' }) });
@@ -1106,7 +1139,8 @@ async function loadInfo(gen) {
     if (S.target && 'info' in S.target) { S.wiki = S.target.wikiCard || null; renderAbout(); localWiki(gen); return; }      // baked in: no look-up needed
     const titles = [];
     if (S.target?.wiki) titles.push(S.target.wiki);
-    if (S.info) {
+    if (S.info?.wiki) titles.push(...S.info.wiki);          // a body of the solar system opened by name
+    else if (S.info?.oid != null) {
       const ids = await Info.aliases(S.info.oid);
       if (gen !== S.gen) return;
       const common = Info.commonName(ids);          // "Kapteyn's Star" reads better than "HD 33793"
@@ -1142,7 +1176,7 @@ function renderAbout() {
     : S.infoState === 'loading' ? G`Identifying…` : S.infoState === 'failed' ? G`Not identified` : S.moved ? G`The star that was here has moved on` : G`Nothing catalogued at this spot`;
   // A star that catalogues list here, at its year-2000 place, but that has moved on since.
   const mv = !t && !i ? S.moved : null, mvPm = mv ? Math.hypot(mv.pmra, mv.pmdec) / 1000 : 0;
-  const gloss = t ? G(t.blurb) : i ? Info.gloss(i.otype, i.sptype)
+  const gloss = t ? G(t.blurb) : i ? i.gloss || Info.gloss(i.otype, i.sptype)
     : mv ? G`${mv.name} was at this spot in the year 2000, which is where catalogues still list it. It moves ${mvPm.toFixed(1)}″ a year and is now ${(mv.dist / 60).toFixed(1)}′ away.`
       : S.infoState === 'failed' ? G`The catalogue that names objects could not be reached just now, so this spot is not identified.`
         : S.infoState === 'done' ? G`No catalogue lists an object exactly here. SPHEREx still has images of this patch: what do you see?` : '';
@@ -1153,11 +1187,12 @@ function renderAbout() {
   const pmSrc = t?.pm || (i && i.pmra != null ? i : k && k.pmra != null ? k : null);
   const pm = pmSrc ? Math.hypot(pmSrc.pmra, pmSrc.pmdec) / 1000 : 0;          // arcseconds per year
   const fast = pm > 0.2;
-  if (t?.body) {
+  const body = t?.body || k?.body;
+  if (body) {
     // A body of the solar system has no place of its own in the sky: what is told is when it was here, and where it was then.
-    const b = t.body;
-    fact(G`Crossed this field`, C.fmtRange(b.from, b.to), G`${arc(b.moved)} across the sky`, G`The days on which it was inside these images, and how far it moved meanwhile`);
-    fact(G`Brightness`, G`magnitude ${b.mag.toFixed(1)}`, G`one SPHEREx exposure reaches about 19`, G`How bright it looked on those days, from ${b.source}`);
+    const b = body;
+    fact(G`Crossed this field`, span(b.from, b.to), G`${arc(b.moved)} across the sky`, G`The days on which it was inside these images, and how far it moved meanwhile`);
+    if (b.mag === b.mag) fact(G`Brightness`, G`magnitude ${b.mag.toFixed(1)}`, G`one SPHEREx exposure reaches about 19`, G`How bright it looked on those days, from ${b.source}`);
     fact(G`Distance`, G`${b.sun.toFixed(1)} au from the Sun`, G`${b.earth.toFixed(1)} au from Earth; 1 au is the distance from the Earth to the Sun`, G`On those days, from ${b.source}`);
   } else {
   const [sra, sdec] = C.fmtSex(S.ra, S.dec).split(' ');
@@ -1185,7 +1220,7 @@ function renderAbout() {
   const w = S.wiki;
   // The encyclopedia's picture sits in the header only when it is a photograph (see isPhoto).
   const thumb = w?.thumb ? `<a class="thumb" href="${esc(w.url)}" target="_blank" rel="noopener" title="Wikipedia: ${esc(w.title)}"${photos.get(w.thumb) === true ? '' : ' hidden'}><img src="${esc(w.thumb)}" alt="${esc(w.title)}, image from Wikipedia"></a>` : '';
-  const links = [...(w ? [{ label: 'Wikipedia', title: G`Encyclopedia article: ${w.title}`, url: w.url }] : []), ...(t?.body ? Info.bodyLinks(t.body.number || t.label) : Info.externalLinks(S.ra, S.dec, i))]
+  const links = [...(w ? [{ label: 'Wikipedia', title: G`Encyclopedia article: ${w.title}`, url: w.url }] : []), ...(body ? (body.kind === 'planet' ? [] : Info.bodyLinks(body.number || body.id || t?.label)) : Info.externalLinks(S.ra, S.dec, i))]
     .map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.title)}">${l.label}</a>`).join('');
   el.innerHTML = `<div class="toprow">
       <div class="idblock"><p class="kind">${kind}</p><h1>${esc(name)}</h1>${gloss ? `<p class="gloss">${esc(gloss)}</p>` : ''}${mv ? G`<p class="gomoved"><button type="button" class="cta" id="gomoved">Go to where it is now</button></p>` : ''}</div>
@@ -1228,8 +1263,13 @@ function isPhoto(url) {
 }
 /** Guidance for the showcase objects. The guided tour says the same thing in its own card. */
 function renderLook() {
-  const t = S.target, show = !!t?.look && tourIdx < 0 && !S.embed;
-  $('lookbox').innerHTML = show ? `<p class="look"><b>${G`What to look for`}</b>${esc(G(t.look))}</p>` : '';
+  const t = S.target, b = S.track?.body, on = tourIdx < 0 && !S.embed;
+  const look = t?.look ? G(t.look) : b ? G`Each image is one stop of the telescope, in time order. The stars stay where they are; the dot in the ring moves along the dotted line, the path its orbit gives. Under the images, the tool's own search for moving dots reports what it found without being told where to look.` : '';
+  // a body opened by name: the other times SPHEREx had it in view are one press away
+  const times = b?.visits?.length > 1 ? `<p class="look visits"><b>${G`SPHEREx had it in view at these times`}</b>${b.visits.map(v =>
+    `<button type="button" data-at="${v.mjd.toFixed(2)}" aria-pressed="${v.mjd >= b.from - 0.01 && v.mjd <= b.to + 0.01}" title="${esc(G`Stops of the telescope with it in one field: ${v.stops}`)}">${span(v.t0, v.t1).replace(/, .*/, '')}</button>`).join('')}</p>` : '';
+  $('lookbox').innerHTML = on && look ? `<p class="look"><b>${G`What to look for`}</b>${esc(look)}</p>${times}` : '';
+  $('lookbox').querySelectorAll('[data-at]').forEach(x => { x.onclick = () => openBody(b.query, +x.dataset.at); });
   leadState();
 }
 function renderWiki() {
@@ -1406,6 +1446,7 @@ function renderMotion() {
 }
 function renderModes() {
   const body = !!(S.grid && bodyStops());
+  $('saveades').hidden = !body;          // the places of a body can be saved while one is followed
   for (const b of $('modes').children) { b.setAttribute('aria-pressed', b.dataset.mode === S.mode); if (b.dataset.mode === 'trail') b.hidden = !body; }
   $('explain').textContent = MODES[S.mode];
 }
@@ -1425,7 +1466,7 @@ async function findBodies(gen) {
   if (!S.grid || !S.head) return;
   const dets = {}; let k = 0;
   for (let d = 1; d <= 6; d++) { dets[d] = usable(d); k += dets[d].length; }
-  if (k < 12) { S.movers = null; renderMovers(); return; }
+  if (k < 12) { S.movers = S.hunt ? { state: 'failed' } : null; renderMovers(); return; }          // too few exposures to tell a visitor from the sky
   S.movers = { state: 'working' }; renderMovers();
   try {
     const signal = S.abort.signal;
@@ -1437,31 +1478,62 @@ async function findBodies(gen) {
     console.error(e); S.movers = { state: 'failed' };
   }
   // the body this page is about, when it is one: the track that lies on its path is its own
-  if (S.track?.eph) for (const t of S.movers.tracks || []) {
-    const p = trackPos(t.sightings[0].mjd);
-    if (Math.hypot(p[0] - t.sightings[0].x, p[1] - t.sightings[0].y) * S.grid.scale < 15) t.body = { own: true, name: S.target ? nameOf(S.target) : S.track.name };
+  if (S.track?.eph) {
+    const own = [];
+    for (const t of S.movers.tracks || []) {
+      const p = trackPos(t.sightings[0].mjd);
+      if (Math.hypot(p[0] - t.sightings[0].x, p[1] - t.sightings[0].y) * S.grid.scale < 15) { t.body = { own: true, name: S.target ? nameOf(S.target) : S.track.name }; own.push(t); }
+    }
+    // A fast body (a near-Earth asteroid) is not joined from stop to stop by the search, which allows 80″ an hour: its known path joins it.
+    if (own.length > 1) {
+      own[0].sightings = own.flatMap(t => t.sightings).sort((a, b) => a.mjd - b.mjd);
+      Movers.describe(own[0], S.grid.scale);
+      S.movers.tracks = S.movers.tracks.filter(t => t === own[0] || !own.includes(t));
+    }
+  }
+  // on a hunt: the track that lies where the catalogue's asteroid was is the one the field was picked for
+  if (S.hunt) for (const t of S.movers.tracks || []) {
+    const q = t.sightings[0], p = S.hunt.at(q.mjd), xy = p && C.skyToGrid(S.grid, p.ra, p.dec);
+    if (xy && Math.hypot(xy[0] - q.x, xy[1] - q.y) * S.grid.scale < 30) { t.expected = true; break; }
   }
   renderMovers(); renderMotion(); paint();
-  if (S.wantBody && S.movers.tracks?.[S.wantBody - 1]) followBody(S.movers.tracks[S.wantBody - 1]);
+  const tracks = S.movers.tracks || [];
+  if (S.wantBody && tracks[S.wantBody - 1]) followBody(tracks[S.wantBody - 1]);
+  else if (S.hunt && !S.sel && tracks.length) followBody(tracks.find(t => t.expected) || tracks[0]);          // the hunt's find is shown at once
   S.wantBody = 0;
   nameBodies(gen);
 }
 /** What each track is: SkyBoT knows where every catalogued body of the solar system was at a moment. One question per track, unhurried. */
 async function nameBodies(gen) {
-  for (const t of S.movers?.tracks || []) {
+  for (const t of [...(S.movers?.tracks || [])]) {
     if (t.body || gen !== S.gen) continue;
     if (navigator.onLine === false) { t.body = { unknown: true }; continue; }
     const q = t.sightings[0], [ra, dec] = C.gridToSky(S.grid, q.x, q.y);
     try {
       const rows = await Info.skybot(ra, dec, q.mjd, 60, S.abort.signal);
       // SPHEREx reaches about magnitude 19; a body listed much fainter than that is not what was seen
-      const hit = rows.find(o => o.d <= 25 && !(o.v > 20.5));
+      const hit = rows.find(o => o.d <= 25 && !(o.v > 20.5) && !(Info.isMajor(o) && !(o.v <= 20.5)));          // a moonlet whose brightness nobody lists is not what was seen
       t.body = hit ? { ...hit, name: Info.bodyName(hit), kind: Info.bodyKind(hit) } : { none: true };
+      // The search joins what moves in a straight line. A moon circling its planet, or a body seen again on a later
+      // visit, comes out in pieces: pieces with one name are one body.
+      const first = hit && S.movers.tracks.find(x => x !== t && !x.body?.own && x.body?.name === t.body.name);
+      if (first && gen === S.gen) {
+        const stops = new Set(first.sightings.map(q => q.stop));
+        first.sightings = [...first.sightings, ...t.sightings.filter(q => !stops.has(q.stop))].sort((a, b) => a.mjd - b.mjd);
+        Movers.describe(first, S.grid.scale);
+        first.expected ||= t.expected;
+        S.movers.tracks = S.movers.tracks.filter(x => x !== t);
+        const followed = S.sel?.trail === t || S.sel?.trail === first;          // the body being followed has grown: its stops are worked out afresh
+        if (S.sel?.trail === t) S.sel = { trail: first };
+        if (followed) { S.bodyMemo = null; rebuild(); refreshPlots(); }
+      }
     } catch (e) {
       if (e.name === 'AbortError') return;
       t.body = { unknown: true };
     }
     if (gen !== S.gen) return;
+    // the hunt's own asteroid lies on its orbit: when SkyBoT cannot be asked, or does not list it there, the orbit names it
+    if (t.expected && !t.body.name) t.body = { name: S.hunt.name, num: S.hunt.num, kind: G`Asteroid`, v: S.hunt.v, byOrbit: true };
     renderMovers(); renderMotion(); paint();
     await nap(1500);
   }
@@ -1470,6 +1542,7 @@ const bodyLabel = t => (t.body?.name ? t.body.name : t.sightings.length > 1 ? G`
 function renderMovers() {
   const el = $('movers'), m = S.movers;
   if (!el) return;
+  renderHunt();
   if (!m || m.state === 'failed') { el.innerHTML = ''; renderBodyBox(); return; }
   if (m.state === 'working') { el.innerHTML = G`<p class="hint">Looking for bodies of the solar system passing through…</p>`; return; }
   const tracks = m.tracks, sub = m.unchecked ? G` Possible sightings left out because the pipeline's flags could not be read: ${m.unchecked}.` : '';
@@ -1479,8 +1552,8 @@ function renderMovers() {
   }
   const row = (t, i) => {
     const b = t.body, v = t.sightings, one = v.length === 1, on = S.sel?.trail === t || (b?.own && S.sel?.follow);
-    const what = b?.own ? G`found by this search too` : b?.name ? `${b.kind}${b.v === b.v ? G`, magnitude ${b.v.toFixed(1)}` : ''}`
-      : b?.none ? G`no catalogued body is there` : b?.unknown ? G`not looked up: no connection` : G`looking it up…`;
+    const what = (b?.own ? G`found by this search too` : b?.name ? `${b.kind}${b.v === b.v ? G`, magnitude ${b.v.toFixed(1)}` : ''}`
+      : b?.none ? G`no catalogued body is there` : b?.unknown ? G`not looked up: no connection` : G`looking it up…`) + (t.expected ? G` · the one this field was picked for` : '');
     const seen = one ? G`${Lang.N(v[0].hits.length, 'image')} within ${Lang.N(Math.max(1, Math.round((v[0].t1 - v[0].t0) * 1440)), 'minute')}, ${C.fmtDate(v[0].mjd, true)}`
       : G`${Lang.N(v.length, 'stop')}, ${span(t.t0, t.t1)} · ${arc(t.path)} at ${pace(t.rate)}`;
     return `<li><button type="button" data-body="${i}" aria-pressed="${!!on}">${esc(bodyLabel(t))}</button><span>${what} · ${seen}</span></li>`;
@@ -1504,7 +1577,7 @@ function followBody(t) {
 }
 function unfollow() {
   stop(); S.sel = null; S.mode = 'epochs'; S.seq = []; S.idx = 0;
-  renderModes(); rebuild(); renderMovers(); refreshPlots(); syncUrl();
+  renderModes(); rebuild(); renderMovers(); refreshPlots(); syncUrl(); showReportAsk(false);
 }
 /** Above the measurements: which passing body they are about, while one is followed in the field of another object. */
 function renderBodyBox() {
@@ -1513,14 +1586,108 @@ function renderBodyBox() {
   if (!t) { el.hidden = true; el.innerHTML = ''; leadState(); return; }
   const b = t.body || {};
   const facts = b.name ? [b.kind, b.v === b.v ? G`magnitude ${b.v.toFixed(1)}` : '', b.dh ? G`${b.dh.toFixed(2)} au from the Sun, ${b.dg.toFixed(2)} au from Earth` : ''].filter(Boolean).join(' · ')
-    : b.none ? G`SkyBoT lists no body of the solar system within 25″ of this place at that moment. It may be an artefact the checks missed, an artificial satellite, or a body nobody has catalogued: look at it in every exposure before believing it.`
+    : b.none ? G`SkyBoT lists no body of the solar system within 25″ of this place at that moment. Most often such a dot is a fault in an image that the checks missed; now and then it is a body nobody has catalogued. Three steps tell which:`
     : b.unknown ? G`Not looked up: SkyBoT could not be reached.` : G`Asking SkyBoT what it is…`;
-  const link = b.name ? ` ${Info.bodyLinks(b.num || b.name).map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.title)}">${l.label}</a>`).join(' · ')}` : '';
-  el.innerHTML = `<p class="kind">${G`Passing through this field`}</p><h2>${esc(bodyLabel(t))}</h2><p>${facts}${link}</p><button type="button" class="ghost" id="unfollow">${G`Back to ${esc(S.target ? nameOf(S.target) : S.info?.name || G`the spot`)}`}</button>`;
+  const link = b.name && !Info.isMajor(b) ? ` ${Info.bodyLinks(b.num || b.name).map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.title)}">${l.label}</a>`).join(' · ')}` : '';
+  // What now? A catalogued body is nothing to report: what is new are its measurements. A dot without a name is checked first.
+  const q = t.sightings[0], [ra, dec] = C.gridToSky(S.grid, q.x, q.y), guide = `<a href="${esc(pageAddress('hunt'))}" data-act="guide">`;
+  const now = b.name ? G`<p class="now"><b>What now?</b> It is in the catalogue, so there is no discovery to report. What is new is what SPHEREx measured of it: its brightness in every colour from 0.75 to 5 microns, and its place among the stars at each of these moments.</p><p class="acts"><button type="button" data-act="csv">Measurements (CSV)</button><button type="button" data-act="ades">Positions (ADES)</button>${guide}What they are good for</a></p>`
+    : b.none ? G`<ol class="steps"><li><b>Look at it.</b> Under “Exposures” a real body looks like the stars around it and is in every image of a stop; a fault is a sharp speck in one image.</li><li><b>Ask the Minor Planet Center.</b> Its own check lists every body known near this place at that moment, also the ones found last week: <a href="${esc(Bodies.mpcheckerUrl(ra, dec, q.mjd))}" target="_blank" rel="noopener">MPChecker</a>.</li><li><b>Still unknown?</b> Then its places can be reported: <button type="button" data-act="ades">Report file (ADES)</button> ${guide}How reporting works</a></li></ol>` : '';
+  const back = `<button type="button" class="ghost" id="unfollow">${S.hunt ? G`Back to the whole field` : G`Back to ${esc(S.target ? nameOf(S.target) : S.info?.name || G`the spot`)}`}</button>`;
+  el.innerHTML = `<p class="kind">${G`Passing through this field`}</p><h2>${esc(bodyLabel(t))}</h2><p>${facts}${link}</p>${now}${back}`;
   el.hidden = false;
-  $('unfollow').onclick = unfollow;
+  if ($('unfollow')) $('unfollow').onclick = unfollow;
+  el.querySelectorAll('[data-act]').forEach(x => { x.onclick = e => {
+    if (x.dataset.act === 'csv') $('savecsv').click();
+    else if (x.dataset.act === 'ades') askReport();
+    else if (!(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey)) { e.preventDefault(); openSheet('hunt'); }
+  }; });
   leadState();
 }
+
+// ------------------------------------------------------------ an asteroid hunt
+/** How far the reading of the field's exposures has come: [read, expected]. */
+function readSoFar() {
+  let done = 0, all = 0;
+  for (let d = 1; d <= 6; d++) {
+    const D = S.dets[d], avail = Math.min(S.expect ? S.expect[d] || 0 : S.head ? +S.head.avail[d] || 0 : 0, Archive.MAX_PER_DET);
+    const want = D?.total && avail ? Math.min(D.total, avail) : D?.total || avail;          // what the index promises, less what turns out not to cover the field
+    done += D ? D.frames.length : 0; all += D ? (D.done ? D.frames.length : Math.max(want, D.frames.length)) : avail;
+  }
+  return [done, all];
+}
+/**
+ * An asteroid hunt: one of the first three thousand numbered asteroids is picked at random, and a patch of sky it
+ * crossed while SPHEREx was looking is opened. The search for passing bodies is told neither which one nor where.
+ */
+async function startHunt(only = 0) {
+  if (tourIdx >= 0) tourEnd();
+  if (!$('sheetwrap').hidden) closeSheet();
+  closeMenu();
+  // on a phone's data plan, or where the visitor has asked the browser to save data, a hunt is not started unasked
+  const net = navigator.connection;
+  if (net && (net.saveData || net.type === 'cellular') && !window.confirm(G`A hunt reads about three hundred exposures from NASA's archive: a few hundred megabytes. Start it on this connection?`)) return;
+  const tok = ++S.openTok;
+  $('welcome').hidden = true;
+  note(G`Asteroid hunt: picking a patch of sky that an asteroid crossed while SPHEREx was looking…`);
+  let pick = null, reached = true;
+  try { pick = await Bodies.pickHunt(SURVEY0, surveyDays(), undefined, { tries: 10, only: only > 0 ? Math.floor(only) : 0 }); } catch (e) { console.error(e); reached = false; }
+  if (tok !== S.openTok) return;
+  if (!pick) { note(reached ? G`No field came up this time. Press “Find an asteroid” once more.` : orbitsDown(), 9000); return; }
+  note(''); $('q').value = '';
+  const { body, visit, rows } = pick;
+  go({ ra: visit.ra, dec: visit.dec, size: 10, info: { name: G`Asteroid hunt`, type: 'A patch of sky near the ecliptic', hunt: true },
+    hunt: { num: body.num, name: `(${body.num}) ${body.name}`, v: visit.v, from: visit.from, to: visit.to, at: Bodies.pathAt(rows) } });
+}
+/** The story of a hunt, at the top of the panel: what is being done, and then what was found. */
+function renderHunt() {
+  const el = $('huntbox'), h = S.hunt;
+  if (!el) return;
+  let html = '';
+  if (h && !S.failed) {
+    const m = S.movers, when = span(h.from, h.to), mag = h.v.toFixed(1), tracks = m?.tracks || [];
+    const again = `<button type="button" class="ghost" data-hunt="again">${G`Hunt in another field`}</button>`;
+    const guide = `<a href="${esc(pageAddress('hunt'))}" data-hunt="guide">${G`What can be done with a find?`}</a>`;
+    const names = v => v.map(t => `<button type="button" class="linkish" data-hunt-body="${tracks.indexOf(t)}">${esc(bodyLabel(t))}</button>`).join(', ');
+    if (!m) {
+      const [done, all] = readSoFar(), pc = all ? Math.round(100 * done / all) : 0;
+      html = `<p class="kind">${G`Asteroid hunt`}</p><h2>${G`Reading SPHEREx's exposures of this patch of sky`}</h2>
+        <p>${G`The catalogue of orbits says that an asteroid of magnitude ${mag} crossed it (${when}) while SPHEREx was looking. The search is told neither which asteroid nor where it was: every exposure is read, then searched for a dot that is not always there.`}</p>
+        <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pc}"><i style="width:${pc}%"></i></div>
+        <p class="hint">${all ? G`Exposures read: ${done} of about ${all}.` : G`Finding the exposures that cover this spot…`} ${G`Each is a strip cut out of a file of 60 megabytes in NASA's archive. A hunt moves a few hundred megabytes and takes two to four minutes.`}</p>`;
+    } else if (m.state === 'working') {
+      html = `<p class="kind">${G`Asteroid hunt`}</p><h2>${G`Searching the exposures for dots that are not always there`}</h2>
+        <p>${G`A body of the solar system is at one place for a few minutes, in several exposures at once, and gone from there on other days. A star is there every time; a cosmic-ray hit is in one exposure only.`}</p><div class="meter busy"><i style="width:100%"></i></div>`;
+    } else if (m.state === 'failed') {
+      html = `<p class="kind">${G`Asteroid hunt`}</p><h2>${G`The search could not be finished`}</h2><p class="acts">${again}</p>`;
+    } else {
+      const exp = tracks.find(t => t.expected), rest = tracks.filter(t => t !== exp), on = S.sel?.trail;
+      let head, text;
+      if (exp) {
+        head = exp.body?.name ? G`Found: ${esc(exp.body.name)}` : G`Found: a moving dot where the asteroid should be`;
+        text = (exp.body?.name ? G`It is the asteroid the catalogue promised (magnitude ${mag}). The search was told neither its name nor its place. Stops of the telescope at which it found it: ${exp.sightings.length}.` : G`Asking SkyBoT what it is…`)
+          + (rest.length ? G` Also passing through: ${names(rest)}.` : '');
+      } else if (rest.length) {
+        head = G`Found, but not the asteroid expected`;
+        text = G`${esc(h.name)} (magnitude ${mag}) should have crossed this field, and the search did not find it: it may have passed in front of stars. What it did find: ${names(rest)}.`;
+      } else {
+        head = G`Nothing found this time`;
+        text = G`${esc(h.name)} (magnitude ${mag}) should have crossed this field (${when}), and the search did not find it. A body that passes in front of a star at every stop is missed, and so is one that was fainter than the catalogue says.`;
+      }
+      html = `<p class="kind">${G`Asteroid hunt`}</p><h2>${head}</h2><p>${text}</p>
+        <p class="acts">${!on && tracks.length ? `<button type="button" class="cta" data-hunt="follow">${G`Follow it`}</button>` : ''}${again}${guide}</p>`;
+    }
+  }
+  if (el.dataset.was !== html) { el.dataset.was = html; el.innerHTML = html; el.hidden = !html; leadState(); }
+}
+$('huntbox').addEventListener('click', e => {
+  const b = e.target.closest('[data-hunt], [data-hunt-body]'), tracks = S.movers?.tracks || [];
+  if (!b) return;
+  if (b.dataset.huntBody) followBody(tracks[+b.dataset.huntBody]);
+  else if (b.dataset.hunt === 'again') startHunt();          // (a click hands the handler its event: startHunt is called without it)
+  else if (b.dataset.hunt === 'follow') followBody(tracks.find(t => t.expected) || tracks[0]);
+  else if (!(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey)) { e.preventDefault(); openSheet('hunt'); }
+});
 /** How far and how fast the followed body moved, from stop to stop; for a body whose path is known, how well the path fits. */
 function bodyMotion(el, sum) {
   const v = bodyStops(), t = S.sel?.trail, as = S.grid.scale;
@@ -1537,6 +1704,9 @@ function bodyMotion(el, sum) {
   if (found) {
     const off = found.sightings.map(q => { const p = trackPos(q.mjd); return Math.hypot(p[0] - q.x, p[1] - q.y) * as; }).filter(d => d === d).sort((p, q) => p - q);
     check = G` The search for moving dots, which is not told where to look, found it at ${found.sightings.length} of them, typically ${off[off.length >> 1].toFixed(1)}″ from where its orbit puts it.`;
+  } else if (!t && S.track?.eph && S.movers?.state === 'done') {
+    // a body asked for by name that the search did not find: said plainly, since the ring then marks only where its orbit puts it
+    check = G` The search for moving dots, which is not told where to look, did not find it at these stops: it is too faint for a single exposure there, or stood in front of a star.`;
   } else if (b?.name && b.rate && hours < 48) check = G` SkyBoT's orbit for ${esc(b.name)} gives ${pace(b.rate)} at that moment, ${b.d.toFixed(0)}″ from this track.`;      // over days a body speeds up or slows down: one moment's speed is no yardstick then
   const rows = v.length <= 8 ? G`<table class="t"><thead><tr><th>Stop</th><th title="How far it has moved since the first stop">Moved</th><th>Detectors</th></tr></thead><tbody>${v.map((q, i) =>
     `<tr><td>${C.fmtDate(q.mjd, true)}</td><td>${i ? arc(Math.hypot(q.x - a.x, q.y - a.y) * as) : G`first`}</td><td>${q.dets.map(d => 'D' + d).join(' + ')}</td></tr>`).join('')}</tbody></table>` : '';
@@ -1727,16 +1897,20 @@ async function resolveName(name) {
     [r.ra, r.dec] = C.propagate({ ra, dec, pmra: r.pmra, pmdec: r.pmdec }, 2000, year);
     return r;
   };
-  // The CDS name resolver and its mirror at Harvard; then SIMBAD itself, which knows exact identifiers.
+  // The CDS name resolver and its mirror at Harvard, both asked at once: the first to answer is believed (they are
+  // one service in two places), so that a day on which Strasbourg does not answer costs nothing. Then SIMBAD
+  // itself, which knows exact identifiers.
   let answered = false;                       // did any service answer at all?
-  for (const base of ['https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?', 'https://vizier.cfa.harvard.edu/viz-bin/nph-sesame/-oxp/SNV?']) {
-    try {
-      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 8000);
-      const r = await fetch(base + encodeURIComponent(name), { signal: ctl.signal });
-      clearTimeout(timer);
-      if (r.ok) { answered = true; const v = parse(await r.text()); if (v) return v; }
-    } catch { /* try the next one */ }
-  }
+  const ask = async base => {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 8000);
+    try { const r = await fetch(base + encodeURIComponent(name), { signal: ctl.signal }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return parse(await r.text()); }
+    finally { clearTimeout(timer); }
+  };
+  try {
+    const v = await Promise.any(['https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?', 'https://vizier.cfa.harvard.edu/viz-bin/nph-sesame/-oxp/SNV?'].map(ask));
+    answered = true;
+    if (v) return v;
+  } catch { /* neither could be reached */ }
   if (API) {
     try { const r = await fetch(`${API}/api/resolve?q=${encodeURIComponent(name)}`); if (r.ok) return await r.json(); } catch { /* fall through */ }
   }
@@ -1776,15 +1950,66 @@ async function search(text) {
   const q = plain(text);
   const preset = q.length > 2 && S.targets.find(t => [t.label, t.slug, t.query, nameOf(t)].some(s => { const v = plain(s); return v.includes(q) || q.includes(v); }));
   if (preset && size === preset.size) return openTarget(preset);
+  // "asteroid Iris", "(433) Eros", "2P/Encke": a body of the solar system is asked for outright
+  const outright = Bodies.saysBody(text);
+  if (outright && await openBody(text)) return;
   note(T('note.lookingUpName', { name: text }));
-  let r = null, reached = true;
-  try { r = await resolveName(text); } catch { reached = false; }
+  // A star, a galaxy? Or an asteroid, a comet, a planet? Both are asked at once. A star of that name wins ("Mira" is
+  // the star, not asteroid 3633); a body is opened when no star is known by the name, or when the star catalogues
+  // have not answered four seconds after the orbit service has.
+  const tok = ++S.openTok, ask = new AbortController();
+  const body = outright ? Promise.resolve(null) : Bodies.lookup(text, SURVEY0, surveyDays(), ask.signal).catch(() => null);
+  const star = resolveName(text).then(r => ({ r, reached: true }), () => ({ r: null, reached: false }));
+  const first = await Promise.race([star, body.then(b => (b ? nap(4000).then(() => ({ slow: true })) : star))]);
+  if (first.r) ask.abort();          // a star it is: the orbit service need not be asked any further
+  if (tok !== S.openTok) return;
+  const known = first.r ? null : await body;
+  if (known && await openBody(text, null, {}, known)) return;
+  const { r, reached } = first.slow ? await star : first;
+  if (tok !== S.openTok) return;
   if (!r) {
     note(reached ? T('note.notFound', { name: text }) : T('note.unreachable'), 8000);
     return;
   }
   note('');
   go({ ra: r.ra, dec: r.dec, size, track: r, target: preset || null });
+}
+
+/**
+ * A body of the solar system by name: find the days SPHEREx had it in view and open the patch of sky it was crossing
+ * then, with its path. `when` (a day) picks the visit that holds it, for a link that reopens a view; otherwise the
+ * visit in which the body stayed in one field for the most stops of the telescope. Resolves to false when no body
+ * of that name is known, to true when the request has been dealt with (also when it could only be answered in words).
+ */
+const orbitsDown = () => G`The service that knows the orbits of asteroids and comets (Miriade, Paris Observatory) could not be reached just now.`;
+async function openBody(text, when = null, view = {}, known = null) {
+  const tok = ++S.openTok, say = (words, ms) => { if (tok === S.openTok) note(words, ms); };
+  say(T('note.lookingUpName', { name: text }));
+  let b, visits, fine, v, o, name;
+  try {
+    b = known || await Bodies.lookup(text, SURVEY0, surveyDays());
+    if (!b) return false;
+    o = { num: b.kind === 'asteroid' ? b.num : null, name: b.name, cls: b.kind === 'planet' ? 'planet' : b.kind === 'comet' ? 'comet' : b.cls };
+    name = Info.bodyName(o);
+    say(G`Looking through SPHEREx's exposures for ${name}…`);
+    visits = await Bodies.visitsOf(b.rows);
+    if (tok !== S.openTok) return true;
+    if (!visits.length) { say(G`SPHEREx has not had ${name} in view in the exposures published so far.`, 9000); return true; }
+    v = (when && visits.find(x => when >= x.t0 - 1 && when <= x.t1 + 1)) || [...visits].sort((p, q) => q.inField - p.inField || q.t1 - p.t1)[0];
+    // its path through that field hour by hour (a fast one: every twenty minutes), with its distance
+    const quick = v.rate > 60;
+    fine = await Bodies.ephemeris(b.query, v.from - 0.75, Math.ceil((v.to - v.from + 1.5) * (quick ? 72 : 24)) + 1, quick ? '20m' : '1h');
+    if (!fine) throw new Error('no path');
+  } catch (e) { console.error(e); say(orbitsDown(), 9000); return true; }
+  if (tok !== S.openTok) return true;
+  const at = Bodies.pathAt(fine.rows), p0 = at(v.from), p1 = at(v.to), dwarf = Info.bodyName(o) === b.name && o.num;
+  const body = { number: o.num, id: o.num || b.code || b.name, code: b.code, kind: b.kind, query: text, mag: v.v, sun: v.sun, earth: v.delta, from: v.from, to: v.to,
+    moved: p0 && p1 ? sepArcsec(p0.ra, p0.dec, p1.ra, p1.dec) : 0, source: 'Miriade (IMCCE)', visits: visits.map(x => ({ mjd: x.mjd, t0: x.from, t1: x.to, stops: x.inField })) };
+  const wiki = b.kind === 'planet' ? [`${b.name} (planet)`, b.name] : b.kind === 'comet' ? [b.name, `Comet ${b.name.replace(/^\S+\//, '')}`] : dwarf ? [`${b.name} (dwarf planet)`, b.name] : o.num ? [`${o.num} ${b.name}`] : [b.name];
+  say(''); $('q').value = name;
+  go({ ra: v.ra, dec: v.dec, size: view.size || v.size, mode: 'trail', ...(view.det ? { det: view.det } : {}), ...(view.mode ? { mode: view.mode } : {}),
+    track: { name, eph: fine.rows.map(r => [+r.mjd.toFixed(5), +r.ra.toFixed(6), +r.dec.toFixed(6), +r.delta.toFixed(6)]), body }, info: { name, type: Info.bodyKindEn(o), body: true, wiki } });          // the kind in English: the header says it in the language in use
+  return true;
 }
 
 /** A click on the map: work out what is there today and open it. */
@@ -1819,6 +2044,7 @@ function note(text, ms) {
 function syncUrl() {
   const p = new URLSearchParams();
   if (isPreset()) p.set('target', S.target.slug);
+  else if (S.track?.body?.query) { p.set('sso', S.track.body.query); p.set('at', S.track.body.from.toFixed(2)); p.set('fov', S.size); }          // a body opened by name: the name, and which of its visits
   else { p.set('ra', S.ra.toFixed(5)); p.set('dec', S.dec.toFixed(5)); p.set('fov', S.size); }
   p.set('det', S.det); p.set('mode', S.mode);
   const followed = S.sel?.trail ? (S.movers?.tracks || []).indexOf(S.sel.trail) + 1 : 0;
@@ -1829,7 +2055,7 @@ function syncUrl() {
 
 // ------------------------------------------------------------ events
 $('search').onsubmit = e => { e.preventDefault(); search($('q').value); };
-$('fov').onchange = () => { if (S.grid || S.ra) go({ ra: S.ra, dec: S.dec, size: +$('fov').value, target: S.target, track: S.track }); };
+$('fov').onchange = () => { if (S.grid || S.ra) go({ ra: S.ra, dec: S.dec, size: +$('fov').value, target: S.target, track: S.track, hunt: S.hunt, info: S.info?.body || S.info?.hunt ? S.info : null }); };
 $('play').onclick = () => { S.wantPlay = false; S.playing ? stop() : play(); };
 $('prev').onclick = () => { S.wantPlay = false; stop(); step(-1); };
 $('next').onclick = () => { S.wantPlay = false; stop(); step(1); };
@@ -1968,6 +2194,59 @@ $('savecsv').onclick = () => {
   download(new Blob([pos + head.join(',') + '\n' + rows.join('\n') + '\n'], { type: 'text/csv' }), `chronosphere_${name}_measurements.csv`);
   exportNote(G`${pts.length} measurements saved.`);
 };
+/**
+ * The measured places of the body being followed, as a report in the Minor Planet Center's format (ADES): one line
+ * for every moment at which the search found it. The two detectors that looked at once make one observation. Where
+ * the spacecraft was at each moment comes from the exposure's header.
+ */
+const reportTrack = () => S.sel?.trail || (S.sel?.follow && S.track?.eph ? (S.movers?.tracks || []).find(t => t.body?.own) : null) || null;
+function showReportAsk(on) {
+  $('reportask').hidden = !on;
+  if (on) { try { $('reporter').value = localStorage.getItem('chrono-reporter') || ''; } catch { /* private mode */ } $('reporter').focus(); }
+}
+function askReport() {
+  // the Minor Planet Center keeps the positions of minor planets, comets and far-out moons: a planet or one of its large moons is none of them
+  const who = reportTrack()?.body;
+  if (who && (Info.isMajor(who) || (who.own && S.track?.body?.kind === 'planet'))) return exportNote(G`A planet or one of its moons is not reported to the Minor Planet Center: there is no file to write for this one.`);
+  if (!reportTrack()) return exportNote(S.movers?.state !== 'done' ? G`The search for moving dots is still at work: try again in a moment.`
+    : S.sel?.follow && S.track?.eph ? G`The search did not find it in these images: there are no measured places to save.` : G`Follow a passing body first: its measured places are what the file holds.`);
+  showReportAsk(true);
+  $('reportask').scrollIntoView({ block: 'nearest', behavior: calmMotion() ? 'auto' : 'smooth' });
+}
+async function saveReport() {
+  const t = reportTrack(), who = $('reporter').value.trim().replace(/[|\n\r]+/g, ' ').slice(0, 60);
+  if (!t) return showReportAsk(false);
+  try { localStorage.setItem('chrono-reporter', who); } catch { /* private mode */ }
+  const by = new Map();
+  for (const q of t.sightings) for (const c of q.hits) { const k = `${c.stop}:${c.sub}`; if (!by.has(k)) by.set(k, []); by.get(k).push(c); }
+  exportNote(G`Reading where the spacecraft was at each exposure…`);
+  const groups = [...by.values()], obs = [];
+  let next = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (next < groups.length) {
+      const hits = groups[next++], f = hits[0].frame, w = hits.reduce((k, c) => k + c.snr, 0);
+      const sc = await Archive.whereWasIt(f, S.abort.signal).catch(() => null);
+      if (!sc) continue;
+      const [ra, dec] = C.gridToSky(S.grid, hits.reduce((k, c) => k + c.x * c.snr, 0) / w, hits.reduce((k, c) => k + c.y * c.snr, 0) / w), snr = Math.hypot(...hits.map(c => c.snr));
+      obs.push({ mjd: f.mjd, ra, dec, rms: Bodies.placeError(snr), sc, snr, exp: f.exp, remark: `${[...hits].sort((p, q) => p.det - q.det).map(c => `D${c.det} ${c.lam.toFixed(2)} um`).join(', ')}; ${f.id}` });
+    }
+  }));
+  if (obs.length < 2) return exportNote(G`Too few places could be measured for a report.`);
+  const own = t.body?.own ? S.target?.body || S.track?.body : null, first = [...obs].sort((a, b) => a.mjd - b.mjd)[0];
+  const id = Bodies.reportId(own ? { num: own.number, name: S.track?.name, code: own.code } : t.body, first.ra, first.dec, first.mjd);
+  const text = Bodies.ades(id, obs, who || 'NAME OF THE PERSON WHO MEASURED (initials and surname)', [
+    'Measured with Chronosphere (chronospherex.com) in SPHEREx level-2 exposures from NASA/IPAC IRSA.',
+    'Places: centroids in exposures resampled to 3.1 arcsec pixels. Astrometry of each exposure by the SPHEREx pipeline, tied to Gaia DR3.',
+    'pos1 to pos3: the spacecraft at mid-exposure, from the keywords X_SC, Y_SC, Z_SC of each exposure.',
+    'Archival data: the Minor Planet Center asks to be contacted before such observations are submitted.']);
+  download(new Blob([text], { type: 'text/plain' }), `chronosphere_${(id.permID || id.provID || id.trkSub).replace(/[^A-Za-z0-9]+/g, '_')}_positions_ades.psv`);
+  showReportAsk(false);
+  exportNote(G`${obs.length} positions saved, in the Minor Planet Center's format.`);
+}
+$('saveades').onclick = askReport;
+$('reportsave').onclick = saveReport;
+$('reportcancel').onclick = () => showReportAsk(false);
+$('reporter').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveReport(); } });
 const canRecord = !!(window.MediaRecorder && cv.captureStream);
 if (!canRecord) $('savevideo').hidden = true;
 $('savevideo').onclick = async () => {
@@ -2187,6 +2466,12 @@ function tourGo(i) {
     b.onclick = () => openKnown(o);
     links.appendChild(b);
   }
+  if (st.tryNext && navigator.onLine !== false) {          // and, with a connection, a hunt: a patch of sky nobody has picked by hand
+    const b = document.createElement('button');
+    b.type = 'button'; b.id = 'tourhunt'; b.textContent = T('hero.hunt');
+    b.onclick = () => startHunt();
+    links.appendChild(b);
+  }
   showGuides(st.points || []);
   $('tourback').disabled = i === 0;
   $('tournext').textContent = i === tourSteps.length - 1 ? T('tour.finish') : T('tour.next');
@@ -2305,6 +2590,7 @@ function tourEnd() {
   if (Sky.isReady()) Sky.reshape();
 }
 $('tourbtn').onclick = $('tourbtn2').onclick = () => tourGo(0);
+$('huntbtn').onclick = () => startHunt();
 $('tournext').onclick = () => {
   // At the first object the audience meets the panel: Next walks through its parts once, then goes on.
   // The walk can be left at any moment with its ×; the next press of Next then goes on with the tour.
@@ -2330,8 +2616,8 @@ function openSheet(id) {
   const fill = html => {
     sh.innerHTML = `<button type="button" class="close" aria-label="${NAV ? G('Close') : 'Close'}">×</button>${html}`;
     sh.querySelector('.close').onclick = closeSheet;
-    // the page's invitation to the tour starts it here, over the same map
-    sh.querySelectorAll('.docgo a').forEach(a => { a.onclick = e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); closeSheet(); tourGo(0); }; });
+    // the page's invitation to the tour, or to a hunt, starts it here, over the same map
+    sh.querySelectorAll('.docgo a').forEach(a => { a.onclick = e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); closeSheet(); if (a.dataset.do === 'hunt') startHunt(); else tourGo(0); }; });
   };
   fill(SHEETS[id] ? SHEETS[id]() : '');
   wrap.hidden = false; wrap.scrollTop = 0; sh.focus();
@@ -2573,6 +2859,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   const t = S.targets.find(x => x.slug === q.get('target'));
   if (t) return go({ ra: t.ra, dec: t.dec, size: t.size, target: t, info: t.info || null, ...(t.view || {}), ...(det ? { det } : {}), ...(mode ? { mode } : {}) });
   if (q.has('ra') && q.has('dec')) return go({ ra: +q.get('ra'), dec: +q.get('dec'), size: +(q.get('fov') || q.get('size') || 5), det, mode });
+  if (q.get('sso')) return openBody(q.get('sso'), +q.get('at') || null, { det, mode, size: +q.get('fov') || 0 }).then(known => { if (!known) note(T('note.notFound', { name: q.get('sso') }), 8000); });
+  if (q.has('hunt')) return startHunt(+q.get('hunt') || 0);          // ?hunt=1292 repeats the hunt for that asteroid: for testing, and for showing one to somebody
   if (q.has('tour')) tourGo(0);
   if (PAGE_FILES[location.hash.slice(1)]) openSheet(location.hash.slice(1));
 })();

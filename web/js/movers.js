@@ -25,6 +25,7 @@ export const stopOf = id => String(id).slice(0, String(id).lastIndexOf('_'));
 const subOf = id => +String(id).slice(String(id).lastIndexOf('_') + 1);
 const PARTNER = { 1: 4, 4: 1, 2: 5, 5: 2, 3: 6, 6: 3 };
 const YES = 2.5;          // an exposure "says yes" at a place when it is this many times its noise brighter there than the calm sky
+const STAR_SNR = 15;      // in front of a star the sky is less even: there a dot has to be this strong to count towards a sighting
 
 /** Per pixel, the value at a given rank among the exposures (0 = lowest, 0.5 = median, 1 = highest). NaN where fewer than `need` have the pixel. */
 function rankStack(frames, npx, ranks, need) {
@@ -180,14 +181,22 @@ function judge(stop, g, group, all, n) {
   const says = d => g.frames.filter(f => f.det === d).map(f => f.seen(x, y)).filter(z => z != null);
   const own = says(best.det), other = says(PARTNER[best.det]);
   const ownYes = own.filter(z => z >= YES).length, otherYes = other.filter(z => z >= YES).length;
-  s.looked = own.length + other.length; s.said = ownYes + otherYes;
+  s.looked = own.length + other.length; s.said = ownYes + otherYes; s.partner = other;
   const first = g.frames.filter(f => f.det === best.det).sort((a, b) => a.mjd - b.mjd)[0];
   const expect = best.det >= 4 ? best.snr >= 10 : best.snr >= 40;      // sunlight thrown back is brighter at the short end; only a strong dot at the short end must show at the long end too
+  // In front of a star: the star's own light changes from one colour to the next, so more is asked. Three images or
+  // more, two of them in one detector, and (below) next to nothing at that place on other days.
+  s.covered = hits.some(c => c.onStar);
   s.why = best.snr < 5.5 ? 'too faint to be sure'
+    : s.covered && (hits.length < 3 || !twice) ? 'in front of a star, and in too few images'
     : !twice && !pair ? 'one image per detector, and not a pair'
     : own.length < 2 && !pair ? 'one exposure only'
     : ownYes < Math.ceil(own.length * 0.75) ? 'missing from exposures of its own detector'
     : expect && other.length && otherYes < Math.ceil(other.length * 0.5) ? 'missing from the partner detector'
+    // A body shines by sunlight thrown back, which is brighter at the short end: the test bodies stand out two to five
+    // times more clearly in D2 and D3 than in their partners D5 and D6. A dot that is strongest in D5 or D6 while the
+    // partner, which looked at the same place at the same moments, shows less than half as much, is a fault of that detector.
+    : best.det >= 5 && other.length && [...other].sort((p, q) => p - q)[other.length >> 1] < Math.max(YES, best.snr / 2) ? 'in the long-wavelength detector only'
     // left-over charge: missing from the first exposure of a stop, there in the rest
     : subOf(first.id) === 1 && own.length >= 3 && first.seen(x, y) != null && first.seen(x, y) < YES ? 'not in the first exposure of the stop'
     : null;
@@ -202,14 +211,16 @@ function judge(stop, g, group, all, n) {
     return z.length >= 6 && yes >= 3 ? yes / z.length : 0;
   };
   s.elsewhere = Math.max(share(dt => dt > 3 && dt <= 40), share(dt => dt > 40));
-  if (s.elsewhere >= 0.2) { s.why = 'there on other days too'; return s; }
+  if (s.elsewhere >= (s.covered ? 0.1 : 0.2)) { s.why = 'there on other days too'; return s; }
   // A faint star may show at one end of a detector's range of wavelengths only, and so in a few exposures in a row
   // and in few others. The exposures to ask are then the ones of other stops that saw this place in the same colour
   // (within 4%): a star is in them, a visitor is not.
   const c = (n - 1) / 2, colour = f => f.lam + (f.lgx || 0) * (x - c) + (f.lgy || 0) * (y - c), here = colour(best.frame);
   const alike = all.filter(f => f.det === best.det && stopOf(f.id) !== stop && Math.abs(colour(f) / here - 1) < 0.04).map(f => f.seen(x, y)).filter(q => q != null);
-  s.alike = alike.length >= 2 ? alike.filter(q => q >= YES).length / alike.length : null;
-  if (s.alike >= 0.5) s.why = 'there in this colour at other times too';
+  const again = alike.filter(q => q >= YES).length;
+  s.alike = alike.length >= 2 ? again / alike.length : null;
+  // half of them, or a third when that is three exposures or more: among the test bodies the share never passes 29%
+  if (s.alike >= 0.5 || (again >= 3 && s.alike >= 1 / 3)) s.why = 'there in this colour at other times too';
   return s;
 }
 
@@ -245,9 +256,8 @@ export async function findMovers(dets, grid, opt = {}) {
   if (opt.pause) await opt.pause();
 
   const raw = [];
-  for (const [stop, g] of stops) {
-    const v = g.dots.filter(c => !c.onStar); if (v.length < 2) continue;
-    // dots of one stop that sit at one place: within about a pixel at one moment, a little more for every step in between
+  // dots of one stop that sit at one place: within about a pixel at one moment, a little more for every step in between
+  const groupsOf = v => {
     const parent = v.map((_, i) => i), root = i => (parent[i] === i ? i : (parent[i] = root(parent[i])));
     for (let i = 0; i < v.length; i++) for (let j = i + 1; j < v.length; j++) {
       const a = v[i], b = v[j];
@@ -257,7 +267,21 @@ export async function findMovers(dets, grid, opt = {}) {
     }
     const groups = new Map();
     v.forEach((c, i) => { const r = root(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(c); });
-    for (const group of groups.values()) if (group.length >= 2) raw.push({ g, group, s: judge(stop, g, group, all, n) });
+    return [...groups.values()].filter(group => group.length >= 2);
+  };
+  for (const [stop, g] of stops) {
+    // first the dots away from the stars
+    const told = new Set();
+    for (const group of groupsOf(g.dots.filter(c => !c.onStar))) {
+      const s = judge(stop, g, group, all, n);
+      raw.push({ g, group, s });
+      if (!s.why) for (const c of group) told.add(c);
+    }
+    // then the strong ones in front of a star, with their neighbours, wherever the first round found no visitor
+    for (const group of groupsOf(g.dots.filter(c => !c.onStar || c.snr >= STAR_SNR))) {
+      if (!group.some(c => c.onStar) || group.some(c => told.has(c))) continue;
+      raw.push({ g, group, s: judge(stop, g, group, all, n) });
+    }
   }
   let sightings = raw.map(r => r.s).filter(s => !s.why).sort((a, b) => a.mjd - b.mjd);
   if (opt.pause) await opt.pause();
@@ -331,7 +355,7 @@ export async function findMovers(dets, grid, opt = {}) {
 }
 
 /** Fill in what a track is: when, how far, how fast. */
-function describe(t, scale) {
+export function describe(t, scale) {
   const v = t.sightings, a = v[0], b = v[v.length - 1];
   t.t0 = a.t0; t.t1 = b.t1; t.hours = (b.mjd - a.mjd) * 24;
   t.dE = -(b.x - a.x) * scale; t.dN = (b.y - a.y) * scale; t.moved = Math.hypot(t.dE, t.dN);
