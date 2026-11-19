@@ -82,13 +82,18 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
       <div class="hero" id="welcome">
         <p class="eyebrow" data-t="hero.eyebrow">NASA SPHEREx · 102 infrared colours · the whole sky, twice a year</p>
         <h1 data-t="hero.title">The sky is not still.</h1>
-        <p class="lede" data-t="hero.lede">Stars drift. Some flicker. Cold worlds hide in colours our eyes cannot see. Pick any point of this map to watch that spot change over time, and find out what it is.</p>
+        <p class="lede"><span class="poem" data-t="hero.lede">Stars drift. Some flicker. Cold worlds hide in colours our eyes cannot see.</span> <span data-t="hero.do">Pick any point of this map to watch that spot change over time, and find out what it is.</span></p>
         <div class="herobtns">
           <button type="button" class="cta" id="tourbtn2" data-t="hero.tour">Take the two-minute tour</button>
           <button type="button" class="ghost" id="huntbtn" data-t="hero.hunt">Find an asteroid</button>
           <button type="button" class="ghost" id="hidewelcome" data-t="hero.explore">Explore freely</button>
         </div>
         <p class="startwith"><span data-t="hero.start">Or start with</span> <!-- the five test objects, written out so the text does not jump when data/targets.json arrives; the page's code replaces them with the same list --><span id="examples"><button type="button">Barnard's Star</button><button type="button">Epsilon Indi B</button><button type="button">WISE 0855</button><button type="button">RW Aurigae</button><button type="button">R Draconis</button><button type="button">Pluto</button></span></p>
+        <!-- what the title says, shown: the tool's own "Passing body" view of Pluto at 17 stops of the telescope, saved from the viewer's canvas; a press opens Pluto -->
+        <button type="button" class="heroshot" id="heroshot">
+          <picture><source media="(prefers-reduced-motion: reduce)" srcset="hero-pluto.jpg"><img src="hero-pluto.webp" width="320" height="320" alt="" decoding="async"></picture>
+          <span class="shotcap"><b data-t="hero.shot.title">The dot in the ring is Pluto.</b> <span data-t="hero.shot.text">17 real images from NASA’s SPHEREx telescope, 3 to 12 October 2025.</span> <span class="shotgo" data-t="hero.shot.go">Open Pluto</span></span>
+        </button>
         <p class="offline" id="offline"></p>
       </div>
 

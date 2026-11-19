@@ -771,7 +771,7 @@ function drawPlots() {
   const ly = lc.map(p => p.y), lo = ly.length ? Math.min(0.5, pct(ly, 0.02)) : 0, hi = ly.length ? Math.max(1.5, pct(ly, 0.98)) : 2;
   const check = realityCheck(lc);
   lcPlot.set(lc, {
-    xlabel: 'date', ylabel: 'relative brightness', ylim: [lo - 0.1, hi + 0.1], hline: 1, errors: lc.length < 400,
+    xlabel: G`date`, ylabel: G`relative brightness`, ylim: [lo - 0.1, hi + 0.1], hline: 1, errors: lc.length < 400,
     band: check?.steady != null ? { y0: 1 - check.steady, y1: 1 + check.steady } : null,
     xTicks: dateTicks, empty: pts.length ? G`Too faint (or saturated) in D${S.det} to measure changes` : S.failed ? G`No images to measure` : !S.grid ? G`Waiting for the images…` : G`Click or tap a star in the image`,
     tipText: p => `${C.fmtDate(p.x)} · ×${p.y.toFixed(2)} · ${p.src.lam.toFixed(2)} µm`,
@@ -829,24 +829,25 @@ function renderMolecules(pts) {
     renderFindings();
   }
   let glow = false;
-  const rows = rowsData.map(m => {
-    let cls = 'none', txt = G(m.why || 'not enough data');
-    if (m.depth !== null) {
+  const whyNot = m => (m.why === 'star too bright to tell' ? G`the star is too bright for the camera` : m.why === 'too faint to tell' ? G`the spot is too faint` : m.why === 'too uneven to tell' ? G`the measurements scatter too much` : G`there are not enough measurements yet`);
+  const unmeasured = rowsData.filter(m => m.depth === null);
+  const rows = rowsData.filter(m => m.depth !== null).map(m => {
+    let cls = 'none', txt = G`flat`;
+    {
       const pc = Math.round(Math.abs(m.depth) * 100), sure = Math.abs(m.depth) > 4 * m.err;
       if (m.depth > 0.12 && sure) { cls = 'dip'; txt = G`${pc}% dip`; }
       else if (m.depth < -0.12 && sure) { cls = 'peak'; txt = G`${pc}% brighter`; glow = true; }
-      else txt = G`flat`;
     }
     // Brighter inside the band than beside it: nothing absorbs there, something glows.
     const label = cls === 'peak' ? `${G(m.glow || 'Something glowing')} <span class="none">${G`emission`}</span>` : `${G(m.name)} <span class="none">${m.f}</span>`;
     return `<tr><td>${label}</td><td>${m.band[0].toFixed(2)}–${m.band[1].toFixed(2)}</td><td class="${cls}">${txt}</td></tr>`;
   }).join('');
   if (rowsData.every(m => m.depth === null)) {
-    el.innerHTML = G`<p class="hint">Molecule bands cannot be measured here: ${rowsData.some(m => m.why === 'star too bright to tell') ? G`the star is too bright for the camera` : rowsData.some(m => m.why === 'too faint to tell') ? G`the spot is too faint` : rowsData.some(m => m.why === 'too uneven to tell') ? G`the measurements scatter too much` : G`there are not enough measurements yet`}.</p>`;
+    el.innerHTML = G`<p class="hint">Molecule bands cannot be measured here: ${whyNot(rowsData.find(m => m.why === 'star too bright to tell') || rowsData.find(m => m.why === 'too faint to tell') || rowsData.find(m => m.why === 'too uneven to tell') || {})}.</p>`;
     return;
   }
   el.innerHTML = G`<table class="t mol"><thead><tr><th>Molecule</th><th>Band <span class="asis">(µm)</span></th><th>Measured</th></tr></thead><tbody>${rows}</tbody></table>
-    <p class="hint">How much fainter the spot is inside each band than just outside it. A dip is a hint that the molecule is there, not proof.${glow ? G` Where a band is brighter instead, hot gas or dust is glowing at that wavelength.` : ''}</p>`;
+    <p class="hint">How much fainter the spot is inside each band than just outside it. A dip is a hint that the molecule is there, not proof.${(glow ? G` Where a band is brighter instead, hot gas or dust is glowing at that wavelength.` : '') + (unmeasured.length ? G` Bands that could not be measured: ${unmeasured.length} (${[...new Set(unmeasured.map(whyNot))].join('; ')}).` : '')}</p>`;
 }
 function markCurrent() {
   const cur = S.seq[S.idx]?.frame;
@@ -869,17 +870,40 @@ function jumpTo(src) {
 function renderFindings() {
   const el = $('findings');
   if (!el) return;
-  const f = S.find || {}, ready = !!S.dets[S.det]?.done;
-  const rows = ready ? [['motion', f.motion], ['lccheck', f.change], ['molecules', f.bands], ['movers', S.sel?.trail ? null : f.movers]].filter(r => r[1]) : [];
+  const f = S.find || {}, ready = !!S.dets[S.det]?.done, here = lightHere();
+  const rows = ready ? [['here', here], ['motion', f.motion], ['lccheck', f.change], ['molecules', f.bands], ['movers', S.sel?.trail ? null : f.movers || stillLooking()]].filter(r => r[1]) : [];
   const html = rows.length ? G`<h2>What the measurements say</h2><ul>${rows.map(([to, r]) => G`<li class="${r.cls}"><button type="button" data-to="${to}" title="Show how this was measured">${r.html}</button></li>`).join('')}</ul>` : '';
   if (el.dataset.was !== html) { el.dataset.was = html; el.innerHTML = html; }
   el.hidden = !rows.length;
   leadState();
 }
+/**
+ * The ringed spot itself: was the light there one of the bodies that passed through the field? A visitor who rings a
+ * dot that is in one visit and gone in the next is asking exactly this. Within 12 arcseconds of the ring (its own
+ * radius is 9) at one stop of the telescope counts.
+ */
+/** A field read live is searched once all six detectors have arrived, which takes minutes when it is wide: said meanwhile. */
+function stillLooking() {
+  if (S.target || S.hunt || S.failed || !S.grid || !S.head) return null;          // a showcase object is searched in seconds; a hunt tells its own story
+  const all = [1, 2, 3, 4, 5, 6].every(d => S.dets[d]?.done);
+  if (S.movers ? S.movers.state !== 'working' : all) return null;
+  return { cls: 'wait', html: G`<b>Still looking</b> for asteroids and other bodies passing through this field…` };
+}
+function lightHere() {
+  const ring = S.sel && S.sel.x != null && S.grid ? S.sel : null, tracks = S.movers?.state === 'done' ? S.movers.tracks : null;
+  if (!ring || !tracks) return null;
+  for (const t of tracks) {
+    if (t.body?.own) continue;
+    const q = t.sightings.find(v => Math.hypot(v.x - ring.x, v.y - ring.y) * S.grid.scale < 12);
+    if (q) return { cls: 'found', follow: t, html: G`<b>The light in the ring: ${esc(bodyLabel(t))}</b>, which passed through this very spot on ${C.fmtDate(q.mjd, true)} and moved on. Press this line to follow it.` };
+  }
+  return null;
+}
 /** The lead of the panel (what to look for, what the measurements say) takes no room while it has nothing to say. */
 function leadState() { document.querySelector('.cols').classList.toggle('nolook', !$('lookbox').innerHTML && $('findings').hidden && $('bodybox').hidden && $('huntbox').hidden); }
 $('findings').addEventListener('click', e => {
   const to = e.target.closest('button')?.dataset.to;
+  if (to === 'here') { const t = lightHere()?.follow; if (t) followBody(t); return; }
   if (to) $(to)?.scrollIntoView({ behavior: calmMotion() ? 'auto' : 'smooth', block: 'center' });
 });
 
@@ -1103,10 +1127,16 @@ function renderChips() {
     el.appendChild(b);
   }
   // Suggestions on which the tool has been tried: nearby fast movers, brown dwarfs, a nebula, a galaxy.
-  $('suggest').innerHTML = [...S.targets.map(t => t.label), 'Proxima Centauri', 'Luhman 16', 'Wolf 359', "Teegarden's Star", "Kapteyn's Star", 'NGC 7027', 'Andromeda Galaxy', 'Ceres', '4 Vesta', '433 Eros', 'Uranus', '2P/Encke']
+  const en = Lang.lang === 'en';
+  $('suggest').innerHTML = [...S.targets.map(nameOf), 'Proxima Centauri', 'Luhman 16', 'Wolf 359', ...(en ? ["Teegarden's Star", "Kapteyn's Star"] : []), 'NGC 7027', en ? 'Andromeda Galaxy' : 'M31', 'Ceres', '4 Vesta', '433 Eros',
+    { tr: 'Uranüs', es: 'Urano', pl: 'Uran' }[Lang.lang] || 'Uranus', '2P/Encke']
     .map(n => `<option value="${n.replace(/"/g, '&quot;')}">`).join('');
 }
 const openTarget = t => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, info: t.info || null, ...(t.view || { mode: 'epochs' }) });
+$('heroshot').onclick = () => {
+  const t = S.targets.find(x => x.slug === 'pluto');
+  if (t) openTarget(t); else location.search = '?target=pluto';          // pressed before the list of objects has arrived
+};
 
 function openPanel() {
   if ($('app').dataset.panel === 'open') return;
@@ -1219,16 +1249,26 @@ function renderAbout() {
   }
   const w = S.wiki;
   // The encyclopedia's picture sits in the header only when it is a photograph (see isPhoto).
-  const thumb = w?.thumb ? `<a class="thumb" href="${esc(w.url)}" target="_blank" rel="noopener" title="Wikipedia: ${esc(w.title)}"${photos.get(w.thumb) === true ? '' : ' hidden'}><img src="${esc(w.thumb)}" alt="${esc(w.title)}, image from Wikipedia"></a>` : '';
+  const thumb = w?.thumb ? `<a class="thumb" href="${esc(w.url)}" target="_blank" rel="noopener" title="Wikipedia: ${esc(w.title)}"${photos.get(w.thumb) === true ? '' : ' hidden'}><img src="${esc(w.thumb)}" alt="${G`${esc(w.title)}, image from Wikipedia`}"></a>` : '';
   const links = [...(w ? [{ label: 'Wikipedia', title: G`Encyclopedia article: ${w.title}`, url: w.url }] : []), ...(body ? (body.kind === 'planet' ? [] : Info.bodyLinks(body.number || body.id || t?.label)) : Info.externalLinks(S.ra, S.dec, i))]
     .map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.title)}">${l.label}</a>`).join('');
+  // The story first: under the name come what to look for and the pictures. Where it is, how far, how many exposures and
+  // the links to other catalogues are one press away, folded under the name.
+  const open = factsShown();
   el.innerHTML = `<div class="toprow">
       <div class="idblock"><p class="kind">${kind}</p><h1>${esc(name)}</h1>${gloss ? `<p class="gloss">${esc(gloss)}</p>` : ''}${mv ? G`<p class="gomoved"><button type="button" class="cta" id="gomoved">Go to where it is now</button></p>` : ''}</div>
       ${thumb}<button type="button" class="close" id="closepanel" title="${G`Close and return to the map`}" aria-label="${G`Close`}">×</button>
     </div>
-    <dl class="facts">${facts.join('')}</dl>
-    <div class="links"><span>${G`Check it in`}</span>${links}${S.embed ? '' : `<button type="button" class="howto" id="howto" lang="${Lang.lang}" title="${esc(T('coach.openTitle'))}">${esc(T('coach.open'))}</button>`}</div>`;
+    <div class="factsrow">
+      <button type="button" class="factsbtn" id="factsbtn" lang="${Lang.lang}" aria-expanded="${open}" aria-controls="factsbody">${esc(T('panel.facts'))}</button>
+      ${S.embed ? '' : `<button type="button" class="howto" id="howto" lang="${Lang.lang}" title="${esc(T('coach.openTitle'))}">${esc(T('coach.open'))}</button>`}
+      <div class="factsbody" id="factsbody"${open ? '' : ' hidden'}>
+        <dl class="facts">${facts.join('')}</dl>
+        <div class="links"><span>${G`Check it in`}</span>${links}</div>
+      </div>
+    </div>`;
   $('closepanel').onclick = closePanel;
+  $('factsbtn').onclick = () => { S.factsOpen = !factsShown(); S.factsCoach = false; showFacts(); };
   if ($('howto')) $('howto').onclick = () => coachGo(0);
   if (mv) $('gomoved').onclick = () => {
     const preset = S.targets.find(x => sepArcsec(mv.ra, mv.dec, x.ra, x.dec) < 20);
@@ -1237,6 +1277,13 @@ function renderAbout() {
   };
   if (w?.thumb && !photos.has(w.thumb)) isPhoto(w.thumb).then(() => { if (S.wiki?.thumb === w.thumb) { renderAbout(); } });
   renderLook(); renderWiki(); renderMotion();
+}
+/** The facts under the name are on show when the visitor opened them, and while the walk through the panel speaks of them. */
+const factsShown = () => !!(S.factsOpen || S.factsCoach);
+function showFacts() {
+  const b = $('factsbtn');
+  if (!b) return;
+  b.setAttribute('aria-expanded', factsShown()); $('factsbody').hidden = !factsShown();
 }
 /**
  * Is this picture a photograph, or a chart on a white page? Many star articles lead with a
@@ -1548,7 +1595,9 @@ function renderMovers() {
   const tracks = m.tracks, sub = m.unchecked ? G` Possible sightings left out because the pipeline's flags could not be read: ${m.unchecked}.` : '';
   if (!tracks.length) {
     el.innerHTML = G`<p class="hint verdict"><b>Nothing passed through.</b> In ${nExp(m.frames)} no dot is at one place for a few minutes and gone from there on other days.${sub}</p>`;
-    S.find.movers = null; renderFindings(); renderBodyBox(); return;
+    // a field read live had "still looking" in the lead of the panel: the answer takes its place
+    S.find.movers = S.target || S.hunt ? null : { cls: 'none', html: G`<b>Nothing passed through</b> this field while SPHEREx was looking.` };
+    renderFindings(); renderBodyBox(); return;
   }
   const row = (t, i) => {
     const b = t.body, v = t.sightings, one = v.length === 1, on = S.sel?.trail === t || (b?.own && S.sel?.follow);
@@ -2462,7 +2511,7 @@ function tourGo(i) {
   links.hidden = !st.tryNext; links.textContent = st.tryNext ? `${T('tour.try')} ` : '';
   for (const o of st.tryNext || []) {
     const b = document.createElement('button');
-    b.type = 'button'; b.textContent = o.name;
+    b.type = 'button'; b.textContent = o.shown || o.name;
     b.onclick = () => openKnown(o);
     links.appendChild(b);
   }
@@ -2519,6 +2568,7 @@ function coachGo(dir) {
   if (k === undefined) { const then = coachThen; coachEnd(); then?.(); return; }
   if (coachAt < 0) showGuides([]);                    // the tour's own numbered pointers step aside meanwhile
   coachAt = k;
+  S.factsCoach = COACH[k].key === 'about'; showFacts();
   const st = COACH[k], pos = Math.max(0, parts.indexOf(k)), last = pos === parts.length - 1;
   $('coachcount').textContent = T('coach.count', { i: pos + 1, n: parts.length });
   $('coachtitle').textContent = T(`coach.${st.key}.title`); $('coachtext').textContent = T(`coach.${st.key}.text`);
@@ -2535,6 +2585,7 @@ function coachEnd() {
   coachThen = null;
   if (coachAt < 0) return;
   coachAt = -1; clearInterval(coachTimer);
+  S.factsCoach = false; showFacts();
   $('coach').hidden = true; $('spot').hidden = true; document.body.classList.remove('coaching');
   if (tourIdx >= 0) showGuides(tourSteps[tourIdx]?.points || []);
   if (!isNarrow()) $('panel').scrollTo({ top: 0, behavior: calmMotion() ? 'auto' : 'smooth' });

@@ -10,7 +10,7 @@ const POINTS = {
     { at: '.viewer .blocktitle', key: 'tour.p1' },
     { at: '#findings', key: 'tour.p2' },
     { at: '.stack .blocktitle', key: 'tour.p3' },
-    { at: '#about .links', dx: -9, dy: 10, key: 'tour.p4' },
+    { at: '#factsbtn', dx: 1, dy: 10, key: 'tour.p4' },
   ],
 };
 // What the presenter says while each test object is on screen is under `tour.<object>` in lang.js.
@@ -67,7 +67,7 @@ export function buildTour(targets, t, name = o => o.label) {
     tryNext: [
       { name: 'Proxima Centauri', ra2000: 217.42894222, dec2000: -62.67949019, pmra: -3781.741, pmdec: 769.465, plx: 768.0665 },
       { name: 'Luhman 16', ra2000: 162.328814, dec2000: -53.319466, pmra: -2767.502, pmdec: 356.856, plx: 501.557 },
-      { name: "Teegarden's Star", ra2000: 43.25371581, dec2000: 16.88128672, pmra: 3429.083, pmdec: -3805.541, plx: 260.9884 },
+      { name: "Teegarden's Star", shown: t('name.teegarden'), ra2000: 43.25371581, dec2000: 16.88128672, pmra: 3429.083, pmdec: -3805.541, plx: 260.9884 },
       { name: 'NGC 7027', ra2000: 316.7565498, dec2000: 42.236242, pmra: -22.7, pmdec: -4.4, plx: null },
     ],
     prep: api => api.warm(83.82, -5.39, 60, 'wide'),

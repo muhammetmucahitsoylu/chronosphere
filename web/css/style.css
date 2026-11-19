@@ -69,7 +69,7 @@ html.wait-words .hero, html.wait-words .nav, html.wait-words #search { visibilit
 .mapnote { position: absolute; z-index: 8; left: 50%; top: 14px; transform: translateX(-50%); background: #0a0908e6; border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 16px; font-size: 13.5px; white-space: nowrap; max-width: 88%; overflow: hidden; text-overflow: ellipsis; }
 
 @container stage (max-width: 700px) { .mapnote { top: 56px; max-width: calc(100% - 110px); white-space: normal; text-align: center; border-radius: 12px; } }      /* a narrow map: below the controls in its corners */
-.hero { position: absolute; z-index: 6; left: 0; bottom: 0; padding: 150px 210px 92px 40px; max-width: 890px; pointer-events: none; }
+.hero { position: absolute; z-index: 6; left: 0; bottom: 0; padding: 150px 310px 92px 40px; max-width: 990px; pointer-events: none; }
 /* The shade behind the words: even across their whole width (the Milky Way is bright behind them), fading out to the right and to the top. */
 .hero::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, #0a0908eb 0%, #0a0908db 46%, #0a0908a6 70%, transparent 100%); -webkit-mask-image: linear-gradient(0deg, #000 70%, transparent 100%); mask-image: linear-gradient(0deg, #000 70%, transparent 100%); }
 .hero > * { pointer-events: auto; }
@@ -81,8 +81,23 @@ html.wait-words .hero, html.wait-words .nav, html.wait-words #search { visibilit
 .startwith button { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; padding: 2px 0; margin: 0 8px 0 4px; white-space: nowrap; }
 .startwith button:hover { text-decoration-color: var(--ember); color: var(--ember); }
 .offline { margin: 10px 0 0; font: 11.5px var(--mono); color: var(--ink-3); min-height: 16px; }
-.offline button { font: inherit; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; }
+.offline button { font: inherit; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; text-align: left; }
 .offline button:hover { color: var(--ember); }
+/* what the title says, shown: Pluto moving through 17 real pictures; pressing it opens Pluto */
+.heroshot { position: absolute; right: 36px; bottom: 124px; width: 236px; padding: 8px 8px 11px; text-align: left; background: #141210f2; border: 1px solid var(--line-2); border-radius: 14px; box-shadow: 0 18px 50px #000a; color: var(--ink-2); font-size: 13px; line-height: 1.4; }
+.heroshot:hover { border-color: var(--ember); }
+.heroshot picture { display: block; }
+.heroshot img { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 7px; background: #000; }
+.shotcap { display: block; margin-top: 9px; padding: 0 2px; }
+.shotcap b { display: block; font: 400 20px/1.15 var(--serif); color: var(--ink); margin-bottom: 3px; }
+.shotgo { display: block; margin-top: 5px; color: var(--ember); font-weight: 500; }
+.shotgo::after { content: " \2192"; }
+/* a large screen: a larger picture */
+@media (min-width: 1600px) and (min-height: 880px) { .hero { padding-right: 372px; max-width: 1052px; } .heroshot { width: 296px; font-size: 14px; } .shotcap b { font-size: 23px; } }
+/* a narrow window on a desk: the picture keeps clear of the map's buttons on the right */
+@media (min-width: 901px) and (max-width: 1010px) { .hero { padding-right: 336px; } .heroshot { right: 62px; } }
+/* a short window on a desk: no room for the picture, and a smaller title, so that nothing is cut off at the top */
+@media (min-width: 901px) and (max-height: 640px) { .heroshot { display: none; } .hero { padding-top: 24px; } .hero h1 { font-size: 52px; } }
 
 /* the tour's worked example: two real pictures of one patch of sky, flipping */
 .blink { margin: 0; right: clamp(16px, 6cqw, 96px); top: 46%; transform: translateY(-50%); width: min(300px, 36cqw, calc(100cqh - 190px)); min-width: 150px;
@@ -200,7 +215,13 @@ html.wait-words .hero, html.wait-words .nav, html.wait-words #search { visibilit
 .ohead .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ohead .close { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-2); font-size: 18px; line-height: 1; flex: none; color: var(--ink-2); }
 .ohead .close:hover { color: var(--ink); border-color: var(--ink-2); }
-.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 20px; margin: 12px 0 0; }
+.factsrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 14px; align-items: center; margin-top: 8px; }
+.factsbtn { justify-self: start; text-align: left; color: var(--ink-2); font-size: 13.5px; padding: 3px 0; }
+.factsbtn::before { content: "\25B8"; display: inline-block; width: 15px; color: var(--ink-3); transition: transform .15s; }
+.factsbtn[aria-expanded=true]::before { transform: rotate(90deg); }
+.factsbtn:hover { color: var(--ink); }
+.factsbody { grid-column: 1 / -1; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 20px; margin: 10px 0 0; }
 .facts div { min-width: 0; }
 .facts dt { font: 500 10.5px var(--mono); letter-spacing: 1px; text-transform: uppercase; color: var(--ink-3); }
 .facts dd { margin: 1px 0 0; font: 500 13px/1.35 var(--mono); color: var(--ink); overflow-wrap: anywhere; }
@@ -233,6 +254,8 @@ html.wait-words .hero, html.wait-words .nav, html.wait-words #search { visibilit
 .findings li::before { content: ""; position: absolute; left: 2px; top: .5em; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
 .findings li.found::before { background: var(--mint); }
 .findings li.unsure::before { background: var(--gold); }
+.findings li.wait::before { background: none; border: 1.5px solid var(--gold); animation: waiting 1.4s ease-in-out infinite; }
+@keyframes waiting { 50% { opacity: .25; } }
 .findings li b { color: var(--ink); font-weight: 600; }
 .findings button { display: block; width: 100%; padding: 0; text-align: left; font: inherit; color: inherit; line-height: inherit; }      /* the whole line leads to its details */
 .findings button:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
@@ -482,13 +505,21 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
   .app, .app[data-panel=open] { display: block; }
   .app[data-panel=closed] .mapwrap { height: calc(100vh - var(--toph, 104px)); height: calc(100dvh - var(--toph, 104px)); min-height: 400px; }
   body.touring .app[data-panel=closed] .mapwrap { height: calc(100vh - var(--toph, 104px) - 62px); height: calc(100dvh - var(--toph, 104px) - 62px - env(safe-area-inset-bottom)); }
-  .app[data-panel=open] .mapstage { flex: none; height: 34vh; height: 34dvh; min-height: 210px; }
+  .app[data-panel=open] .mapstage { flex: none; height: 28vh; height: 28dvh; min-height: 190px; }          /* the map says where the object is; the story starts on the first screen */
   body.touring .app[data-panel=open] .mapstage { height: 26vh; height: 26dvh; min-height: 170px; }
   .layerpick { top: 10px; right: 10px; }
   .zoom { top: 52px; right: 10px; }
   .aladin-location { display: none !important; }
   .aladin-logo-container { right: auto !important; left: 10px !important; bottom: 70px !important; }          /* the zoom buttons own the right edge of a short map */
-  .hero { padding: 70px 18px 84px; max-width: none; right: 0; background: linear-gradient(0deg, #0a0908f5 0%, #0a0908d8 55%, transparent 100%); }
+  .hero { padding: 70px 18px 84px; max-width: none; right: 0; background: linear-gradient(0deg, #0a0908f5 0%, #0a0908d8 55%, transparent 100%); display: flex; flex-direction: column; align-items: flex-start; }
+  .hero > .lede, .hero > .herobtns, .hero > .startwith, .hero > .offline { order: 2; }
+  /* the moving picture comes right under the title: a row, the picture and what it shows */
+  .heroshot { position: static; order: 1; display: flex; gap: 12px; align-items: center; width: auto; max-width: 430px; margin: 12px 0 0; padding: 7px 12px 7px 7px; box-shadow: none; }
+  .heroshot picture { flex: none; }
+  .heroshot img { width: 92px; }
+  .shotcap { margin: 0; padding: 0; }
+  .shotcap b { font-size: 18px; }
+  .shotgo { margin-top: 3px; }
   .hero::before { display: none; }
   .hero h1 { font-size: clamp(38px, 11vw, 56px); }
   .eyebrow { font-size: 11px; letter-spacing: 1.1px; }
@@ -535,6 +566,7 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
   .walk:not([hidden]) ~ .tourmini { display: none; }
   body.coaching .tourbtns { visibility: hidden; }          /* the tour's own bar makes room for the walk's card */
   .howto { margin-left: 0; }
+  .factsbtn { min-height: 38px; }
   .ohead .thumb { width: 56px; height: 56px; }
   .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
   .facts div { max-width: none; }
@@ -552,7 +584,28 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
   .sheet { padding: 52px 20px 36px; border-radius: 14px; }
   .sheet h2 { font-size: 25px; margin-top: 28px; }
 }
+/* tablets held upright: room for a larger picture */
+@media (min-width: 601px) and (max-width: 900px) {
+  .heroshot { max-width: 520px; gap: 16px; padding: 9px 16px 9px 9px; margin-top: 16px; }
+  .heroshot img { width: 140px; }
+  .shotcap { font-size: 14px; }
+  .shotcap b { font-size: 23px; }
+}
+/* phones: the picture says whose images these are, so the line above the title makes room for it; the names are one row to swipe */
+@media (max-width: 600px) {
+  .eyebrow, .lede .poem { display: none; }
+  .mapstage:has(> .hero:not([hidden])) .zoom { display: none; }          /* under the words the map is a backdrop; two fingers still zoom it */
+  .herobtns { gap: 8px; }
+  .herobtns .ghost { padding-left: 14px; padding-right: 14px; }
+  .startwith { align-self: stretch; white-space: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -18px; padding-right: 18px; -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent 100%); mask-image: linear-gradient(90deg, #000 86%, transparent 100%); }
+  .startwith::-webkit-scrollbar { display: none; }
+}
+/* a short map (a phone with the browser's bars on show): what is needed least steps aside, by the height the map really has */
+@container stage (max-width: 600px) and (max-height: 620px) { .hero > .lede, .shotgo { display: none; } }
+@container stage (max-width: 600px) and (max-height: 470px) { .hero .heroshot { display: none; } }
 @media (max-width: 380px) {
+  .heroshot img { width: 80px; }
+  .herobtns .cta, .herobtns .ghost { font-size: 14px; padding-left: 12px; padding-right: 12px; }
   .brand span { font-size: 21px; }
   .nav .cta { padding: 7px 11px; font-size: 13.5px; }
   .transport { gap: 6px; }
@@ -563,7 +616,7 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
   .app[data-panel=open] .mapstage, body.touring .app[data-panel=open] .mapstage { height: 60vh; height: 60dvh; min-height: 0; }
   .hero { padding-top: 20px; }
   .hero h1 { font-size: 34px; }
-  .lede { display: none; }
+  .lede, .heroshot { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 

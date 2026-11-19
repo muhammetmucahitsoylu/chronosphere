@@ -15,6 +15,11 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 
 ## What you can do
 
+- **See it move before you press anything.** The front page says that the sky is not still, and shows it:
+  beside the title Pluto walks across a patch of sky in 17 real SPHEREx pictures (3 to 12 October 2025), the
+  ring on it and the stars standing still. The pictures are the tool's own "Passing body" view of Pluto,
+  saved from the page itself; a press opens Pluto in the tool. People who asked their device for less motion
+  get one still picture.
 - **Roam the sky.** The map is the SPHEREx all-sky data cube served by NASA/IPAC, shown with Aladin Lite. A
   slider moves through all 102 wavelengths; 2MASS, WISE and visible-light maps are one click away. A new
   colour, a new place or a new zoom dissolves in as a whole: the map never flashes or shows half-loaded sky.
@@ -31,6 +36,13 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 - **Get the answer first.** The panel opens with *What the measurements say*: a few plain sentences on
   whether the spot moved, whether its brightness changed and which molecule bands show, written from the
   same numbers as the detailed sections below them. Only what is beyond doubt is stated plainly.
+  The story comes first: under the name stand one sentence on what the object is, what to look for, and the
+  pictures. Where it is, how far, how many exposures there are and the links to other observatories' tools
+  are folded under the name (*Key facts and links*), one press away. If the spot you ringed is where an
+  asteroid stood at one stop of the telescope, the first line says so (*The light in the ring: (110) Lydia,
+  which passed through this very spot on …*), and a press follows the asteroid. While a field read live is
+  still being searched for passing bodies, which takes minutes when it is wide, the panel says that it is
+  still looking, and then what came of it.
 - **Watch it over time.** Every SPHEREx exposure covering the spot is read, aligned and played back.
   *Visits* stacks each SPHEREx visit and loops through them, *Time as colour* paints early red and late blue,
   *Difference* subtracts visits, *Wavelengths* steps through the six detectors.
@@ -100,8 +112,9 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   Turkish, Spanish, German, French and Polish (the picker is in the top bar; `?lang=tr` in an address does
   the same). Dates, counted nouns and the encyclopedia card follow the language. The words live in
   `web/js/lang.js` and in one file per language under `web/js/lang/` and `web/js/pages/`: adding a language
-  is translating those three. The Spanish, German, French and Polish texts have not yet been read by a
-  native speaker.
+  is translating those three. Every kind of object that SIMBAD knows (226 of them, from *Star* to *Gravitationally
+  Lensed Image of a Quasar*) has its name in each language. Spanish speakers who tried the site reported words
+  left in English; the German, French and Polish texts have not yet been read by a native speaker.
 
 ## How the challenge is covered
 
@@ -201,6 +214,10 @@ talking directly to NASA's open data.
   bodies, of magnitude 17.8 to 18.7. A third hunt, started from the front page's button, picked
   (1824) Haworth (16.4) near the point where its path turns back, read 264 exposures in 101 seconds and found
   it at 12 stops over a week.
+  And one came from a visitor's question: at right ascension 330.43659°, declination −19.17837° a light
+  stood in one visit and was gone in the others. The search had found (110) Lydia (magnitude 12.5) at 4
+  stops on 4 and 5 November 2025, and at the third it stood 2.6 arcseconds from the ringed spot; the panel
+  said so for the field but not for the ring, which is why it now does.
   Speeds measured from the tracks agree with the orbits: 21.0 against 20.8 arcseconds an hour for Ozegahara,
   23.5 against 23.6 for Aster, 17.3 against 16.9 for Luce. What was turned away on the way: charge left in a
   detector by a bright star (missing from the first exposure of every stop, and back at the same place at
@@ -282,6 +299,18 @@ talking directly to NASA's open data.
   and phone size for text that spills out of its box (none in 50 views), and the Turkish and the Spanish tour
   were run from start to end with the network cut. The information pages have the same build in every
   language as in English (headings, paragraphs, list items, links), and the top bar holds at nine widths.
+  After Spanish speakers reported words left in English, the whole site was walked once in English and once
+  in Spanish (front page, menu, the five information pages, the tour with the walk through the panel, the six
+  showcase objects in every way of comparing) and every text read the same in both was listed: names and
+  units apart, one name on the tour's last step. Two more kinds of leftover could not be seen that way and
+  were found by looking at pictures of the Spanish pages and by opening places read live: the two axis labels
+  of the brightness plot, which are drawn on a canvas, and 183 of SIMBAD's 226 kinds of object ("Eclipsing
+  Binary Candidate"), which only show when a visitor presses something uncommon. All are translated now.
+- **The front page on small screens.** With the moving picture added, the front page was photographed on
+  eleven screens (from 1920 by 1080 down to a 360 by 640 phone, and a phone held sideways) in each of the six
+  languages, and measured: nothing lies over anything else, nothing is cut off at the top of the map, no
+  button's words are clipped (0 faults in 66 views). On a short phone screen the sentence under the picture
+  steps aside first, then the picture; before, the German and French titles were cut off at the top there.
 - **Typed coordinates.** 23 ways of writing the same position (degrees, hours and minutes, with colons,
   with unit letters, with a typeset minus sign, with "RA" and "Dec" or the full words in any of the six
   languages) all give the position to 0.7 arcseconds or better, and none of 25 object names is mistaken for
@@ -360,6 +389,7 @@ web/js/lang.js        the words of the front page, the tour and the walk through
 web/js/lang/          the measurement panel in Turkish, Spanish, German, French and Polish (one file each)
 web/js/pages.js       the "Asteroid hunt", "What is SPHEREx?", "How it works" and "About" pages, in English
 web/js/pages/         the same four pages in the other five languages (one file each)
+web/hero-pluto.webp   the front page's moving picture: the tool's own "Passing body" view of Pluto (hero-pluto.jpg: one still frame)
 web/sw.js             service worker: offline cache
 web/404.html          what a wrong address shows, with the way back to the map
 web/manifest.webmanifest, web/icon-192.png, web/icon-512.png, web/apple-touch-icon.png, web/favicon.ico

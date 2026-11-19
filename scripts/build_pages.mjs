@@ -90,16 +90,25 @@ const DOC = {
 };
 // Object names as each language writes them (the tour's ladder already names Barnard's Star in every language).
 const NAME = (code, o, words) => (o.slug === 'barnard' ? words['ladder.r3'] : o.slug === 'pluto' ? words['ladder.r4'] : o.label);
-const PX_SOURCES = [
+// The sources of the Planet X page. Titles of pages and papers stay as they are; the words that say what a source is follow the language.
+const PX_WORDS = {
+  en: { pluto: 'NASA: Pluto', plates: 'Lowell Observatory: the Pluto discovery plates', sim: 'Crill et al. 2025, the SPHEREx sky simulator', where: 'JPL Horizons: where Pluto was' },
+  tr: { pluto: 'NASA: Plüton', plates: 'Lowell Gözlemevi: Plüton’un keşif plakaları', sim: 'Crill vd. 2025, SPHEREx gökyüzü simülatörü', where: 'JPL Horizons: Plüton’un bulunduğu yer' },
+  es: { pluto: 'NASA: Plutón', plates: 'Observatorio Lowell: las placas del descubrimiento de Plutón', sim: 'Crill et al. 2025, el simulador del cielo de SPHEREx', where: 'JPL Horizons: dónde estaba Plutón' },
+  de: { pluto: 'NASA: Pluto', plates: 'Lowell-Observatorium: die Entdeckungsplatten von Pluto', sim: 'Crill et al. 2025, der Himmelssimulator von SPHEREx', where: 'JPL Horizons: wo Pluto stand' },
+  fr: { pluto: 'NASA : Pluton', plates: 'Observatoire Lowell : les plaques de la découverte de Pluton', sim: 'Crill et al. 2025, le simulateur de ciel de SPHEREx', where: 'JPL Horizons : où se trouvait Pluton' },
+  pl: { pluto: 'NASA: Pluton', plates: 'Obserwatorium Lowella: płyty, na których odkryto Plutona', sim: 'Crill i in. 2025, symulator nieba SPHEREx', where: 'JPL Horizons: gdzie był Pluton' },
+};
+const pxSources = code => { const w = PX_WORDS[code] || PX_WORDS.en; return [
   ['NASA: Hypothetical Planet X', 'https://science.nasa.gov/solar-system/planet-x/'],
-  ['NASA: Pluto', 'https://science.nasa.gov/dwarf-planets/pluto/'],
-  ['Lowell Observatory: the Pluto discovery plates', 'https://collectionslowellobservatory.omeka.net/items/show/1247'],
+  [w.pluto, 'https://science.nasa.gov/dwarf-planets/pluto/'],
+  [w.plates, 'https://collectionslowellobservatory.omeka.net/items/show/1247'],
   ['Batygin & Brown 2016', 'https://doi.org/10.3847/0004-6256/151/2/22'],
   ['Brown & Batygin 2016', 'https://doi.org/10.3847/2041-8205/824/2/L23'],
   ['Brown, Holman & Batygin 2024', 'https://arxiv.org/abs/2401.17977'],
-  ['Crill et al. 2025, the SPHEREx sky simulator', 'https://arxiv.org/abs/2505.24856'],
-  ['JPL Horizons: where Pluto was', 'https://ssd.jpl.nasa.gov/horizons/'],
-];
+  [w.sim, 'https://arxiv.org/abs/2505.24856'],
+  [w.where, 'https://ssd.jpl.nasa.gov/horizons/'],
+]; };
 
 // One language at a time, each in a process of its own: the site's code fixes its language when it is loaded.
 if (process.argv[2] === '--one') {
@@ -160,7 +169,7 @@ function content(code, id) {
     <h2>${esc(w['tour.4.title'])}</h2>
     <p>${italics(w['tour.4.text'])}</p>
     <p class="docgo"><a class="cta" href="${up}?tour${code === 'en' ? '' : `&lang=${code}`}">${esc(w['hero.tour'])}</a></p>
-    <p class="fine">${esc(D.sources)}: ${PX_SOURCES.map(([t, u]) => `<a href="${u}" target="_blank" rel="noopener">${esc(t)}</a>`).join(' · ')}</p>`;
+    <p class="fine">${esc(D.sources)}: ${pxSources(code).map(([t, u]) => `<a href="${u}" target="_blank" rel="noopener">${esc(t)}</a>`).join(' · ')}</p>`;
     return { body, title: D.pxTitle, lead: D.pxLead, image: 'img/pluto-blink.jpg' };
   }
   const o = TARGETS.find(t => OBJECT_FILES[t.slug] && t.slug === id), name = NAME(code, o, w);
