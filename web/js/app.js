@@ -471,7 +471,8 @@ async function loadYears() {
       Y.frames = [...(Y.frames || []), ...got.flat()]; want.forEach(f => Y.files.add(f));
     } else {
       Y.src = 'maps'; Y.grid = null;
-      const night = await Info.twomassNight(S.grid.ra, S.grid.dec).catch(() => null);
+      // the night 2MASS looked: asked again once after a pause, since the catalogue service is at times slow to answer
+      const night = await Info.twomassNight(S.grid.ra, S.grid.dec).catch(() => nap(1500).then(() => Info.twomassNight(S.grid.ra, S.grid.dec)).catch(() => null));
       const frames = await Years.loadMaps(S.grid, night, S.abort.signal);
       if (gen !== S.gen) return;
       Y.frames = frames;
