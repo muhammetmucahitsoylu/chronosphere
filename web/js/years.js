@@ -3,7 +3,7 @@
 // For the showcase stars, the images built by scripts/build_years.py: 2MASS (1997 to 2001), WISE in 2010 and
 // NEOWISE every half year from 2014 to 2024, and SPHEREx, each visit stacked, all on one grid and in MJy/sr.
 // For any other place, the 2MASS and AllWISE sky maps (HiPS) that NASA/IPAC's IRSA serves, read in this browser
-// and laid on the grid of the SPHEREx images: pictures to look at, not to measure.
+// and laid on the grid of the SPHEREx images: pictures on which a star's place is measured, not its brightness.
 import * as C from './core.js';
 import { G, N } from './lang.js';
 
@@ -49,6 +49,27 @@ function faceXY(nside, ra, dec) {
   return z >= 0 ? [ntt, nside - jm, nside - jp] : [ntt + 8, jp, jm];
 }
 const spread = v => { let r = 0; for (let i = 0; i < 16; i++) r += ((v >> i) & 1) * 4 ** i; return r; };
+const pause = ms => new Promise(res => setTimeout(res, ms));
+
+/**
+ * One tile of a sky map. A slow or broken connection can stall a request or drop it, so each is given 30 seconds and
+ * asked once more after a pause. null where the map has no tile; an error when the tile did not come.
+ */
+async function getTile(url, signal) {
+  for (let i = 0; i < 2; i++) {
+    if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
+    const ctl = new AbortController(), stop = () => ctl.abort(), timer = setTimeout(stop, 30000);
+    signal?.addEventListener('abort', stop);
+    try {
+      const r = await fetch(url, { signal: ctl.signal });
+      if (r.ok) return await r.blob();
+      if (r.status === 404) return null;
+    } catch (e) { if (signal?.aborted) throw e; }
+    finally { clearTimeout(timer); signal?.removeEventListener('abort', stop); }
+    if (i === 0) await pause(1500);
+  }
+  throw new Error('tile did not come');
+}
 
 /**
  * A HiPS map laid on a grid: grey levels 0 to 255 as the map's makers stretched them, NaN where the map has no tile.
@@ -69,21 +90,24 @@ async function mapOnGrid(grid, band, signal) {
     }
   }
   const tiles = new Map();
+  let lost = 0;
   await Promise.all([...need].map(async t => {
     const url = `${HIPS}/${path}/Norder${order}/Dir${Math.floor(t / 10000) * 10000}/Npix${t}.jpg`;
+    let blob;
+    try { blob = await getTile(url, signal); } catch (e) { if (e.name === 'AbortError') throw e; lost++; return; }
+    if (!blob) return;
     try {
-      const r = await fetch(url, { signal });
-      if (!r.ok) return;
-      const bmp = await createImageBitmap(await r.blob());
+      const bmp = await createImageBitmap(blob);
       const cv = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(bmp.width, bmp.height) : Object.assign(document.createElement('canvas'), { width: bmp.width, height: bmp.height });
       const cx = cv.getContext('2d');
       cx.drawImage(bmp, 0, 0);
       const px = cx.getImageData(0, 0, bmp.width, bmp.height).data, g = new Uint8Array(bmp.width * bmp.height);
       for (let k = 0; k < g.length; k++) g[k] = px[4 * k];
       tiles.set(t, g);
-    } catch (e) { if (e.name === 'AbortError') throw e; }
+    } catch { lost++; }
   }));
-  if (!tiles.size) throw new Error('no tiles');
+  // a tile that did not come would leave a hole, where the star may be: the map counts as not come, and can be asked again
+  if (lost || !tiles.size) throw new Error('tiles missing');
   const at = (face, x, y) => {
     x = Math.min(nside - 1, Math.max(0, x)); y = Math.min(nside - 1, Math.max(0, y));
     const g = tiles.get(face * 4 ** order + spread(x >> 9) + 2 * spread(y >> 9));
@@ -98,20 +122,23 @@ async function mapOnGrid(grid, band, signal) {
 }
 
 /**
- * The 2MASS and AllWISE maps of a place, on its grid. `night` is the day 2MASS looked at the place (from its catalogue),
- * when known. The pictures carry the stretch their makers gave them: they are shown as they are, and not measured.
+ * The 2MASS and AllWISE maps of a place in the given bands, on its grid, all asked at once; `missing` names the bands
+ * that did not come. The 2MASS pictures come undated: the caller dates them by the night 2MASS looked at the place,
+ * from its catalogue. The pictures carry the stretch their makers gave them: where a star lies is measured on them,
+ * not how bright it is.
  */
-export async function loadMaps(grid, night, signal) {
-  const out = [];
-  for (const band of ['J', 'H', 'Ks', 'W1', 'W2']) {
-    try {
-      const img = await mapOnGrid(grid, band, signal), twomass = band[0] !== 'W';
-      out.push({ survey: twomass ? '2MASS' : 'AllWISE', band, lam: LAM[band], img, pic: true,
-        mjd: twomass ? night ?? 51179 : ALLWISE_MJD, guessed: twomass && night == null });
-    } catch (e) { if (e.name === 'AbortError') throw e; }
-  }
-  return out;
+export async function loadMaps(grid, bands, signal) {
+  const got = await Promise.all(bands.map(band => mapOnGrid(grid, band, signal)
+    .then(img => ({ band, img }), e => { if (e.name === 'AbortError') throw e; return { band, img: null }; })));
+  return {
+    frames: got.filter(g => g.img).map(({ band, img }) => band[0] === 'W'
+      ? { survey: 'AllWISE', band, lam: LAM[band], img, pic: true, mjd: ALLWISE_MJD }
+      : { survey: '2MASS', band, lam: LAM[band], img, pic: true, mjd: 51179, guessed: true }),
+    missing: got.filter(g => !g.img).map(g => g.band),
+  };
 }
+/** What a band is called in the view: the telescope and the band. */
+export const bandName = b => `${b[0] === 'W' ? 'WISE' : '2MASS'} ${b}`;
 
 /** What an image of the view says about itself: when, which telescope and band, from how many exposures. */
 export function caption(f) {

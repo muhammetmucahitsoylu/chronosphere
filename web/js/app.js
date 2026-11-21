@@ -460,7 +460,10 @@ async function loadYears() {
   Y.need = det;
   if (Y.busy) return;
   const entry = isPreset() ? S.yearsIdx?.[S.target.slug] : builtNear();
-  const want = entry ? Years.filesFor(det).filter(f => !Y.files.has(f)) : Y.frames ? [] : ['maps'];
+  // on sky maps, the two bands this detector shows (2MASS and WISE), unless they are here already or did not come
+  // (those are asked again when the visitor says so)
+  const bands = entry ? [] : Years.NEAR[det].filter(b => !Y.frames?.some(f => f.band === b) && !Y.missing?.includes(b));
+  const want = entry ? Years.filesFor(det).filter(f => !Y.files.has(f)) : bands;
   if (!want.length) return;
   Y.busy = true; setStatus(G`Loading the images of 2MASS and WISE…`);
   try {
@@ -472,11 +475,22 @@ async function loadYears() {
       Y.frames = [...(Y.frames || []), ...got.flat()]; want.forEach(f => Y.files.add(f));
     } else {
       Y.src = 'maps'; Y.grid = null;
-      // the night 2MASS looked: asked again once after a pause, since the catalogue service is at times slow to answer
-      const night = await Info.twomassNight(S.grid.ra, S.grid.dec).catch(() => nap(1500).then(() => Info.twomassNight(S.grid.ra, S.grid.dec)).catch(() => null));
-      const frames = await Years.loadMaps(S.grid, night, S.abort.signal);
+      // The night 2MASS looked, from its catalogue, asked while the maps come (once more after a pause: the service is
+      // at times slow to answer). The pictures do not wait for it more than 15 seconds; they are dated when it comes.
+      if (!Y.night) {
+        Y.night = Info.twomassNight(S.grid.ra, S.grid.dec).catch(() => nap(1500).then(() => Info.twomassNight(S.grid.ra, S.grid.dec)).catch(() => null));
+        Y.night.then(v => {
+          Y.mjd2 = v;
+          if (v == null || gen !== S.gen || !Y.frames?.some(f => f.guessed)) return;
+          dateTwomass(Y);
+          if (S.mode === 'years' && !Y.busy) rebuild();
+        });
+      }
+      const [got] = await Promise.all([Years.loadMaps(S.grid, bands, S.abort.signal), Promise.race([Y.night, nap(15000)])]);
       if (gen !== S.gen) return;
-      Y.frames = frames;
+      Y.frames = [...(Y.frames || []), ...got.frames];
+      Y.missing = [...(Y.missing || []), ...got.missing];
+      dateTwomass(Y);
     }
   } catch (e) {
     if (e.name === 'AbortError' || gen !== S.gen) return;
@@ -486,6 +500,34 @@ async function loadYears() {
   if (S.mode === 'years') { rebuild(); maybeAutoplay(); }
   if (Y.need !== det && S.mode === 'years') loadYears();          // the detector changed while these were on their way
 }
+/** Dates the 2MASS sky maps by the night 2MASS looked at the place, once its catalogue has given it. */
+function dateTwomass(Y) {
+  if (Y.mjd2 == null) return;
+  for (const f of Y.frames || []) if (f.pic && f.survey === '2MASS') { f.mjd = Y.mjd2; f.guessed = false; }
+}
+/** The name of a star whose Years view was built: a test object's as the page gives it, another's from the index. */
+function builtName(k) {
+  const t = S.targets.find(x => x.slug === k);
+  if (t) return nameOf(t);
+  return { teegarden: T('name.teegarden'), kapteyn: T('name.kapteyn') }[k] || S.yearsIdx[k].name || k;
+}
+$('years')?.addEventListener('click', e => {
+  // pictures that did not come are asked again when the visitor says so
+  if (e.target.closest('[data-retry]') && S.years && !S.years.busy) {
+    Object.assign(S.years, { missing: [], failed: false });
+    if (S.years.mjd2 === null) S.years.night = null;          // the night 2MASS looked, which its catalogue did not give, is asked again too
+    loadYears();
+    return;
+  }
+  // a star whose Years view was built, opened in it
+  const k = e.target.closest('[data-built]')?.dataset.built, Y = k && S.yearsIdx?.[k];
+  if (!Y) return;
+  const t = S.targets.find(x => x.slug === k);
+  if (t) return go({ ra: t.ra, dec: t.dec, size: t.size, target: t, info: t.info || null, det: t.view?.det || 5, mode: 'years' });
+  const [ra2000, dec2000, pmra, pmdec, plx] = Y.track, r = placeNow({ name: Y.name, ra2000, dec2000, pmra, pmdec, plx });
+  $('q').value = Y.name;
+  go({ ra: r.ra, dec: r.dec, size: TRY_SIZE, track: r, mode: 'years' });
+});
 /**
  * Where a star's light is centred near a place, also when it is so bright that the core of its image is missing (the
  * detector was saturated there): the missing pixels count as the brightest light around them, and the centre is taken
@@ -536,11 +578,11 @@ function renderYears() {
   if (S.mode !== 'years' || !Y?.frames || Y.busy) { el.innerHTML = ''; return; }
   const name = S.target ? nameOf(S.target) : S.info?.name || S.track?.name || G`The star`;
   const rows = [];
-  if (Y.failed && !Y.frames.length) { el.innerHTML = `<p class="hint">${G`The images of 2MASS and WISE could not be fetched just now.`}</p>`; return; }
+  if (Y.failed && !Y.frames.length) { el.innerHTML = `<p class="hint">${G`The images of 2MASS and WISE could not be fetched just now. <button type="button" data-retry>Try again</button>`}</p>`; return; }
   let notes = '';
   if (Y.src === 'maps') {
-    const old = Y.frames.find(f => f.survey === '2MASS');
-    let out = '', outside = false;
+    const old = Y.frames.find(f => f.survey === '2MASS'), lost = Years.NEAR[S.det].filter(b => Y.missing?.includes(b));
+    let out = lost.length ? `<p class="yearsnote">${G`Some of the older pictures did not arrive (${lost.map(Years.bandName).join(', ')}): the connection may be slow, or the server busy. <button type="button" data-retry>Try again</button>`}</p>` : '', outside = false;
     if (S.track && !S.track.eph && old) {
       const p = trackPos(old.mjd), n = S.grid.n;
       if (!(p[0] > 2 && p[1] > 2 && p[0] < n - 3 && p[1] < n - 3)) {
@@ -550,6 +592,9 @@ function renderYears() {
       }
     }
     if (old?.guessed) out += `<p class="hint">${G`The night 2MASS looked at this place could not be looked up: its images are dated 1997 to 2001.`}</p>`;
+    // WISE went on looking until 2024: the stars for which its images every half year were built, to open from here
+    const built = Object.keys(S.yearsIdx || {}).map(k => `<button type="button" data-built="${k}">${esc(builtName(k))}</button>`).join('');
+    if (built && !lost.some(b => b[0] === 'W')) out += `<p class="hint yearsmore">${G`Here WISE shows its map of 2010. It went on looking until 2024: its images every half year are ready for these stars:`} ${built}</p>`;
     // a catalogued star inside the field, on dated pictures, is measured as in the images built for the test objects
     if (outside || !S.track || S.track.eph) {
       el.innerHTML = out;

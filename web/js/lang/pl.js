@@ -840,4 +840,7 @@ export default {
   "In the {0} visits of WISE and NEOWISE at {1} µm, the page looked for anything that moves in a straight line. It found:": "Na {0} wizytach WISE i NEOWISE przy {1} µm strona szukała wszystkiego, co porusza się po linii prostej. Znalazła:",
   "This is how cold, faint worlds near the Sun are found: by their motion, in infrared images years apart.": "Tak znajduje się zimne, słabe światy w pobliżu Słońca: po ich ruchu na obrazach w podczerwieni wykonanych w odstępie lat.",
   "The AllWISE picture is dated by the middle of 2010 (AllWISE adds up WISE’s passes over this place in 2010 and early 2011).": "Obraz AllWISE datowany jest na połowę 2010 roku (AllWISE sumuje przeloty WISE nad tym miejscem w 2010 i na początku 2011).",
+  "The images of 2MASS and WISE could not be fetched just now. <button type=\"button\" data-retry>Try again</button>": "Nie udało się teraz pobrać obrazów 2MASS i WISE. <button type=\"button\" data-retry>Spróbuj ponownie</button>",
+  "Some of the older pictures did not arrive ({0}): the connection may be slow, or the server busy. <button type=\"button\" data-retry>Try again</button>": "Część starszych obrazów nie dotarła ({0}): połączenie może być wolne albo serwer zajęty. <button type=\"button\" data-retry>Spróbuj ponownie</button>",
+  "Here WISE shows its map of 2010. It went on looking until 2024: its images every half year are ready for these stars:": "Tutaj WISE pokazuje swoją mapę z 2010 roku. Obserwował niebo do 2024 roku: jego obrazy z każdego półrocza są gotowe dla tych gwiazd:",
 };
