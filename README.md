@@ -56,9 +56,12 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   page measures the motion from the images themselves and sets it against the catalogue (SIMBAD): 10.42
   arcseconds a year for Barnard's Star (catalogue: 10.39), 4.71 for Epsilon Indi B (4.68), 8.19 for WISE 0855 (8.15). For any
   other place the page reads the 2MASS and AllWISE sky maps (HiPS) at NASA/IPAC in the browser and lays them on
-  the grid of the SPHEREx images, dated by the night 2MASS looked (from the 2MASS catalogue): pictures to look
-  at, not measurements. When a fast star stood outside the field on that night (Kapteyn's Star, 3.9
-  arcminutes away in October 1999), the page says so and offers a wider field. For a star that changes, the box
+  the grid of the SPHEREx images, dated by the night 2MASS looked (from the 2MASS catalogue) and by the middle of
+  2010, and measures a catalogued star on them the same way: typed into the search box, Proxima Centauri comes
+  out at 3.80 arcseconds a year (catalogue: 3.86), Wolf 359 at 4.68 (4.72), Luhman 16 at 2.76 (2.79),
+  Teegarden's Star at 5.13 (5.12). Their brightness is not measured on these pictures, which carry their
+  makers' stretch. When a fast star stood outside the field on that night (Kapteyn's Star, 3.9 arcminutes away
+  in October 1999), the page says so and offers a wider field: at 10 arcminutes it measures 8.71 (8.64). For a star that changes, the box
   also draws its brightness at each visit of WISE and NEOWISE, measured in these images (the light of a ring
   around its saturated core) and given by WISE's own catalogue, and only when the two agree: RW Aurigae grew
   brighter at 4.6 microns from 2014 to the end of 2017, to 2.3 times its usual brightness in the images (4.2 by
@@ -368,9 +371,17 @@ talking directly to NASA's open data.
   which is steady, spans a factor of five from visit to visit in them. So the page draws a brightness curve only
   when the images and the catalogue agree (correlation 0.8 or more over at least eight visits) and the images show
   a change of a third or more; of the five test objects only RW Aurigae passes.
+  *On the sky maps, for any star.* Five fast stars typed into the search box, nothing built for them: the motion
+  measured on the 2MASS and AllWISE pictures and the SPHEREx visits against the catalogue (SIMBAD), arcseconds a
+  year: Proxima Centauri 3.80 (3.86), Wolf 359 4.68 (4.72), Luhman 16 2.76 (2.79), Teegarden's Star 5.13 (5.12),
+  Kapteyn's Star 8.71 (8.64, at 10 arcminutes). The maps' pictures are stretched by their makers: a bright star
+  fills the brightest grey, and is centred over six pixels like a saturated one; whether a star is "there" is
+  judged by the light at its place against the picture's sky, not by the centroid's peak (on Proxima Centauri, in
+  the crowded Milky Way, the first rule set had said "too faint for 2MASS" of one of the brightest stars of
+  2MASS's sky; the page now says that only where there is no light at all). The AllWISE picture is dated by the
+  middle of 2010, half a year from either of WISE's passes, which at Proxima's speed is about 2 arcseconds.
   *In use.* On a laptop and a phone, in English and Turkish, with no page errors; nothing passes the right edge
-  of a phone's screen; the same numbers in Edge, WebKit and Firefox; the live maps on Kapteyn's Star (a place
-  with no images built for it). The English panel of the five test objects is word for word what it was, apart
+  of a phone's screen; the same numbers in Edge, WebKit and Firefox. The English panel of the five test objects is word for word what it was, apart
   from the new view's button. The guided tour has a fourteenth step, Barnard's Star in the Years view (its
   images are saved with the tour for offline use): the map keeps one height through all fourteen steps on
   three phone screens (0 px of change, in English and Turkish), and the whole tour runs with the network cut.
@@ -571,8 +582,9 @@ No build step: plain HTML, CSS and JavaScript modules.
   NEOWISE, and only for a star the images and WISE's catalogue agree on: the bands of the three telescopes
   differ, so no light curve runs from 2MASS through WISE to SPHEREx, and R Draconis, saturated far into its
   wings and changing every 245 days while WISE looked every six months, gets none. Away from the test objects
-  the older images are the sky maps' pictures, stretched by their makers, and are not measured; AllWISE added
-  up WISE's passes of 2010 and early 2011, and the page dates it 2010.
+  the older images are the sky maps' pictures, stretched by their makers: positions are measured on them, not
+  brightness; and between 2010 and SPHEREx there is no image there, since NEOWISE's yearly images are only built
+  for the test objects.
 - A SPHEREx pixel is 6.15 arcseconds. Even Barnard's Star moves only about 1.7 pixels per year, so motion shows
   up as a small shift between visits, not a streak. Positions repeat to a few tenths of an arcsecond, so
   anything slower than roughly one to two arcseconds per year cannot be seen yet.

@@ -50,7 +50,7 @@ const MODES = {
 };
 
 // The Years view of a place that has no images built for it: the sky maps of the older telescopes.
-const YEARS_MAPS = G`This place as 2MASS saw it (1997 to 2001) and as WISE saw it (2010), from the sky maps that NASA/IPAC serves, then each SPHEREx visit: every telescope in its band nearest to this detector. The older pictures are shown as their makers stretched them: to look at, not to measure.`;
+const YEARS_MAPS = G`This place as 2MASS saw it (1997 to 2001) and as WISE saw it (2010), from the sky maps that NASA/IPAC serves, then each SPHEREx visit: every telescope in its band nearest to this detector. The older pictures are shown as their makers stretched them: where a star’s light lies is measured on them, not how bright it is.`;
 
 // The same views of a body that is followed (every exposure cut out around the body itself): what each one shows then.
 const FOLLOWED = {
@@ -445,7 +445,7 @@ function yearsSeq(stacks) {
   const now = Z.src === 'built' ? Z.frames.filter(f => f.survey === 'SPHEREx' && f.det === S.det && f.n >= 5)          // a visit of fewer exposures is too noisy to set beside the others
     : stacks.map(st => ({ survey: 'SPHEREx', det: S.det, mjd: st.mjd, t0: st.ep.t0, t1: st.ep.t1, n: st.n, img: st.img, sig: st.sig, hi: st.top }));
   return [...old, ...now].sort((a, b) => a.mjd - b.mjd).map(f => {
-    if (f.pic && f.lo === undefined) { const st = C.robustStats(f.img); f.lo = st.med; f.top = Math.max(st.p(0.999), st.med + 40); }          // a picture is drawn from its sky to its brightest stars
+    if (f.pic && f.lo === undefined) { const st = C.robustStats(f.img); f.lo = st.med; f.top = Math.max(st.p(0.999), st.med + 40); f.sig = st.sig; }          // a picture is drawn from its sky to its brightest stars
     const { title, sub } = Years.caption(f);
     return { kind: f.pic ? 'pic' : 'stack', img: f.img, sig: f.sig, hi: f.hi, lo: f.lo, top: f.top, mjd: f.mjd, det: 0, years: f, color: Years.COLOR[f.survey], title, sub };
   });
@@ -490,10 +490,12 @@ async function loadYears() {
  * over a window of six pixels. On Barnard's Star, saturated in every WISE image, this puts its light 0.6″ (r.m.s.) from
  * the catalogue's place in 27 images over 26 years; windows of 2.5 or 4 pixels without the filling stray by 7 to 8″.
  */
-function starAt(img, n, x, y) {
+function starAt(img, n, x, y, flat = Infinity) {
   const x0 = Math.round(x), y0 = Math.round(y);
-  let holes = 0;
-  for (let j = y0 - 2; j <= y0 + 2; j++) for (let i = x0 - 2; i <= x0 + 2; i++) { const v = img[j * n + i]; if (v !== v) holes++; }
+  let holes = 0, full = 0;
+  for (let j = y0 - 2; j <= y0 + 2; j++) for (let i = x0 - 2; i <= x0 + 2; i++) { const v = img[j * n + i]; if (v !== v) holes++; else if (v >= flat) full++; }
+  // a sky map's picture is cut off at its brightest grey: a star that fills it there is saturated too, and is centred the same way
+  if (!holes && full >= 3) { const m = C.locate(img, n, x, y, 6); return m && { ...m, sat: true }; }
   if (!holes) { const m = C.locate(img, n, x, y, 3); return m && { ...m, sat: false }; }
   const out = Float32Array.from(img), R = 8;
   let top = -Infinity;
@@ -525,23 +527,29 @@ function renderYears() {
   const name = S.target ? nameOf(S.target) : S.info?.name || G`The star`;
   const rows = [];
   if (Y.failed && !Y.frames.length) { el.innerHTML = `<p class="hint">${G`The images of 2MASS and WISE could not be fetched just now.`}</p>`; return; }
+  let notes = '';
   if (Y.src === 'maps') {
     const old = Y.frames.find(f => f.survey === '2MASS');
-    let out = '';
+    let out = '', outside = false;
     if (S.track && !S.track.eph && old) {
       const p = trackPos(old.mjd), n = S.grid.n;
       if (!(p[0] > 2 && p[1] > 2 && p[0] < n - 3 && p[1] < n - 3)) {
+        outside = true;
         const far = Math.hypot(p[0] - (n - 1) / 2, p[1] - (n - 1) / 2) * S.grid.scale / 60, need = [10, 20, 40].find(v => v / 2 > far + 0.7);
         out += `<p class="yearsnote">${G`When 2MASS looked, in ${C.fmtMonth(old.mjd)}, ${esc(name)} stood ${far.toFixed(1)}′ from where it is now: outside this field.`}${need ? ` <button type="button" data-wider="${need}">${G`Open a field of ${need}′`}</button>` : ''}</p>`;
       }
     }
     if (old?.guessed) out += `<p class="hint">${G`The night 2MASS looked at this place could not be looked up: its images are dated 1997 to 2001.`}</p>`;
-    el.innerHTML = out;
-    el.querySelector('[data-wider]')?.addEventListener('click', e => {
-      const size = +e.currentTarget.dataset.wider;
-      go({ ra: S.ra, dec: S.dec, size, target: S.target, track: S.track, info: S.info, det: S.det, mode: 'years', fly: true });
-    });
-    return;
+    // a catalogued star inside the field, on dated pictures, is measured as in the images built for the test objects
+    if (outside || old?.guessed || !S.track || S.track.eph) {
+      el.innerHTML = out;
+      el.querySelector('[data-wider]')?.addEventListener('click', e => {
+        const size = +e.currentTarget.dataset.wider;
+        go({ ra: S.ra, dec: S.dec, size, target: S.target, track: S.track, info: S.info, det: S.det, mode: 'years', fly: true });
+      });
+      return;
+    }
+    notes = `${out}<p class="hint">${G`The pictures of 2MASS and AllWISE are dated by the night 2MASS looked at this place and by the middle of 2010 (AllWISE adds up WISE’s passes over it in 2010 and early 2011).`}</p>`;
   }
   if (!S.track || S.track.eph || !S.seq.length) { el.innerHTML = ''; return; }
   const g = vg(), seen = [], missed = [];
@@ -549,11 +557,21 @@ function renderYears() {
     const p = trackPos(it.mjd, g);
     if (!(p[0] > 9 && p[1] > 9 && p[0] < g.n - 10 && p[1] < g.n - 10)) continue;
     // a saturated star is centred from its wings, which a neighbour can pull a little: it may lie up to 8″ off; any other within 4″
-    const m = starAt(it.img, g.n, p[0], p[1]);
-    if (!m || !(m.peak > 10 * it.sig) || Math.hypot(m.x - p[0], m.y - p[1]) * g.scale > (m.sat ? 8 : 4)) { missed.push(it); continue; }
+    const pic = it.kind === 'pic', m = starAt(it.img, g.n, p[0], p[1], pic ? 250 : Infinity);
+    // the brightest light where the star should be, against the sky of the image: a sky map's picture is stretched
+    // by its makers (bright stars squeezed together, a crowded sky lifted), so it is judged on that, not on the centroid's peak
+    let top = -Infinity; const x0 = Math.round(p[0]), y0 = Math.round(p[1]);
+    for (let j = y0 - 2; j <= y0 + 2; j++) for (let i = x0 - 2; i <= x0 + 2; i++) { const v = it.img[j * g.n + i]; if (v !== v) top = Infinity; else if (v > top) top = v; }          // a missing core is a saturated, bright one
+    const lift = top - (it.sky ??= C.robustStats(it.img).med);
+    const there = pic ? lift > 3 * it.sig : !!m && m.peak > 10 * it.sig;
+    if (!m || !there || Math.hypot(m.x - p[0], m.y - p[1]) * g.scale > (m.sat ? 8 : 4)) {
+      // not measured: was there no light at all where the star should be, or light that could not be centred (a crowded field)?
+      missed.push({ it, dark: lift < (pic ? 1.5 : 5) * it.sig });
+      continue;
+    }
     seen.push({ it, dE: -(m.x - p[0]) * g.scale, dN: (m.y - p[1]) * g.scale, t: C.mjdToYear(it.mjd) });
   }
-  if (seen.length < 2) { el.innerHTML = ''; return; }
+  if (seen.length < 2) { el.innerHTML = notes; return; }
   // The motion the images show: the catalogue's, corrected by the straight line through the offsets of the light from it.
   const fit = key => {
     const tm = seen.reduce((a, q) => a + q.t, 0) / seen.length, vm = seen.reduce((a, q) => a + q[key], 0) / seen.length;
@@ -578,9 +596,10 @@ function renderYears() {
     say = G`In ${years.toFixed(0)} years, from ${a.it.years.survey} to ${b.it.years.survey}, ${esc(name)} moved less than this view can show (${(cat * years).toFixed(1)}″ by the catalogue).`;
   }
   // a telescope in whose images it does not show at all: too faint, or too cold, at that wavelength (WISE 0855 in 2MASS)
-  const unseen = [...new Set(missed.map(it => it.years.survey))].filter(k => !by.has(k)).map(k => missed.find(it => it.years.survey === k).years);
+  // only where there was no light at all: a bright star that could not be centred is not "too faint"
+  const unseen = [...new Set(missed.filter(q => q.dark).map(q => q.it.years.survey))].filter(k => !by.has(k)).map(k => missed.find(q => q.dark && q.it.years.survey === k).it.years);
   const none = unseen.map(f => G`It does not show in the ${f.survey} image (${f.band}, ${Years.LAM[f.band].toFixed(2)} µm, ${f.guessed ? '1997–2001' : C.fmtMonth(f.mjd)}): at that wavelength it is too faint for ${f.survey}.`).join(' ');
-  el.innerHTML = `<p class="yearssay">${say} ${G`Its light lies ${rms.toFixed(1)}″ (r.m.s.) from where the catalogue puts it on each date.`}${none ? ` ${none}` : ''}</p>
+  el.innerHTML = `<p class="yearssay">${say} ${G`Its light lies ${rms.toFixed(1)}″ (r.m.s.) from where the catalogue puts it on each date.`}${none ? ` ${none}` : ''}</p>${notes}
     <table class="t"><thead><tr><th>${G`Telescope`}</th><th>${G`Images`}</th><th>${G`Years`}</th><th>${G`Off the catalogue`}</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
   yearsBrightness(el, name);
 }
@@ -2277,7 +2296,7 @@ function renderMeta() {
     add(G`Taken`, f.survey === 'AllWISE' ? G`in WISE’s passes over this place in 2010 and early 2011, added together` : f.guessed ? G`between 1997 and 2001 (the night could not be looked up)` : f.t1 - f.t0 > 1 ? C.fmtRange(f.t0, f.t1) : C.fmtDate(f.mjd));
     if (f.n) add(G`Built from`, f.survey === '2MASS' ? G`${f.n} Atlas Images of 2MASS, joined` : G`${nExp(f.n)}, the middle value of each pixel`);
     if (!f.pic) add(G`Noise (1σ)`, `${f.sig.toFixed(3)} MJy/sr`);
-    add(G`Source`, f.pic ? G`sky map (HiPS) at NASA/IPAC, as its makers stretched it: not measured` : f.survey === 'SPHEREx' ? G`SPHEREx level 2 exposures at NASA/IPAC` : f.survey === '2MASS' ? G`2MASS Atlas Images at NASA/IPAC` : G`WISE and NEOWISE single exposures (level 1b) at NASA/IPAC`);
+    add(G`Source`, f.pic ? G`sky map (HiPS) at NASA/IPAC, as its makers stretched it: where the light lies is measured, not how bright it is` : f.survey === 'SPHEREx' ? G`SPHEREx level 2 exposures at NASA/IPAC` : f.survey === '2MASS' ? G`2MASS Atlas Images at NASA/IPAC` : G`WISE and NEOWISE single exposures (level 1b) at NASA/IPAC`);
   } else {
     add(G`Image`, it.title);
     add(G`Built from`, it.sub);
