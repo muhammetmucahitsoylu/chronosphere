@@ -525,7 +525,7 @@ function renderYears() {
   if (!el) return;
   const Y = S.years;
   if (S.mode !== 'years' || !Y?.frames || Y.busy) { el.innerHTML = ''; return; }
-  const name = S.target ? nameOf(S.target) : S.info?.name || G`The star`;
+  const name = S.target ? nameOf(S.target) : S.info?.name || S.track?.name || G`The star`;
   const rows = [];
   if (Y.failed && !Y.frames.length) { el.innerHTML = `<p class="hint">${G`The images of 2MASS and WISE could not be fetched just now.`}</p>`; return; }
   let notes = '';
