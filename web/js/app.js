@@ -2493,9 +2493,70 @@ const tourApi = {
 function relayout() {
   requestAnimationFrame(() => { if (Sky.isReady()) Sky.resize(); paint(); specPlot.draw(); lcPlot.draw(); });
 }
+/**
+ * The map keeps one height through the tour: the one that leaves room for the longest card that docks under it. That
+ * card's height is measured here, on a copy of the card that is never shown: every step's words are set into the copy,
+ * at the width the docked card has, and the tallest result goes to the style sheet as --tourcard. On a phone every
+ * step docks, but the two with a worked example are left out (there the example sits in the card and the page
+ * scrolls); on a wide screen only the steps with an object open dock.
+ */
+let tourMeasured = '';
+function measureTour() {
+  if (!tourSteps.length) tourSteps = buildTour(S.targets, T, nameOf);
+  const narrow = isNarrow(), W = window.innerWidth, key = `${narrow}|${W}|${tourSteps.length}|${document.fonts?.status || ''}`;
+  if (key === tourMeasured) return;
+  tourMeasured = key;
+  const real = $('tour'), ghost = real.cloneNode(true);
+  ghost.querySelectorAll('.blink').forEach(e => e.remove());          // a worked example that sits in the card just now
+  ghost.querySelectorAll('[id]').forEach(e => { e.dataset.was = e.id; e.removeAttribute('id'); });
+  ghost.removeAttribute('id'); ghost.hidden = false; ghost.className = 'tour tourprobe'; ghost.inert = true; ghost.setAttribute('aria-hidden', 'true'); ghost.removeAttribute('aria-live');
+  ghost.style.width = `${Math.round(narrow ? W : W - Math.min(0.62 * W, 1000))}px`;
+  document.body.appendChild(ghost);          // outside the map's column: the rules for a card that floats over the map, or is docked and stretched, do not reach it
+  const part = id => ghost.querySelector(`[data-was=${id}]`);
+  let tall = 0;
+  tourSteps.forEach((st, i) => {
+    if (narrow ? st.demo : !st.object) return;
+    // the words as tourGo and showGuides set them
+    part('tourcount').textContent = T('tour.count', { i: i + 1, n: tourSteps.length });
+    part('tourtitle').textContent = st.title;
+    part('tourtext').innerHTML = esc(st.text).replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    const links = part('tourlinks');
+    links.hidden = !st.tryNext; links.textContent = st.tryNext ? `${T('tour.try')} ` : '';
+    for (const o of [...(st.tryNext || []), ...(st.tryNext ? [{ name: T('hero.hunt') }] : [])]) { const b = document.createElement('button'); b.type = 'button'; b.textContent = o.shown || o.name; links.appendChild(b); }
+    const pts = st.points || [], list = part('tourpoints');
+    list.hidden = !pts.length; part('tourwalk').hidden = !pts.length;
+    list.innerHTML = pts.map((p, k) => `<li><i class="guide">${k + 1}</i><span><b>${esc(p.label)}</b> ${esc(p.text)}</span></li>`).join('');
+    tall = Math.max(tall, ghost.getBoundingClientRect().height);
+  });
+  ghost.remove();
+  if (tall) document.documentElement.style.setProperty('--tourcard', `${Math.ceil(tall)}px`);
+}
+/** On a phone the tour's two worked examples sit in the card, under its title; on a wide screen they float over the map. */
+function seatFigures() {
+  const card = $('tour'), stage = $('mapstage'), inCard = isNarrow();
+  for (const id of ['blink', 'ladder']) {
+    const el = $(id);
+    if (inCard && el.parentNode !== card) card.insertBefore(el, $('tourtext'));
+    else if (!inCard && el.parentNode !== stage) stage.appendChild(el);
+  }
+}
+// A turned phone, a resized window, the fonts arriving: the card is measured again and the examples take their seats.
+// Only a real change of size counts: the map is told of a new layout with a resize event of the page's own making
+// (Sky.resize), and on a phone the height alone changes whenever the browser's bars slide away, which moves nothing here.
+const tourWindow = () => (isNarrow() ? `${window.innerWidth}` : `${window.innerWidth}x${window.innerHeight}`);
+let tourResize = 0, tourWas = tourWindow();
+const tourFit = force => {
+  const now = tourWindow();
+  if (force !== true && now === tourWas) return;
+  tourWas = now;
+  clearTimeout(tourResize); tourResize = setTimeout(() => { if (tourIdx < 0) return; seatFigures(); measureTour(); relayout(); if (Sky.isReady()) Sky.reshape(); }, 140);
+};
+window.addEventListener('resize', () => tourFit());
+document.fonts?.ready.then(() => tourFit(true));
 function tourGo(i) {
   coachEnd();
   if (!tourSteps.length) tourSteps = buildTour(S.targets, T, nameOf);
+  seatFigures(); measureTour();
   if (i < 0) return;
   if (i >= tourSteps.length) return tourEnd();
   tourIdx = i;
@@ -2740,10 +2801,15 @@ $('layer').onchange = e => setLayer(e.target.value);
 /** Size of the map, in pixels, during the tour: with no object open (wide) and with one open (open). */
 function tourSizes() {
   const W = window.innerWidth, H = window.innerHeight - $('top').offsetHeight, narrow = isNarrow();
+  if (S.targets.length) measureTour();                    // the map's height in the tour follows from the tour's longest card
+  const card = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tourcard')) || 400;
+  // on a phone the map has one height at every step (the style sheet's --tourmap, worked out here the same way); on a
+  // wide screen it fills the window, and with an object open it leaves the docked card its room
+  const phone = document.body.classList.contains('touring') && narrow ? $('mapstage').offsetHeight : Math.max(170, Math.min(H - 62 - card, 0.45 * window.innerHeight));
   return {
     full: [W, H],
-    wide: narrow ? [W, Math.max(200, H - 300)] : [W, H],
-    open: narrow ? [W, Math.max(170, Math.round(window.innerHeight * 0.26))] : [W - Math.min(0.62 * W, 1000), Math.max(240, H - 290)],
+    wide: narrow ? [W, phone] : [W, H],
+    open: narrow ? [W, phone] : [W - Math.min(0.62 * W, 1000), Math.max(150, H - Math.min(card, H - 150))],
   };
 }
 function tourTiles() {

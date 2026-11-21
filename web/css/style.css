@@ -122,7 +122,7 @@ html.wait-words .hero, html.wait-words .nav, html.wait-words #search { visibilit
 .blink figcaption b { display: block; font: 400 20px/1.15 var(--serif); color: var(--ink); margin-bottom: 2px; }
 @container stage (max-height: 340px) { .blink figcaption span { display: none; } .blink { width: min(250px, 64cqw, calc(100cqh - 84px)); } .blink.ladder { width: min(360px, 92cqw); } .laddernote { display: none; } }      /* a short map: the dates on the pictures say enough */
 @container stage (max-height: 320px) { #map .aladin-logo-container { right: auto !important; left: 14px !important; } }      /* a short map: the zoom buttons reach down to where the badge would sit */
-@container stage (max-height: 215px) { .zoom { display: none; } }      /* a very short map (small phone, object open): no room above the colour bar; pinch still zooms */
+@container stage (max-height: 215px) { .zoom { display: none; } body.touring .layerpick { display: none; } }      /* a very short map (small phone, object open): no room above the colour bar; pinch still zooms. In the tour the map's own chooser steps aside too: the tour picks the map */
 
 /* wavelength ruler under the map */
 .ruler { left: 14px; right: 14px; bottom: 14px; display: flex; gap: 12px; align-items: center; background: #0a0908d9; border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px 6px 8px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
@@ -198,6 +198,17 @@ html.wait-words .hero, html.wait-words .nav, html.wait-words #search { visibilit
 .app[data-panel=closed] .tour { position: absolute; left: 22px; bottom: 96px; width: min(480px, calc(100% - 44px)); background: #141210fa; border: 1px solid var(--line-2); border-radius: 14px; box-shadow: 0 18px 50px #000c; }
 .app[data-panel=closed] .tour h2 { font-size: 32px; }
 .app[data-panel=closed] .tour p { font-size: 16px; line-height: 1.55; }
+/* The map keeps one height through the tour. With an object open the card docks under the map: it is given the height
+   of the tour's longest docked card (--tourcard, measured when the tour starts on a copy that is never shown: .tourprobe, which
+   the page's code hangs on the page itself, outside the map's column, so that only the card's own rules reach it),
+   so the map above it is the same at every step, and Back and Next stay where they are. */
+.tour.tourprobe { position: absolute !important; left: 0; top: 0; z-index: -1; visibility: hidden; pointer-events: none; }
+@media (min-width: 901px) {
+  .tour { display: flex; flex-direction: column; }
+  .tour > * { flex: none; }
+  .tour .tourbtns { margin-top: auto; padding-top: 14px; }
+  .app[data-panel=open] .tour { min-height: min(var(--tourcard, 0px), calc(100vh - var(--top) - 150px)); max-height: calc(100vh - var(--top) - 150px); overflow-y: auto; }
+}
 
 /* ---------- object panel ---------- */
 .panel { position: relative; min-width: 0; overflow-y: auto; overflow-x: hidden; border-left: 1px solid var(--line); background: var(--bg); padding: 16px 24px 20px; container-type: inline-size; scrollbar-color: var(--line-2) transparent; }
@@ -504,9 +515,17 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
 
   .app, .app[data-panel=open] { display: block; }
   .app[data-panel=closed] .mapwrap { height: calc(100vh - var(--toph, 104px)); height: calc(100dvh - var(--toph, 104px)); min-height: 400px; }
-  body.touring .app[data-panel=closed] .mapwrap { height: calc(100vh - var(--toph, 104px) - 62px); height: calc(100dvh - var(--toph, 104px) - 62px - env(safe-area-inset-bottom)); }
+  /* The tour: the map keeps one height at every step, the one that leaves room for the tour's longest card (--tourcard)
+     on this screen, between 170 px and 45 per cent of the screen. The card follows; where it is longer (the two steps
+     with a worked example), the page scrolls. The small viewport height (svh) is used, so that the map does not change
+     when the browser's bars slide away. */
+  body.touring { --tourmap: clamp(170px, calc(100vh - var(--toph, 104px) - 62px - var(--tourcard, 400px)), 45vh); }
+  @supports (height: 100svh) { body.touring { --tourmap: clamp(170px, calc(100svh - var(--toph, 104px) - 62px - env(safe-area-inset-bottom, 0px) - var(--tourcard, 400px)), 45svh); } }
+  body.touring .app .mapwrap { height: auto; min-height: 0; }
+  body.touring .app .mapstage { flex: none; height: var(--tourmap); min-height: 0; }
+  body.touring .app[data-panel=closed] .tour { min-height: calc(100vh - var(--toph, 104px) - 62px - var(--tourmap)); }
+  @supports (height: 100svh) { body.touring .app[data-panel=closed] .tour { min-height: calc(100svh - var(--toph, 104px) - 62px - env(safe-area-inset-bottom, 0px) - var(--tourmap)); } }
   .app[data-panel=open] .mapstage { flex: none; height: 28vh; height: 28dvh; min-height: 190px; }          /* the map says where the object is; the story starts on the first screen */
-  body.touring .app[data-panel=open] .mapstage { height: 26vh; height: 26dvh; min-height: 170px; }
   .layerpick { top: 10px; right: 10px; }
   .zoom { top: 52px; right: 10px; }
   .aladin-location { display: none !important; }
@@ -531,22 +550,22 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
   .ruler { left: 10px; right: 10px; bottom: 10px; gap: 8px; padding: 7px 10px 5px 7px; }
   #wavelabel { font-size: 13.5px; min-width: 62px; }
   .mapnote { font-size: 13px; top: 10px; left: 10px; right: 10px; transform: none; max-width: none; white-space: normal; text-align: center; border-radius: 12px; }
-  .blink { right: auto; left: 50%; top: 10px; transform: translateX(-50%); width: min(250px, 64cqw, calc(100cqh - 140px)); min-width: 110px; padding: 8px 8px 9px; }
-  /* While the example is on show it needs the room, and the map is only its backdrop: the map's controls step aside,
-     and on a short screen the map keeps a workable height (the page then scrolls to the text). */
-  body.example .layerpick, body.example .zoom, body.example .ruler { visibility: hidden; }
-  body.example.touring .app[data-panel=closed] .mapwrap { height: auto; min-height: calc(100vh - var(--toph, 104px) - 62px); min-height: calc(100dvh - var(--toph, 104px) - 62px - env(safe-area-inset-bottom)); }
-  body.example .mapstage { flex: 1 0 290px; }
-  .blink { width: min(250px, 64cqw, calc(100cqh - 124px)); }
-  .blink figcaption { font-size: 12.5px; margin-top: 7px; }
-  .blink figcaption b { font-size: 18px; }
-  .blink.ladder { width: min(350px, 94cqw); padding: 9px 11px 9px; }
+  /* The tour's two worked examples sit in the card here, under its title (the page's code moves them): over the map
+     they needed room, and the map grew for them. The two pictures: beside their caption. The ladder: its whole width. */
+  .tour .blink { position: static; transform: none; width: auto; min-width: 0; margin: 10px 0 2px; padding: 8px; display: flex; gap: 12px; align-items: center; background: #0d0b0a; box-shadow: none; }
+  .tour .blink[hidden] { display: none; }
+  .tour .blinkstage { flex: none; width: min(44%, 230px); }
+  .tour .blink figcaption { margin: 0; font-size: 12.5px; min-width: 0; }
+  .tour .blink figcaption b { font-size: 18px; }
+  .tour .blink.ladder { display: block; padding: 10px 12px 10px; }
+  .tour .blink.ladder[hidden] { display: none; }
+  .tour .ladder figcaption { margin: 0 0 8px; }
+  .tour .ladder .laddernote { margin: 8px 0 0; font-size: 12px; }
   .rungs { gap: 5px; }
   .rung { font-size: 12.5px; grid-template-columns: 18px 40px minmax(0, 1fr); gap: 7px; }
   .rung b { font-size: 13px; }
   .rung small { font-size: 11px; }
   .laddernote { font-size: 12px; margin-top: 7px; }
-  body.example .mapstage:has(.ladder:not([hidden])) { flex-basis: 360px; }
 
   .tour, .app[data-panel=closed] .tour { position: relative; left: auto; bottom: auto; width: auto; border: 0; border-top: 1px solid var(--line-2); border-radius: 0; box-shadow: none; background: var(--surface); padding: 0 16px 14px; }
   .tourbar { margin: 0 -16px 10px; }
@@ -613,7 +632,8 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
 }
 /* phones held sideways: the map and the panel side by side would be too cramped, so keep one column but shorten the map */
 @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
-  .app[data-panel=open] .mapstage, body.touring .app[data-panel=open] .mapstage { height: 60vh; height: 60dvh; min-height: 0; }
+  .app[data-panel=open] .mapstage { height: 60vh; height: 60dvh; min-height: 0; }
+  body.touring { --tourmap: 54vh; }
   .hero { padding-top: 20px; }
   .hero h1 { font-size: 34px; }
   .lede, .heroshot { display: none; }

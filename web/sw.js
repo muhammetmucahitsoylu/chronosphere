@@ -2,7 +2,7 @@
 // are served from this device, so a poor connection does not stop a demonstration.
 
 // VERSION is replaced with the commit id when the site is published, so every release is its own set.
-const VERSION = 'dev-162';
+const VERSION = 'dev-167';
 const SHELL = `chrono-shell-${VERSION}`, DATA = 'chrono-data-v2', TILES = 'chrono-tiles-v1', LOOKUP = 'chrono-lookup-v1';
 const KEEP = new Set([SHELL, DATA, TILES, LOOKUP, 'chrono-live-v1']);
 const SHELL_FILES = ['./', 'opening.jpg', 'hero-pluto.webp', 'hero-pluto.jpg', 'css/style.css', 'css/fonts.css', 'config.js', 'vendor/aladin.js', 'data/targets.json',

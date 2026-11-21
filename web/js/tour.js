@@ -52,6 +52,7 @@ export function buildTour(targets, t, name = o => o.label) {
   ];
   for (const o of targets) {
     steps.push({
+      object: true,                                     // an object is open at this step: the card docks under the map on every screen
       title: name(o), text: STORIES.includes(o.slug) ? t(`tour.${o.slug}`) : `${o.blurb} ${o.look || ''}`,
       points: (POINTS[o.slug] || []).map(p => ({ ...p, label: t(`${p.key}.label`), text: t(`${p.key}.text`) })),
       prep: api => { api.warm(o.ra, o.dec, w => api.viewFov(o.size, w)); api.preload(o); },      // made ready while the previous step is on screen

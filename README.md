@@ -103,7 +103,10 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   short of it. At the first object, numbered pointers lead from the tour's card to the parts of the panel,
   and Next walks through the panel before the tour moves on. The tour is saved on the device and runs
   without a connection; the four further objects its last step offers are read live from the archive, and
-  one press keeps those too. With a connection the last step also offers a hunt.
+  one press keeps those too. With a connection the last step also offers a hunt. The map keeps one height
+  through the whole tour, on a phone and on a desk: the tour's card docks under it, and the map has the one
+  height that leaves room for the tour's longest card. On a phone the two pictures of Pluto and the ladder
+  of brightness sit in the card, under its title.
 - **Learn the panel.** "How to read this panel", on every object, walks through its nine parts one at a time:
   the part is lit, the rest dimmed, and a card says what it shows and what can be done with it. The tour
   takes the same walk at its first object.
@@ -311,6 +314,18 @@ talking directly to NASA's open data.
   languages, and measured: nothing lies over anything else, nothing is cut off at the top of the map, no
   button's words are clipped (0 faults in 66 views). On a short phone screen the sentence under the picture
   steps aside first, then the picture; before, the German and French titles were cut off at the top there.
+- **The map during the tour.** A visitor reported that on a phone the map above the tour's card grew and
+  shrank from step to step. It did: the card docked under the map and the map took what was left, so its
+  height followed the length of the card's words: from 102 to 360 px over the first steps on a 360 by 640
+  phone, 145 to 360 px on a 390 by 664 screen (a phone with its browser's bars showing), 325 to 463 px on
+  390 by 844; on a 1280 by 720 laptop from 241 to 388 px over the six steps with an object. Now the tour's
+  longest docked card is measured once, on a copy of the card that is never shown, and the map gets the one
+  height that leaves room for it. Measured at every one of the thirteen steps: 0 px of change on the three
+  phone screens in Turkish, English, German and French, on an 820 by 1180 tablet, on a phone held sideways,
+  and over the object steps at 1280 by 720, 1920 by 1080 and 1024 by 768. On a phone the two worked examples
+  moved from over the map into the card (they were what made the map grow for two steps); there, and where
+  a card is longer than the screen, the page scrolls. The frame-by-frame probe for blank white in the map
+  was run again on the phone and the laptop tour: 0 per cent exposed in 2,344 and 2,081 frames.
 - **Typed coordinates.** 23 ways of writing the same position (degrees, hours and minutes, with colons,
   with unit letters, with a typeset minus sign, with "RA" and "Dec" or the full words in any of the six
   languages) all give the position to 0.7 arcseconds or better, and none of 25 object names is mistaken for
