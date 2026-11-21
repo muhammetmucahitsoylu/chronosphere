@@ -11,6 +11,7 @@ import * as Lang from './lang.js';
 
 const T = Lang.t, G = Lang.G;          // the words of the front page, the tour and the walk through the panel, in the language in use
 const PAGE_FILES = { planetx: 'planet-x.html', hunt: 'find-asteroids.html', spherex: 'what-is-spherex.html', how: 'how-it-works.html', about: 'about.html' };
+const OBJECT_FILES = { barnard: 'barnards-star.html', epsindib: 'epsilon-indi-b.html', wise0855: 'wise-0855.html', rwaur: 'rw-aurigae.html', rdra: 'r-draconis.html', pluto: 'pluto.html' };
 
 const API = (window.CHRONO_API || '').replace(/\/$/, '');
 const $ = id => document.getElementById(id);
@@ -1121,10 +1122,12 @@ function renderScan() {
 // ------------------------------------------------------------ side panels
 function renderChips() {
   const el = $('examples'); el.innerHTML = '';
-  for (const t of S.targets) {
-    const b = document.createElement('button');
-    b.type = 'button'; b.textContent = nameOf(t); b.onclick = () => openTarget(t);
-    el.appendChild(b);
+  for (const t of S.targets) {          // a link to the object's plain page (a search engine, a new tab); a plain press opens the object here
+    const a = document.createElement('a'), file = OBJECT_FILES[t.slug];
+    a.href = file ? (Lang.lang === 'en' ? '' : `${Lang.lang}/`) + file : `?target=${t.slug}`;
+    a.textContent = nameOf(t);
+    a.onclick = e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); openTarget(t); };
+    el.appendChild(a);
   }
   // Suggestions on which the tool has been tried: nearby fast movers, brown dwarfs, a nebula, a galaxy.
   const en = Lang.lang === 'en';

@@ -78,8 +78,8 @@ html.wait-words .hero, html.wait-words .nav, html.wait-words #search { visibilit
 .lede { margin: 16px 0 0; font-size: 17px; line-height: 1.5; color: #e2dbcf; max-width: 520px; }
 .herobtns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
 .startwith { margin: 18px 0 0; color: var(--ink-2); font-size: 14px; line-height: 1.9; }
-.startwith button { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; padding: 2px 0; margin: 0 8px 0 4px; white-space: nowrap; }
-.startwith button:hover { text-decoration-color: var(--ember); color: var(--ember); }
+.startwith a { display: inline-block; color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; padding: 2px 0; margin: 0 8px 0 4px; white-space: nowrap; }
+.startwith a:hover { text-decoration-color: var(--ember); color: var(--ember); }
 .offline { margin: 10px 0 0; font: 11.5px var(--mono); color: var(--ink-3); min-height: 16px; }
 .offline button { font: inherit; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; text-align: left; }
 .offline button:hover { color: var(--ember); }
@@ -546,7 +546,7 @@ dl#meta dd { margin: 0; overflow-wrap: anywhere; font-family: var(--mono); font-
   .herobtns { margin-top: 16px; }
   .herobtns .cta, .herobtns .ghost { min-height: 44px; }
   .startwith { margin-top: 12px; }
-  .startwith button { padding: 6px 0; }
+  .startwith a { padding: 6px 0; }
   .ruler { left: 10px; right: 10px; bottom: 10px; gap: 8px; padding: 7px 10px 5px 7px; }
   #wavelabel { font-size: 13.5px; min-width: 62px; }
   .mapnote { font-size: 13px; top: 10px; left: 10px; right: 10px; transform: none; max-width: none; white-space: normal; text-align: center; border-radius: 12px; }

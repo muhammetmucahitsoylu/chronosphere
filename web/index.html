@@ -23,7 +23,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebApplication","name":"Chronosphere","url":"https://chronospherex.com/","description":"Fly over the whole sky as NASA's SPHEREx sees it, pick any point, and watch that spot change over time. See what moves, what flickers, and what it is made of.","applicationCategory":"EducationalApplication","operatingSystem":"Any","browserRequirements":"Requires JavaScript and WebGL 2","inLanguage":["en","tr","es","de","fr","pl"],"isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"license":"https://www.gnu.org/licenses/gpl-3.0.html","image":"https://chronospherex.com/preview.png","author":{"@type":"Organization","name":"The Bright Nobles"},"sameAs":"https://github.com/muhammetmucahitsoylu/chronosphere"}
+{"@context":"https://schema.org","@type":"WebSite","name":"Chronosphere","alternateName":["ChronosphereX","chronospherex.com"],"url":"https://chronospherex.com/"}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"Chronosphere","alternateName":"ChronosphereX","url":"https://chronospherex.com/","description":"Fly over the whole sky as NASA's SPHEREx sees it, pick any point, and watch that spot change over time. See what moves, what flickers, and what it is made of.","applicationCategory":"EducationalApplication","operatingSystem":"Any","browserRequirements":"Requires JavaScript and WebGL 2","inLanguage":["en","tr","es","de","fr","pl"],"isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"license":"https://www.gnu.org/licenses/gpl-3.0.html","image":"https://chronospherex.com/preview.png","author":{"@type":"Organization","name":"The Bright Nobles"},"sameAs":"https://github.com/muhammetmucahitsoylu/chronosphere"}
 </script>
 <script>
 // A language picked earlier, or carried by the address, is known before the page's code arrives:
@@ -88,7 +91,7 @@ try { var L = new URLSearchParams(location.search).get('lang') || localStorage.g
           <button type="button" class="ghost" id="huntbtn" data-t="hero.hunt">Find an asteroid</button>
           <button type="button" class="ghost" id="hidewelcome" data-t="hero.explore">Explore freely</button>
         </div>
-        <p class="startwith"><span data-t="hero.start">Or start with</span> <!-- the five test objects, written out so the text does not jump when data/targets.json arrives; the page's code replaces them with the same list --><span id="examples"><button type="button">Barnard's Star</button><button type="button">Epsilon Indi B</button><button type="button">WISE 0855</button><button type="button">RW Aurigae</button><button type="button">R Draconis</button><button type="button">Pluto</button></span></p>
+        <p class="startwith"><span data-t="hero.start">Or start with</span> <!-- the test objects, written out so the text does not jump when data/targets.json arrives; the page's code replaces them with the same list. Links to their plain pages, for a search engine and a new tab: a plain press opens the object here. --><span id="examples"><a href="barnards-star.html">Barnard's Star</a><a href="epsilon-indi-b.html">Epsilon Indi B</a><a href="wise-0855.html">WISE 0855</a><a href="rw-aurigae.html">RW Aurigae</a><a href="r-draconis.html">R Draconis</a><a href="pluto.html">Pluto</a></span></p>
         <!-- what the title says, shown: the tool's own "Passing body" view of Pluto at 17 stops of the telescope, saved from the viewer's canvas; a press opens Pluto -->
         <button type="button" class="heroshot" id="heroshot">
           <picture><source media="(prefers-reduced-motion: reduce)" srcset="hero-pluto.jpg"><img src="hero-pluto.webp" width="320" height="320" alt="" decoding="async"></picture>

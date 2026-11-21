@@ -415,7 +415,9 @@ web/find-asteroids.html, web/what-is-spherex.html, web/how-it-works.html, web/ab
 web/planet-x.html     Planet X, Pluto and SPHEREx: the guided tour's story as a plain page, with Pluto in two
                       SPHEREx exposures six days apart (generated)
 web/barnards-star.html, web/epsilon-indi-b.html, web/wise-0855.html, web/rw-aurigae.html, web/r-draconis.html
-                      the five test objects as plain pages, each with its SPHEREx pictures (generated)
+                      the five test objects as plain pages, each with its SPHEREx pictures (generated); the
+                      front page's example objects are links to these pages and to Pluto's, and a plain press
+                      opens the object in the tool instead
 web/pluto.html        Pluto as a plain page: one SPHEREx picture for every stop of the telescope that caught it (generated)
 web/tr/, web/es/, web/de/, web/fr/, web/pl/   the same pages in the other languages (generated)
 web/img/              those pictures: real SPHEREx images, made by scripts/build_images.py
