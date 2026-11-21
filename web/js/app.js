@@ -2599,7 +2599,16 @@ function syncUrl() {
   const p = new URLSearchParams();
   if (isPreset()) p.set('target', S.target.slug);
   else if (S.track?.body?.query) { p.set('sso', S.track.body.query); p.set('at', S.track.body.from.toFixed(2)); p.set('fov', S.size); }          // a body opened by name: the name, and which of its visits
-  else { p.set('ra', S.ra.toFixed(5)); p.set('dec', S.dec.toFixed(5)); p.set('fov', S.size); }
+  else {
+    p.set('ra', S.ra.toFixed(5)); p.set('dec', S.dec.toFixed(5)); p.set('fov', S.size);
+    // a catalogued star in the ring: its place in 2000, its motion and parallax, and its name go with the link, so that
+    // whoever opens it gets the star followed and measured (its walk in the Years view), not only the place
+    const k = S.track;
+    if (k && !k.eph && !k.body && k.ra2000 != null && (k.pmra || k.pmdec)) {
+      p.set('star', [k.ra2000.toFixed(7), k.dec2000.toFixed(7), (+k.pmra || 0).toFixed(2), (+k.pmdec || 0).toFixed(2), (+k.plx || 0).toFixed(3)].join(','));
+      if (k.name) p.set('name', k.name.replace(/\s+/g, ' ').trim());
+    }
+  }
   p.set('det', S.det); p.set('mode', S.mode);
   const followed = S.sel?.trail ? (S.movers?.tracks || []).indexOf(S.sel.trail) + 1 : 0;
   if (followed) p.set('body', followed);
@@ -3494,7 +3503,11 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   S.wantBody = +q.get('body') || 0;          // a passing body that the link was following: taken up again once the search has found it
   const t = S.targets.find(x => x.slug === q.get('target'));
   if (t) return go({ ra: t.ra, dec: t.dec, size: t.size, target: t, info: t.info || null, ...(t.view || {}), ...(det ? { det } : {}), ...(mode ? { mode } : {}) });
-  if (q.has('ra') && q.has('dec')) return go({ ra: +q.get('ra'), dec: +q.get('dec'), size: +(q.get('fov') || q.get('size') || 5), det, mode });
+  if (q.has('ra') && q.has('dec')) {
+    const st = (q.get('star') || '').split(',').map(Number), track = st.length === 5 && st.every(v => v === v)
+      ? { ra2000: st[0], dec2000: st[1], pmra: st[2], pmdec: st[3], plx: st[4] || null, name: q.get('name') || '' } : null;
+    return go({ ra: +q.get('ra'), dec: +q.get('dec'), size: +(q.get('fov') || q.get('size') || 5), det, mode, ...(track ? { track } : {}) });
+  }
   if (q.get('sso')) return openBody(q.get('sso'), +q.get('at') || null, { det, mode, size: +q.get('fov') || 0 }).then(known => { if (!known) note(T('note.notFound', { name: q.get('sso') }), 8000); });
   if (q.has('hunt')) return startHunt(+q.get('hunt') || 0);          // ?hunt=1292 repeats the hunt for that asteroid: for testing, and for showing one to somebody
   if (q.has('tour')) tourGo(0);
