@@ -3,7 +3,10 @@
 **Explore the changing infrared sky.** Fly over the whole sky as NASA's SPHEREx mission sees it, click
 anything, and watch that spot change over time. Chronosphere tells you what the object is, plays every SPHEREx
 exposure of it like a little video so that motion and brightness changes stand out, builds its 102-band
-spectrum on the spot, and checks whether what you see is real.
+spectrum on the spot, and checks whether what you see is real. The *Years* view adds a quarter of a century:
+the same spot in 2MASS (about 2000), WISE and NEOWISE (2010 to 2024) and SPHEREx images, with a star's motion
+measured from them (Barnard's Star: 10.42 arcseconds a year, catalogue 10.39) and, in the test fields, what moves
+found without being told where to look (WISE 0855, the coldest known brown dwarf, absent from 2MASS).
 
 Live: https://chronospherex.com/ · guided tour: add `?tour` · an asteroid hunt: add `?hunt`
 

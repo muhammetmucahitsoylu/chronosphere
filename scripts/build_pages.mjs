@@ -302,7 +302,8 @@ function content(code, id) {
     <p class="fine">${esc(D.sources)}: <a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noopener">SPHEREx, NASA/JPL-Caltech, IRSA</a> · ${o.eph
       ? `<a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener">JPL Horizons</a> · <a href="https://ssp.imcce.fr/webservices/skybot/" target="_blank" rel="noopener">SkyBoT, IMCCE</a>`
       : `<a href="${simbad}" target="_blank" rel="noopener">SIMBAD</a> · <a href="https://www.cosmos.esa.int/web/gaia/dr3" target="_blank" rel="noopener">Gaia DR3</a>`}${years ? ` · <a href="https://irsa.ipac.caltech.edu/Missions/2mass.html" target="_blank" rel="noopener">2MASS</a> · <a href="https://irsa.ipac.caltech.edu/Missions/wise.html" target="_blank" rel="noopener">WISE, NEOWISE</a>` : ''}${wiki ? ` · <a href="${wiki}" target="_blank" rel="noopener">Wikipedia</a>` : ''}</p>`;
-  return { body, title: D.title(name), lead: `${w[o.blurb]} ${D.alt(name, how)}.`, image: `img/${o.slug}.jpg` };
+  // a link to the page shows the star's oldest and newest image side by side, where the Years view was built for it
+  return { body, title: D.title(name), lead: `${w[o.blurb]} ${D.alt(name, how)}.`, image: years ? `img/${o.slug}-years.jpg` : `img/${o.slug}.jpg` };
 }
 
 /** The page of a body that is followed (comet 3I/ATLAS): its story, what the exposures show, and how the pictures are known to be centred on it. */
