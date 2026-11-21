@@ -4,6 +4,7 @@ and in one unit (MJy/sr), so that what a star did over a quarter of a century ca
 
     python scripts/build_years.py [slug ...]
     python scripts/build_years.py --2mass [slug ...]     # only the 2MASS picture again (the rest is kept)
+    python scripts/build_years.py --cat [slug ...]       # only the catalogue brightness of each WISE visit again
 
 Writes, for each star, web/data/<slug>/years-2mass.ndjson, years-w1.ndjson, years-w2.ndjson and
 years-spherex.ndjson, and its entry in web/data/years.json (the grid, the files, the dates).
@@ -281,6 +282,42 @@ def wise(grid: dict) -> dict[int, list[dict]]:
     return out
 
 
+# ------------------------------------------------------------------ the catalogues' brightness of each WISE visit
+def catalogue_visits(t: dict, d) -> dict:
+    """How bright WISE's own catalogues say the star was at each visit of the Years view: the AllWISE multi-epoch
+    table (2010) and the NEOWISE single-exposure table (2013 to 2024), profile-fit magnitudes, which hold for
+    saturated stars too. For every visit, the rows within 4 arcseconds of the star's place on that date and within
+    its days; a visit's value is the median of its rows. Returns {"W1": [[mjd, mag, scatter, n], ...], "W2": [...]}."""
+    import csv
+    from urllib.parse import urlencode
+    visits = [json.loads(l) for l in open(d / "years-w1.ndjson", encoding="utf-8") if '"t": "frame"' in l]
+
+    def one(v):
+        ra, dec = place(t, mjd_to_year(v["mjd"]))
+        table_name, c1, c2 = ("allwise_p3as_mep", "w1mpro_ep", "w2mpro_ep") if v["mjd"] < 56000 else ("neowiser_p1bs_psd", "w1mpro", "w2mpro")
+        q = (f"SELECT mjd, {c1}, {c2} FROM {table_name} WHERE CONTAINS(POINT('ICRS',ra,dec),CIRCLE('ICRS',{ra:.6f},{dec:.6f},{4 / 3600:.6f}))=1 "
+             f"AND mjd BETWEEN {v['t0'] - 1:.3f} AND {v['t1'] + 1:.3f}")
+        rows = list(csv.DictReader(io.StringIO(get("https://irsa.ipac.caltech.edu/TAP/sync?" + urlencode({"QUERY": q, "FORMAT": "csv"})).decode())))
+        res = {}
+        for b, c in (("W1", c1), ("W2", c2)):
+            m = np.array([float(r[c]) for r in rows if r.get(c) not in ("", None)])
+            if m.size >= 3:
+                res[b] = [round(float(np.median([float(r["mjd"]) for r in rows])), 3), round(float(np.median(m)), 3),
+                          round(float(1.4826 * np.median(np.abs(m - np.median(m)))), 3), int(m.size)]
+        return res
+
+    out = {"W1": [], "W2": []}
+    with ThreadPoolExecutor(4) as ex:
+        for res in ex.map(one, visits):
+            for b, v in res.items():
+                out[b].append(v)
+    for b in out:
+        out[b].sort()
+        if out[b]:
+            print(f"   catalogue {b}: {len(out[b])} visits, {min(x[1] for x in out[b]):.2f} to {max(x[1] for x in out[b]):.2f} mag", flush=True)
+    return out
+
+
 # ------------------------------------------------------------------ SPHEREx
 def spherex_visits(grid: dict) -> list[dict]:
     frames = sx.search_frames(grid["ra"], grid["dec"])
@@ -331,6 +368,10 @@ def main():
               f"{grid['n']} px of {grid['scale']:.3f}\"", flush=True)
         head = {"t": "head", "grid": {k: grid[k] for k in ("ra", "dec", "n", "scale", "size")}}
         d = ROOT / "web" / "data" / t["slug"]
+        if "--cat" in sys.argv:          # only the catalogue brightness: the images stay as they are
+            index[t["slug"]]["cat"] = catalogue_visits(t, ROOT / "web" / "data" / t["slug"])
+            idx_path.write_text(json.dumps(index, indent=1) + chr(10), encoding="utf-8")
+            continue
         parts = {"years-2mass.ndjson": twomass(grid, lambda mjd, t=t: place(t, mjd_to_year(mjd)))}
         if "--2mass" not in sys.argv:
             w = wise(grid)
@@ -349,7 +390,7 @@ def main():
             for name in ("years-w1.ndjson", "years-w2.ndjson", "years-spherex.ndjson"):
                 span += [json.loads(l)["mjd"] for l in open(d / name, encoding="utf-8") if '"t": "frame"' in l]
         index[t["slug"]] = {"grid": head["grid"], "files": ["years-2mass.ndjson", "years-w1.ndjson", "years-w2.ndjson", "years-spherex.ndjson"], "span": [round(min(span), 3), round(max(span), 3)],
-                            "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+                            "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "cat": catalogue_visits(t, d)}
         idx_path.write_text(json.dumps(index, indent=1) + "\n", encoding="utf-8")
         print(f"   written: {', '.join(f'{k} ({len(v)})' for k, v in parts.items())}", flush=True)
 

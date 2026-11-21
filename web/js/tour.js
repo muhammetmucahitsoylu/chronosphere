@@ -16,8 +16,11 @@ const POINTS = {
 // What the presenter says while each test object is on screen is under `tour.<object>` in lang.js.
 const STORIES = ['barnard', 'epsindib', 'wise0855', 'rwaur', 'rdra', 'pluto'];
 
-/** `t(key)` gives the words for a key in the language in use, `name(object)` what an object is called in it. */
-export function buildTour(targets, t, name = o => o.label) {
+/**
+ * `t(key)` gives the words for a key in the language in use, `name(object)` what an object is called in it;
+ * `years(slug)` whether the object has the Years view built for it (then Barnard's Star gets a second step: its 26 years).
+ */
+export function buildTour(targets, t, name = o => o.label, years = () => false) {
   // In the texts of the steps, *words between asterisks* are set in italics.
   const steps = [
     {
@@ -57,6 +60,12 @@ export function buildTour(targets, t, name = o => o.label) {
       points: (POINTS[o.slug] || []).map(p => ({ ...p, label: t(`${p.key}.label`), text: t(`${p.key}.text`) })),
       prep: api => { api.warm(o.ra, o.dec, w => api.viewFov(o.size, w)); api.preload(o); },      // made ready while the previous step is on screen
       run: api => { api.sweep(false); api.open(o); },
+    });
+    if (o.slug === 'barnard' && years(o.slug)) steps.push({
+      // the same star in the images of 2MASS, WISE and NEOWISE, and SPHEREx: the Years view, without opening it again
+      object: true, title: t('tour.years.title'), text: t('tour.years.text'),
+      prep: api => api.preloadYears(o),
+      run: api => { api.sweep(false); api.years(o); },
     });
   }
   steps.push({

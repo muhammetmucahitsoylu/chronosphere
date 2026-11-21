@@ -58,7 +58,12 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   other place the page reads the 2MASS and AllWISE sky maps (HiPS) at NASA/IPAC in the browser and lays them on
   the grid of the SPHEREx images, dated by the night 2MASS looked (from the 2MASS catalogue): pictures to look
   at, not measurements. When a fast star stood outside the field on that night (Kapteyn's Star, 3.9
-  arcminutes away in October 1999), the page says so and offers a wider field.
+  arcminutes away in October 1999), the page says so and offers a wider field. For a star that changes, the box
+  also draws its brightness at each visit of WISE and NEOWISE, measured in these images (the light of a ring
+  around its saturated core) and given by WISE's own catalogue, and only when the two agree: RW Aurigae grew
+  brighter at 4.6 microns from 2014 to the end of 2017, to 2.3 times its usual brightness in the images (4.2 by
+  the catalogue), and was back below it by 2021. Under "What to look for", each of the five test objects has one
+  button to its Years view.
 - **Did it move?** For any spot you click, its position is measured in every visit and compared with how
   well ordinary stars in the same images repeat. A catalogued fast mover is also set against its predicted path.
 - **Did it change?** Brightness changes between visits are checked against ordinary stars in the same images:
@@ -117,8 +122,9 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   at NASA/JPL and at the Minor Planet Center.
 - **Take it with you.** Copy a link to the exact view, save the image or a video of the sequence, or download
   every measurement as a CSV file.
-- **Take the guided tour.** Thirteen short steps, in plain language, from "what is SPHEREx" through the five
-  test objects of the challenge to Pluto. One step shows two real SPHEREx pictures of the same patch of sky,
+- **Take the guided tour.** Fourteen short steps, in plain language, from "what is SPHEREx" through the five
+  test objects of the challenge to Pluto. After Barnard's Star comes the same star over 26 years, in the
+  *Years* view: 2MASS in 2000, WISE and NEOWISE, then SPHEREx, with its speed measured from those images. One step shows two real SPHEREx pictures of the same patch of sky,
   six days apart, flipping the way Clyde Tombaugh flipped his plates: one dot moves, and it is Pluto. The
   last object is Pluto in the tool itself, found by its own search. Two steps are about Planet X:
   what was predicted and why, that nobody has seen it, and a ladder of brightness from Sirius down to the
@@ -354,8 +360,20 @@ talking directly to NASA's open data.
   the centre is taken over six pixels, which puts its light 0.6 arcseconds (r.m.s.) from the catalogue's place;
   windows of 2.5 or 4 pixels without the filling stray by 7 to 8 arcseconds (`spike/years_centre.py`). WISE
   0855 does not show in 2MASS: the page says so, and measures it from WISE and SPHEREx only.
+  *Brightness.* The light of a ring 15 to 30 arcseconds around a saturated star, visit by visit, against the
+  median magnitudes of the same visits in the AllWISE multi-epoch and NEOWISE single-exposure tables (profile
+  fits; `spike/years_lc.py`): for RW Aurigae the two rise and fall together, correlation 0.96 in W1 and 0.97 in
+  W2 over 21 visits, the ring showing large changes smaller than the catalogue does (2.3 against 4.2 times at the
+  peak of 2017). The catalogues' fits of a heavily saturated star scatter widely on their own: Barnard's Star,
+  which is steady, spans a factor of five from visit to visit in them. So the page draws a brightness curve only
+  when the images and the catalogue agree (correlation 0.8 or more over at least eight visits) and the images show
+  a change of a third or more; of the five test objects only RW Aurigae passes.
   *In use.* On a laptop and a phone, in English and Turkish, with no page errors; nothing passes the right edge
-  of a phone's screen; the live maps on Kapteyn's Star (a place with no images built for it).
+  of a phone's screen; the same numbers in Edge, WebKit and Firefox; the live maps on Kapteyn's Star (a place
+  with no images built for it). The English panel of the five test objects is word for word what it was, apart
+  from the new view's button. The guided tour has a fourteenth step, Barnard's Star in the Years view (its
+  images are saved with the tour for offline use): the map keeps one height through all fourteen steps on
+  three phone screens (0 px of change, in English and Turkish), and the whole tour runs with the network cut.
 - **Picking a field for a hunt.** Twelve picks in a row: eleven gave a field, after one to six asteroids
   tried and 1 to 10 seconds; one gave none (ten asteroids are tried now, where six were). The two fields then
   read in full are the two hunts above.
@@ -549,11 +567,12 @@ No build step: plain HTML, CSS and JavaScript modules.
 
 ## Honest limits
 
-- The Years view shows where things were and measures where a star's light lies; it does not yet measure how
-  bright a star was over the years. The variable test objects are saturated in WISE, and the bands of the
-  three telescopes differ, so a light curve across them needs more care than a picture does. Away from the
-  test objects the older images are the sky maps' pictures, stretched by their makers, and are not measured;
-  AllWISE added up WISE's passes of 2010 and early 2011, and the page dates it 2010.
+- The Years view measures where a star's light lies in every image, but its brightness only within WISE and
+  NEOWISE, and only for a star the images and WISE's catalogue agree on: the bands of the three telescopes
+  differ, so no light curve runs from 2MASS through WISE to SPHEREx, and R Draconis, saturated far into its
+  wings and changing every 245 days while WISE looked every six months, gets none. Away from the test objects
+  the older images are the sky maps' pictures, stretched by their makers, and are not measured; AllWISE added
+  up WISE's passes of 2010 and early 2011, and the page dates it 2010.
 - A SPHEREx pixel is 6.15 arcseconds. Even Barnard's Star moves only about 1.7 pixels per year, so motion shows
   up as a small shift between visits, not a streak. Positions repeat to a few tenths of an arcsecond, so
   anything slower than roughly one to two arcseconds per year cannot be seen yet.

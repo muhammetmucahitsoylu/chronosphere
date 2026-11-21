@@ -404,6 +404,10 @@ table.t td i { display: inline-block; width: 8px; height: 8px; border-radius: 50
 .look.visits button { border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 12px; font-size: 13px; color: var(--ink-2); min-height: 30px; white-space: nowrap; }
 .look.visits button:hover { color: var(--ink); border-color: var(--ink-2); }
 .look.visits button[aria-pressed=true] { background: var(--gold); border-color: var(--gold); color: var(--bg); font-weight: 600; }
+.look.yearsgo { border-left-color: transparent; margin-top: 10px; padding-left: 0; }
+.look.yearsgo button { border: 1px solid var(--gold); color: var(--gold); border-radius: 999px; padding: 6px 16px; font-size: 14px; min-height: 36px; text-align: left; }
+.look.yearsgo button::before { content: "▶ "; }
+.look.yearsgo button:hover { background: #f2c14e22; }
 .reportask { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface); }
 .reportask label { flex-basis: 100%; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
 .reportask input { flex: 1 1 180px; min-width: 0; min-height: 36px; padding: 6px 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit; font-size: 14px; }

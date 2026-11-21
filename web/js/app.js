@@ -581,6 +581,55 @@ function renderYears() {
   const none = unseen.map(f => G`It does not show in the ${f.survey} image (${f.band}, ${Years.LAM[f.band].toFixed(2)} µm, ${f.guessed ? '1997–2001' : C.fmtMonth(f.mjd)}): at that wavelength it is too faint for ${f.survey}.`).join(' ');
   el.innerHTML = `<p class="yearssay">${say} ${G`Its light lies ${rms.toFixed(1)}″ (r.m.s.) from where the catalogue puts it on each date.`}${none ? ` ${none}` : ''}</p>
     <table class="t"><thead><tr><th>${G`Telescope`}</th><th>${G`Images`}</th><th>${G`Years`}</th><th>${G`Off the catalogue`}</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  yearsBrightness(el, name);
+}
+/**
+ * How bright a star that changes was, visit by visit of WISE and NEOWISE, in the band of WISE in view: as measured in
+ * these images (the light of a ring 15″ to 30″ around the star, a saturated core left out), and by WISE's own
+ * catalogues (profile fits, stored with the images by scripts/build_years.py). Shown only when the two agree that the
+ * star changed (correlation 0.8 or more over eight visits or more, and a third or more between its faintest and
+ * brightest visit in the images): the catalogues' fits of a heavily saturated star scatter widely on their own
+ * (Barnard's Star, which is steady, by a factor of five), and a faint star's ring holds only noise. RW Aurigae passes
+ * (correlation 0.96 in W1, 0.97 in W2); the ring shows large changes smaller than the catalogue does, and both ranges are given.
+ */
+function yearsBrightness(el, name) {
+  const band = Years.NEAR[S.det][1], cat = (S.yearsIdx?.[S.target?.slug]?.cat || {})[band] || [];
+  if (cat.length < 8) return;
+  const med = v => { const s2 = [...v].sort((a, b) => a - b); return s2[s2.length >> 1]; };
+  const cf = cat.map(r => 10 ** (-0.4 * r[1])), cm = med(cf), rel = cf.map(v => v / cm);
+  const g = vg(), n = g.n, ring = [];
+  for (const it of S.seq) {
+    const f = it.years;
+    if (!f || f.band !== band || !(f.survey === 'WISE' || f.survey === 'NEOWISE')) continue;
+    const [x, y] = trackPos(it.mjd, g); let sum = 0, k = 0; const sky = [];
+    for (let j = Math.max(0, Math.floor(y - 30 / g.scale)); j <= Math.min(n - 1, Math.ceil(y + 30 / g.scale)); j++) for (let i = Math.max(0, Math.floor(x - 30 / g.scale)); i <= Math.min(n - 1, Math.ceil(x + 30 / g.scale)); i++) {
+      const r = Math.hypot(i - x, j - y) * g.scale, v = it.img[j * n + i];
+      if (r >= 15 && r < 30 && v === v) { sum += v; k++; }
+    }
+    for (let j = 0; j < n; j += 2) for (let i = 0; i < n; i += 2) { const r = Math.hypot(i - x, j - y) * g.scale, v = it.img[j * n + i]; if (r >= 60 && r < 90 && v === v) sky.push(v); }
+    ring.push({ mjd: it.mjd, v: sum - med(sky.length ? sky : [0]) * k });
+  }
+  const rm = med(ring.map(r => r.v));
+  if (!(rm > 0)) return;
+  const mine = ring.map(r => ({ mjd: r.mjd, rel: r.v / rm }));
+  // the visits both have, and how closely the two agree on them
+  const pairs = mine.map(m => { const k = cat.findIndex(r => Math.abs(r[0] - m.mjd) < 12); return k >= 0 ? [m.rel, rel[k]] : null; }).filter(Boolean);
+  if (pairs.length < 8) return;
+  const ax = pairs.reduce((a, p) => a + p[0], 0) / pairs.length, ay = pairs.reduce((a, p) => a + p[1], 0) / pairs.length;
+  const corr = pairs.reduce((a, p) => a + (p[0] - ax) * (p[1] - ay), 0) / Math.sqrt(pairs.reduce((a, p) => a + (p[0] - ax) ** 2, 0) * pairs.reduce((a, p) => a + (p[1] - ay) ** 2, 0));
+  const hi = mine.reduce((a, m) => (m.rel > a.rel ? m : a)), lo = mine.reduce((a, m) => (m.rel < a.rel ? m : a));
+  if (!(corr >= 0.8) || hi.rel / lo.rel < 4 / 3) return;
+  const lam = Years.LAM[band].toFixed(1);
+  const say = G`At ${lam} µm (${band}), ${esc(name)} changed from visit to visit. In these images, in the light of a ring around its saturated core, it was brightest in ${C.fmtMonth(hi.mjd)}, ${hi.rel.toFixed(1)} times its usual brightness, and faintest in ${C.fmtMonth(lo.mjd)}, ${lo.rel.toFixed(2)} times.`;
+  const theirs = G`The catalogue of WISE and NEOWISE, which fits the saturated star itself, follows the same ups and downs (correlation ${corr.toFixed(2)}), over a wider range: ${Math.min(...rel).toFixed(2)} to ${Math.max(...rel).toFixed(1)} times.`;
+  el.insertAdjacentHTML('beforeend', `<p class="yearssay lcsay">${say} ${theirs}</p><div class="plotwrap"><canvas id="yearslc" aria-label="${esc(G`Brightness over the years`)}"></canvas><div class="tip" hidden></div></div>
+    <div class="legend"><span><i style="background:#06d6a0"></i>${esc(G`these images (ring around the core)`)}</span><span><i style="background:#f2c14e"></i>${esc(G`catalogue of WISE and NEOWISE`)}</span></div>`);
+  const cv2 = $('yearslc'), plot = new Plot(cv2, cv2.nextElementSibling);
+  // a catalogue point's bar: how much its single measurements in that visit scatter
+  const pts = [...cat.map((r, k) => ({ x: r[0], y: rel[k], err: rel[k] * 0.921 * r[2], color: '#f2c14e', what: G`catalogue` })), ...mine.map(m => ({ x: m.mjd, y: m.rel, color: '#06d6a0', what: G`these images` }))];
+  const top = Math.max(...pts.map(p => p.y)) * 1.15;
+  plot.set(pts, { ylim: [0, top], hline: 1, ylabel: G`× usual brightness`, xTicks: (a, b) => { const out = []; for (let y = Math.ceil(C.mjdToYear(a)); y <= C.mjdToYear(b); y++) if (y % 2 === 0) out.push({ v: 51544.5 + (y - 2000) * 365.25, label: String(y) }); return out; },
+    tipText: p => `${C.fmtMonth(p.x)} · ${p.what} · ×${p.y.toFixed(2)}` });
 }
 const lamRange = fr => { const v = fr.map(f => f.lam).sort((a, b) => a - b); return v.length > 1 ? `${v[0].toFixed(2)}–${v[v.length - 1].toFixed(2)} µm` : `${v[0].toFixed(2)} µm`; };
 
@@ -1591,8 +1640,15 @@ function renderLook() {
   // a body opened by name: the other times SPHEREx had it in view are one press away
   const times = b?.visits?.length > 1 ? `<p class="look visits"><b>${G`SPHEREx had it in view at these times`}</b>${b.visits.map(v =>
     `<button type="button" data-at="${v.mjd.toFixed(2)}" aria-pressed="${v.mjd >= b.from - 0.01 && v.mjd <= b.to + 0.01}" title="${esc(G`Stops of the telescope with it in one field: ${v.stops}`)}">${span(v.t0, v.t1).replace(/, .*/, '')}</button>`).join('')}</p>` : '';
-  $('lookbox').innerHTML = on && look ? `<p class="look"><b>${G`What to look for`}</b>${esc(look)}</p>${times}` : '';
+  // a showcase star with images of a quarter of a century built for it: one press to watch them
+  const Y = t && isPreset() && S.yearsIdx?.[t.slug], years = Y ? Math.round((Y.span[1] - Y.span[0]) / 365.25) : 0;
+  const invite = Y ? `<p class="look yearsgo"${S.mode === 'years' ? ' hidden' : ''}><button type="button" data-years>${G`Watch it over ${years} years: 2MASS, WISE, SPHEREx`}</button></p>` : '';
+  $('lookbox').innerHTML = on && look ? `<p class="look"><b>${G`What to look for`}</b>${esc(look)}</p>${times}${invite}` : '';
   $('lookbox').querySelectorAll('[data-at]').forEach(x => { x.onclick = () => openBody(b.query, +x.dataset.at); });
+  $('lookbox').querySelector('[data-years]')?.addEventListener('click', () => {
+    S.mode = 'years'; S.wantPlay = !calmMotion(); renderModes(); rebuild(); syncUrl();
+    $('sky').scrollIntoView({ block: 'nearest', behavior: calmMotion() ? 'auto' : 'smooth' });
+  });
   leadState();
 }
 function renderWiki() {
@@ -1776,6 +1832,7 @@ function renderModes() {
     b.hidden = m === 'trail' ? !body : m === 'years' ? !yearsOk() : own && ['color', 'diff', 'deep'].includes(m);          // views that set one patch of sky against itself: not for a followed body
   }
   $('explain').textContent = (own && FOLLOWED[S.mode]) || (S.mode === 'years' && S.years?.src === 'maps' ? YEARS_MAPS : MODES[S.mode]);
+  const inv = $('lookbox').querySelector('.yearsgo'); if (inv) inv.hidden = S.mode === 'years';
   const small = $('overtime');
   if (small) small.textContent = S.mode === 'years' ? G`2MASS, WISE and SPHEREx images of this spot` : G`every SPHEREx exposure of this spot`;
 }
@@ -2808,6 +2865,12 @@ const tourApi = {
   },
   preload: t => { fetch(dataUrl(t, `d${t.view?.det || 2}.ndjson`), { priority: 'low' }).then(r => r.arrayBuffer()).catch(() => {}); },
   example: () => { blinkFrames(); },
+  // the Years view of an object: switched to when the object is the one open, opened in it otherwise
+  years: t => {
+    if (S.target?.slug === t.slug && isPreset() && S.grid) { S.mode = 'years'; S.wantPlay = !calmMotion(); renderModes(); rebuild(); syncUrl(); maybeAutoplay(); }
+    else go({ ra: t.ra, dec: t.dec, size: t.size, target: t, info: t.info || null, det: t.view?.det || 2, mode: 'years' });
+  },
+  preloadYears: t => { const Y = S.yearsIdx?.[t.slug]; if (Y) for (const f of Years.filesFor(t.view?.det || 2)) fetch(`data/${t.slug}/${f}?v=${encodeURIComponent(Y.built)}`, { priority: 'low' }).then(r => r.arrayBuffer()).catch(() => {}); },
 };
 /** The tour card docks under the map or floats over it, which changes the map's size. */
 function relayout() {
@@ -2822,7 +2885,7 @@ function relayout() {
  */
 let tourMeasured = '';
 function measureTour() {
-  if (!tourSteps.length) tourSteps = buildTour(tourTargets(), T, nameOf);
+  if (!tourSteps.length) tourSteps = buildTour(tourTargets(), T, nameOf, slug => !!S.yearsIdx?.[slug]);
   const narrow = isNarrow(), W = window.innerWidth, key = `${narrow}|${W}|${tourSteps.length}|${document.fonts?.status || ''}`;
   if (key === tourMeasured) return;
   tourMeasured = key;
@@ -2875,7 +2938,7 @@ window.addEventListener('resize', () => tourFit());
 document.fonts?.ready.then(() => tourFit(true));
 function tourGo(i) {
   coachEnd();
-  if (!tourSteps.length) tourSteps = buildTour(tourTargets(), T, nameOf);
+  if (!tourSteps.length) tourSteps = buildTour(tourTargets(), T, nameOf, slug => !!S.yearsIdx?.[slug]);
   seatFigures(); measureTour();
   if (i < 0) return;
   if (i >= tourSteps.length) return tourEnd();
@@ -3157,6 +3220,8 @@ async function saveTourOffline(full) {
     files.push(dataUrl(t, `d${d}.ndjson`), dataUrl(t, 'gaia.json'));       // what each tour step shows first
     if (t.eph && !full) for (let k = 1; k <= 6; k++) if (k !== d) files.push(dataUrl(t, `d${k}.ndjson`));      // a body is shown stop by stop, across the detectors
     if (t.wikiCard?.thumb) files.push(t.wikiCard.thumb);
+    const Y = S.yearsIdx?.[t.slug];
+    if (Y && t.slug === 'barnard') for (const f of Years.filesFor(d)) files.push(`data/${t.slug}/${f}?v=${encodeURIComponent(Y.built)}`);          // the tour's step of its 26 years
     if (t.wikiCard && Lang.locale !== 'en') Info.wikipediaIn(Lang.locale, t.wikiCard);          // asked once here, the encyclopedia card in the page's language is kept for offline use too
   }
   if (full) {
@@ -3193,7 +3258,7 @@ const TOUR_SAVED = esc(T('off.saved'));
  * are kept on this device like any position already opened, and open without a connection too.
  */
 async function offerLastObjects(say) {
-  if (!tourSteps.length) tourSteps = buildTour(tourTargets(), T, nameOf);          // the tour may not have been started yet
+  if (!tourSteps.length) tourSteps = buildTour(tourTargets(), T, nameOf, slug => !!S.yearsIdx?.[slug]);          // the tour may not have been started yet
   const list = (tourSteps.at(-1)?.tryNext || []).map(placeNow);
   if (!list.length || !('caches' in window)) return;
   const kept = await Promise.all(list.map(o => Store.has(liveKey(o.ra, o.dec, TRY_SIZE, 'kept'))));
