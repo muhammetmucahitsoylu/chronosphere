@@ -37,6 +37,14 @@ IRSA = "https://irsa.ipac.caltech.edu/ibe"
 CACHE = ROOT / "spike" / "cache" / "years"
 UA = {"User-Agent": "sky-viewer-prebuild/1.0"}
 STARS = ["barnard", "epsindib", "wise0855", "rwaur", "rdra"]
+# Stars that are not showcase objects but that the guided tour's last step offers: built too, so that opened by name
+# they get the WISE and NEOWISE visits rather than the sky maps. Year-2000 positions and motions (milliarcseconds a
+# year) and parallaxes as the tour gives them (SIMBAD: Gaia DR3; Luhman 16: Lazorenko & Sahlmann 2018).
+EXTRA = {
+    "proxima": {"label": "Proxima Centauri", "resolved": {"ra2000": 217.42894222, "dec2000": -62.67949019, "pmra": -3781.741, "pmdec": 769.465}, "dist": {"plx": 768.0665}},
+    "luhman16": {"label": "Luhman 16", "resolved": {"ra2000": 162.328814, "dec2000": -53.319466, "pmra": -2767.502, "pmdec": 356.856}, "dist": {"plx": 501.557}},
+    "teegarden": {"label": "Teegarden's Star", "resolved": {"ra2000": 43.25371581, "dec2000": 16.88128672, "pmra": 3429.083, "pmdec": -3805.541}, "dist": {"plx": 260.9884}},
+}
 
 # Zero points: 2MASS (Cohen, Wheaton & Megeath 2003), WISE (Jarrett et al. 2011). Flux density of a source of magnitude 0.
 TWOMASS = {"j": ("J", 1.235, 1594.0), "h": ("H", 1.662, 1024.0), "k": ("Ks", 2.159, 666.7)}
@@ -354,6 +362,9 @@ def spherex_visits(grid: dict) -> list[dict]:
 def main():
     want = [a for a in sys.argv[1:] if not a.startswith("-")] or STARS
     targets = json.loads((ROOT / "web" / "data" / "targets.json").read_text(encoding="utf-8"))
+    for slug, e in EXTRA.items():          # where they are now: the position of 2000 moved on to the end of 2026
+        ra, dec = place(e, 2026.9)
+        targets.append({**e, "slug": slug, "ra": round(ra, 6), "dec": round(dec, 6), "extra_years": True})
     idx_path = ROOT / "web" / "data" / "years.json"          # which showcase objects have the view, its grid and files
     index = json.loads(idx_path.read_text(encoding="utf-8")) if idx_path.exists() else {}
     for t in targets:
@@ -368,6 +379,7 @@ def main():
               f"{grid['n']} px of {grid['scale']:.3f}\"", flush=True)
         head = {"t": "head", "grid": {k: grid[k] for k in ("ra", "dec", "n", "scale", "size")}}
         d = ROOT / "web" / "data" / t["slug"]
+        d.mkdir(parents=True, exist_ok=True)
         if "--cat" in sys.argv:          # only the catalogue brightness: the images stay as they are
             index[t["slug"]]["cat"] = catalogue_visits(t, ROOT / "web" / "data" / t["slug"])
             idx_path.write_text(json.dumps(index, indent=1) + chr(10), encoding="utf-8")
@@ -390,7 +402,11 @@ def main():
             for name in ("years-w1.ndjson", "years-w2.ndjson", "years-spherex.ndjson"):
                 span += [json.loads(l)["mjd"] for l in open(d / name, encoding="utf-8") if '"t": "frame"' in l]
         index[t["slug"]] = {"grid": head["grid"], "files": ["years-2mass.ndjson", "years-w1.ndjson", "years-w2.ndjson", "years-spherex.ndjson"], "span": [round(min(span), 3), round(max(span), 3)],
-                            "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "cat": catalogue_visits(t, d)}
+                            "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        if t.get("extra_years"):          # found by its place when opened by name: where it is now, and what it is called
+            index[t["slug"]].update({"at": [t["ra"], t["dec"]], "name": t["label"]})
+        if "--no-cat" not in sys.argv:
+            index[t["slug"]]["cat"] = catalogue_visits(t, d)
         idx_path.write_text(json.dumps(index, indent=1) + "\n", encoding="utf-8")
         print(f"   written: {', '.join(f'{k} ({len(v)})' for k, v in parts.items())}", flush=True)
 

@@ -459,14 +459,15 @@ async function loadYears() {
   const gen = S.gen, det = S.det, Y = S.years ||= { frames: null, files: new Set() };
   Y.need = det;
   if (Y.busy) return;
-  const entry = isPreset() ? S.yearsIdx?.[S.target.slug] : null;
+  const entry = isPreset() ? S.yearsIdx?.[S.target.slug] : builtNear();
   const want = entry ? Years.filesFor(det).filter(f => !Y.files.has(f)) : Y.frames ? [] : ['maps'];
   if (!want.length) return;
   Y.busy = true; setStatus(G`Loading the images of 2MASS and WISE…`);
   try {
     if (entry) {
-      Y.src = 'built'; Y.grid = entry.grid;
-      const got = await Promise.all(want.map(f => Years.loadBuilt(`data/${S.target.slug}/${f}?v=${encodeURIComponent(entry.built)}`, S.abort.signal)));
+      Y.src = 'built'; Y.grid = entry.grid; Y.entry = entry;
+      const dir = entry.dir || (isPreset() ? S.target.slug : Object.keys(S.yearsIdx).find(k => S.yearsIdx[k] === entry));
+      const got = await Promise.all(want.map(f => Years.loadBuilt(`data/${dir}/${f}?v=${encodeURIComponent(entry.built)}`, S.abort.signal)));
       if (gen !== S.gen) return;
       Y.frames = [...(Y.frames || []), ...got.flat()]; want.forEach(f => Y.files.add(f));
     } else {
@@ -506,6 +507,14 @@ function starAt(img, n, x, y, flat = Infinity) {
   }
   const m = C.locate(out, n, x, y, 6);
   return m && { ...m, sat: true };
+}
+/**
+ * A star opened by name or from the tour, not a showcase object, for which the Years view was built all the same
+ * (the stars the tour's last step offers): its entry, when the star in the ring is the one built, within 90″.
+ */
+function builtNear() {
+  if (!S.track || S.track.eph || !S.grid) return null;
+  return Object.values(S.yearsIdx || {}).find(e => e.at && sepArcsec(e.at[0], e.at[1], S.ra, S.dec) < 90) || null;
 }
 /** Where the ring goes in the Years view: on a catalogued star, where it was on that date; on a spot, the same place in the sky. */
 function yearsSel(mjd) {
@@ -680,7 +689,9 @@ function findMovers(fr, n, scale) {
   const early = dets.filter(d => d.t < t0 + 0.35 * (t1 - t0)), late = dets.filter(d => d.t > t0 + 0.65 * (t1 - t0)), tracks = [];
   for (const a of early) for (const b of late) {
     const dt = b.t - a.t, vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt, speed = Math.hypot(vx, vy) * scale;
-    if (speed < 1 || speed > 15) continue;
+    // at 1.5″ a year or more: WISE's image of a bright star turns with the direction of each scan, so what is left of
+    // a star that stays put wanders a pixel or two about it, and such dots can line up at 1″ a year (near Luhman 16)
+    if (speed < 1.5 || speed > 15) continue;
     let hits = 0, inside = 0, snr = 0, sx = 0, sy = 0;
     for (let k = 0; k < K; k++) {
       const px = a.x + vx * (years[k] - a.t), py = a.y + vy * (years[k] - a.t);
@@ -692,9 +703,14 @@ function findMovers(fr, n, scale) {
     const mx = sx / Math.max(1, inside), my = sy / Math.max(1, inside);
     if (inside >= 8 && hits >= 0.9 * inside && mx > 12 && my > 12 && mx < n - 13 && my < n - 13) tracks.push({ hits, inside, vx, vy, x: a.x, y: a.y, t: a.t, snr });
   }
+  // one line per thing: the strongest of those with one motion (a star and what moves with it), and of those that
+  // pass the same place at the same time (one object linked from different dots)
   tracks.sort((p, q) => q.snr - p.snr);
-  const kept = [];
-  for (const t of tracks) if (!kept.some(k => Math.hypot(t.vx - k.vx, t.vy - k.vy) < 0.15 * Math.hypot(k.vx, k.vy))) kept.push(t);
+  const kept = [], tm = (t0 + t1) / 2, at = t => [t.x + t.vx * (tm - t.t), t.y + t.vy * (tm - t.t)];
+  for (const t of tracks) {
+    const [x, y] = at(t);
+    if (!kept.some(k => Math.hypot(t.vx - k.vx, t.vy - k.vy) < 0.15 * Math.hypot(k.vx, k.vy) || Math.hypot(x - at(k)[0], y - at(k)[1]) < 3)) kept.push(t);
+  }
   return kept;
 }
 /**
@@ -707,7 +723,7 @@ function findMovers(fr, n, scale) {
  * (correlation 0.96 in W1, 0.97 in W2); the ring shows large changes smaller than the catalogue does, and both ranges are given.
  */
 function yearsBrightness(el, name) {
-  const band = Years.NEAR[S.det][1], cat = (S.yearsIdx?.[S.target?.slug]?.cat || {})[band] || [];
+  const band = Years.NEAR[S.det][1], cat = (S.years?.entry?.cat || {})[band] || [];
   if (cat.length < 8) return;
   const med = v => { const s2 = [...v].sort((a, b) => a - b); return s2[s2.length >> 1]; };
   const cf = cat.map(r => 10 ** (-0.4 * r[1])), cm = med(cf), rel = cf.map(v => v / cm);

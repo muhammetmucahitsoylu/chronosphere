@@ -72,6 +72,10 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   WISE and NEOWISE visits of the field for anything that moves in a straight line: in WISE 0855's field it finds
   WISE 0855 (8.10 arcseconds a year, in all 23 visits), in Epsilon Indi B's the pair (4.69), and in the five
   fields nothing else. Under "What to look for", each of the five test objects has one button to its Years view.
+  The three stars that the guided tour's last step offers, Proxima Centauri, Luhman 16 and Teegarden's Star, have
+  their WISE and NEOWISE images built as well and get them when opened by name: Luhman 16, the nearest pair of
+  brown dwarfs, found in 2013 by its motion in WISE's images, is found again here without being told where to
+  look (2.95 arcseconds a year in 25 of 25 visits; its motion measured over 30 images, 2.79, as the catalogue).
 - **Did it move?** For any spot you click, its position is measured in every visit and compared with how
   well ordinary stars in the same images repeat. A catalogued fast mover is also set against its predicted path.
 - **Did it change?** Brightness changes between visits are checked against ordinary stars in the same images:
@@ -378,15 +382,20 @@ talking directly to NASA's open data.
   a change of a third or more; of the five test objects only RW Aurigae passes.
   *Found without being told where to look.* Each WISE or NEOWISE visit minus the median of all of them leaves
   what was not always in one place; its dots of 7σ or more are linked from the first third of the years to the
-  last, and a line counts when a dot lies on it in 90% of the visits it crosses, at 1 arcsecond a year or more,
-  away from the edge (`spike/years_blind.py`, then the same in the page). Of the ten bands of the five fields, it
+  last, and a line counts when a dot lies on it in 90% of the visits it crosses, at 1.5 arcseconds a year or
+  more, away from the edge (`spike/years_blind.py`, then the same in the page). Of the ten bands of the five fields, it
   finds WISE 0855 in W2 (8.10, catalogue 8.15; it does not show in W1) and Epsilon Indi B in W1 and W2 (4.69,
   catalogue 4.68). It does not find Barnard's Star: saturated, it leaves no clean dot. What it does find there,
   in W1, moves exactly like Barnard's Star 2.8 arcminutes away from it, a reflection of the star in WISE's
   optics; in Epsilon Indi B's field the glare of Epsilon Indi A, just outside it, moves the same way. A line that
   moves like the object in the ring (within 10° and 30%) but passes elsewhere is therefore not reported. A first
   rule set (60% of the visits, 0.4 arcseconds a year) found up to nine lines per field, nearly all of them noise:
-  the rules above keep only the two brown dwarfs.
+  the rules above keep only the two brown dwarfs. Near Luhman 16 a line at 1.0 arcsecond a year, 5 arcminutes
+  from it, lay where Gaia knows no star moving faster than 0.1: what is left of two bright stars that stay put
+  wanders as WISE's image turns with each scan, which is why lines slower than 1.5 arcseconds a year are not
+  taken. One object linked from different dots is reported once. The three stars of the tour's last step, built
+  the same way: Proxima Centauri 3.85 arcseconds a year over 28 images (catalogue 3.86; saturated in WISE, not
+  found by the search), Luhman 16 2.79 (2.79; found, 2.95), Teegarden's Star 5.14 (5.12; found, 5.26).
   *On the sky maps, for any star.* Five fast stars typed into the search box, nothing built for them: the motion
   measured on the 2MASS and AllWISE pictures and the SPHEREx visits against the catalogue (SIMBAD), arcseconds a
   year: Proxima Centauri 3.80 (3.86), Wolf 359 4.68 (4.72), Luhman 16 2.76 (2.79), Teegarden's Star 5.13 (5.12),

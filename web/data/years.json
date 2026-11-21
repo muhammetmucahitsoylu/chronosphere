@@ -1508,5 +1508,80 @@
     ]
    ]
   }
+ },
+ "proxima": {
+  "grid": {
+   "ra": 217.401019,
+   "dec": -62.676883,
+   "n": 196,
+   "scale": 3.075,
+   "size": 10.0
+  },
+  "files": [
+   "years-2mass.ndjson",
+   "years-w1.ndjson",
+   "years-w2.ndjson",
+   "years-spherex.ndjson"
+  ],
+  "span": [
+   51615.329,
+   61254.935
+  ],
+  "built": "2026-11-21T15:14:06Z",
+  "at": [
+   217.367374,
+   -62.673741
+  ],
+  "name": "Proxima Centauri"
+ },
+ "luhman16": {
+  "grid": {
+   "ra": 162.313113,
+   "dec": -53.318257,
+   "n": 196,
+   "scale": 3.075,
+   "size": 10.0
+  },
+  "files": [
+   "years-2mass.ndjson",
+   "years-w1.ndjson",
+   "years-w2.ndjson",
+   "years-spherex.ndjson"
+  ],
+  "span": [
+   51315.052,
+   61236.203
+  ],
+  "built": "2026-11-21T15:20:04Z",
+  "at": [
+   162.294196,
+   -53.316799
+  ],
+  "name": "Luhman 16"
+ },
+ "teegarden": {
+  "grid": {
+   "ra": 43.26586,
+   "dec": 16.86839,
+   "n": 196,
+   "scale": 3.075,
+   "size": 10.0
+  },
+  "files": [
+   "years-2mass.ndjson",
+   "years-w1.ndjson",
+   "years-w2.ndjson",
+   "years-spherex.ndjson"
+  ],
+  "span": [
+   51486.224,
+   61266.736
+  ],
+  "built": "2026-11-21T15:24:56Z",
+  "at": [
+   43.280493,
+   16.852851
+  ],
+  "name": "Teegarden's Star"
  }
 }
