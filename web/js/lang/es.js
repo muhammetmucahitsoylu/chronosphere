@@ -843,4 +843,7 @@ export default {
   "The images of 2MASS and WISE could not be fetched just now. <button type=\"button\" data-retry>Try again</button>": "Las imágenes de 2MASS y WISE no se han podido obtener ahora mismo. <button type=\"button\" data-retry>Reintentar</button>",
   "Some of the older pictures did not arrive ({0}): the connection may be slow, or the server busy. <button type=\"button\" data-retry>Try again</button>": "Algunas de las imágenes antiguas no llegaron ({0}): puede que la conexión sea lenta o que el servidor esté ocupado. <button type=\"button\" data-retry>Reintentar</button>",
   "Here WISE shows its map of 2010. It went on looking until 2024: its images every half year are ready for these stars:": "Aquí WISE muestra su mapa de 2010. Siguió observando hasta 2024: sus imágenes de cada medio año están listas para estas estrellas:",
+  "Video ready.": "Vídeo listo.",
+  "Share": "Compartir",
+  "Save": "Guardar",
 };

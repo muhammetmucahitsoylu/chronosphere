@@ -843,4 +843,7 @@ export default {
   "The images of 2MASS and WISE could not be fetched just now. <button type=\"button\" data-retry>Try again</button>": "2MASS ve WISE görüntüleri şu anda alınamadı. <button type=\"button\" data-retry>Yeniden dene</button>",
   "Some of the older pictures did not arrive ({0}): the connection may be slow, or the server busy. <button type=\"button\" data-retry>Try again</button>": "Eski resimlerin bir kısmı gelmedi ({0}): bağlantı yavaş ya da sunucu yoğun olabilir. <button type=\"button\" data-retry>Yeniden dene</button>",
   "Here WISE shows its map of 2010. It went on looking until 2024: its images every half year are ready for these stars:": "Burada WISE’ın 2010 haritası görünüyor. WISE gökyüzüne 2024’e kadar bakmaya devam etti; altı ayda bir çektiği görüntüler şu yıldızlar için hazır:",
+  "Video ready.": "Video hazır.",
+  "Share": "Paylaş",
+  "Save": "Kaydet",
 };

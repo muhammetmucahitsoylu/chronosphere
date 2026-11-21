@@ -2891,21 +2891,66 @@ $('reportcancel').onclick = () => showReportAsk(false);
 $('reporter').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveReport(); } });
 const canRecord = !!(window.MediaRecorder && cv.captureStream);
 if (!canRecord) $('savevideo').hidden = true;
+/**
+ * One image of the film that "Save video" makes, 1080 x 1350: the image as shown with its markings, and round it what
+ * somebody who has never seen the page needs to make sense of it — the object's name, the image's date and telescope,
+ * how far through the sequence it is, and where to open it.
+ */
+const film = document.createElement('canvas'); film.width = 1080; film.height = 1350;
+const plainText = html => { const d = document.createElement('div'); d.innerHTML = html; return d.textContent; };
+function filmFrame(name) {
+  const c = film.getContext('2d'), it = S.seq[S.idx], W = film.width, top = 132, side = 1080;
+  c.fillStyle = '#0a0908'; c.fillRect(0, 0, W, film.height);
+  const k = Math.min(side / cv.width, side / cv.height), w = cv.width * k, h = cv.height * k;
+  c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+  c.drawImage(cv, (W - w) / 2, top + (side - h) / 2, w, h);
+  c.textBaseline = 'alphabetic';
+  // above the image: the name, and where this can be opened
+  c.textAlign = 'right'; c.fillStyle = '#f2c14e'; c.font = '500 34px "IBM Plex Sans", system-ui, sans-serif';
+  c.fillText('chronospherex.com', W - 44, 84);
+  const room = W - 88 - c.measureText('chronospherex.com').width - 36;
+  c.textAlign = 'left'; c.fillStyle = '#f3eee6';
+  let size = 66; do { c.font = `${size}px "Instrument Serif", Georgia, serif`; size -= 4; } while (c.measureText(name).width > room && size > 30);
+  c.fillText(name, 44, 92);
+  if (!it) return;
+  // below it: when and with which telescope, as the page's own caption says, and how far through the sequence
+  const y = top + side;
+  c.fillStyle = it.color || epochColor(it.mjd); c.beginPath(); c.arc(60, y + 48, 13, 0, 2 * Math.PI); c.fill();
+  c.fillStyle = '#f3eee6'; c.font = '56px "Instrument Serif", Georgia, serif'; c.fillText(plainText(it.title), 88, y + 66);
+  c.textAlign = 'right'; c.fillStyle = '#b0a79a'; c.font = '30px "IBM Plex Mono", ui-monospace, monospace'; c.fillText(`${S.idx + 1} / ${S.seq.length}`, W - 44, y + 62);
+  c.textAlign = 'left'; c.font = '28px "IBM Plex Mono", ui-monospace, monospace';
+  let sub = `${it.det === 0 ? '' : `D${it.det || S.det} · `}${plainText(it.sub)}`;
+  while (c.measureText(sub).width > W - 88 && sub.includes(' · ')) sub = sub.slice(0, sub.lastIndexOf(' · '));          // what does not fit is left off from the end
+  c.fillText(sub, 44, y + 112);
+}
 $('savevideo').onclick = async () => {
   if (S.seq.length < 2) return exportNote(G`There is only one image here: nothing to animate.`);
-  const type = ['video/webm;codecs=vp9', 'video/webm', 'video/mp4'].find(t => MediaRecorder.isTypeSupported(t));
+  // MP4 where the browser can write it (it plays everywhere and can be posted as it is), WebM otherwise
+  const type = ['video/mp4;codecs=avc1.640028', 'video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t));
   if (!type) return exportNote(G`This browser cannot record video.`);
   S.wantPlay = false; stop();
-  const stream = cv.captureStream(30), rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 6e6 }), chunks = [];
+  const name = S.target ? nameOf(S.target) : S.info?.name || S.track?.name || `${S.ra.toFixed(4)}° ${S.dec >= 0 ? '+' : ''}${S.dec.toFixed(4)}°`;
+  try { await Promise.all(['66px "Instrument Serif"', '500 34px "IBM Plex Sans"', '30px "IBM Plex Mono"'].map(f => document.fonts.load(f))); } catch { /* drawn in the fonts at hand */ }
+  const stream = film.captureStream(30), rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 8e6 }), chunks = [];
   rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
   const finished = new Promise(r => { rec.onstop = r; });
-  const hold = Math.max(250, 1000 / S.fps), loops = S.seq.length <= 4 ? 3 : 1;
+  const hold = Math.max(250, 1000 / S.fps), loops = S.seq.length <= 4 ? 3 : 1, n = loops * S.seq.length;
   exportNote(G`Recording…`);
-  S.idx = 0; show(); rec.start();
-  for (let k = 0; k < loops * S.seq.length; k++) { S.idx = k % S.seq.length; show(); await nap(hold); }
+  // every image is drawn again and again while it is held, so that the film runs at an even pace
+  const held = async ms => { const until = performance.now() + ms; while (performance.now() < until) { filmFrame(name); await new Promise(r => requestAnimationFrame(r)); } };
+  S.idx = 0; show(); filmFrame(name); rec.start();
+  for (let k = 0; k < n; k++) { S.idx = k % S.seq.length; show(); await held(k === 0 ? hold + 700 : k === n - 1 ? hold + 1000 : hold); }
   rec.stop(); await finished; stream.getTracks().forEach(t => t.stop());
-  download(new Blob(chunks, { type }), `chronosphere_${slugOf()}_D${S.det}_${S.mode}.${type.includes('mp4') ? 'mp4' : 'webm'}`);
-  exportNote(G`Video saved.`);
+  const ext = type.includes('mp4') ? 'mp4' : 'webm', file = new File(chunks, `chronosphere_${slugOf()}_D${S.det}_${S.mode}.${ext}`, { type: type.split(';')[0] });
+  // On a phone or tablet the film can go straight to another app: that needs a fresh press, so it is offered beside
+  // saving it. On a computer it is saved at once, as before (some desktop browsers can share files too, but there a
+  // file in the downloads folder is what is wanted).
+  if (matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] })) {
+    clearTimeout(exportTimer);
+    const el = $('exportnote'); el.innerHTML = `${G`Video ready.`} <button type="button" data-share>${G`Share`}</button> <button type="button" data-keep>${G`Save`}</button>`;
+    el.querySelector('[data-share]').onclick = () => navigator.share({ files: [file], title: name, text: `${name} · chronospherex.com` }).catch(() => {});
+    el.querySelector('[data-keep]').onclick = () => { download(file, file.name); exportNote(G`Video saved.`); };
+  } else { download(file, file.name); exportNote(G`Video saved.`); }
 };
 
 // ------------------------------------------------------------ map controls
