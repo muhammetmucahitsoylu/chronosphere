@@ -20,7 +20,10 @@ const SITE = 'https://chronospherex.com/';
 const SHEET_FILES = { hunt: 'find-asteroids.html', spherex: 'what-is-spherex.html', how: 'how-it-works.html', about: 'about.html' };
 const ENGLISH_NAV = { hunt: 'Asteroid hunt', spherex: 'What is SPHEREx?', how: 'How it works', about: 'About' };
 const OBJECT_FILES = { barnard: 'barnards-star.html', epsindib: 'epsilon-indi-b.html', wise0855: 'wise-0855.html', rwaur: 'rw-aurigae.html', rdra: 'r-draconis.html', pluto: 'pluto.html', '3i-atlas': '3i-atlas.html' };
-const FILES = { ...SHEET_FILES, planetx: 'planet-x.html', ...OBJECT_FILES };
+// Stars that are not showcase objects but whose Years view was built (the ones the guided tour's last step offers):
+// one plain page each, with their walk over a quarter of a century and the motion measured from the images.
+const YEARS_FILES = { proxima: 'proxima-centauri.html', luhman16: 'luhman-16.html', teegarden: 'teegardens-star.html' };
+const FILES = { ...SHEET_FILES, planetx: 'planet-x.html', ...OBJECT_FILES, ...YEARS_FILES };
 const TARGETS = JSON.parse(readFileSync(join(WEB, 'data', 'targets.json'), 'utf8'));
 // The showcase stars that have the Years view (scripts/build_years.py), with the moving picture of it (scripts/build_images.py --years).
 const YEARS = (() => { try { return JSON.parse(readFileSync(join(WEB, 'data', 'years.json'), 'utf8')); } catch { return {}; } })();
@@ -44,6 +47,10 @@ const DOC = {
       facts: (k, n1, a, n2, b) => `SPHEREx has ${k} exposures of it: ${n1} (${a}) and ${n2} (${b}).`,
     },
     pxCold: { h: 'How cold worlds are found today', text: 'A world beyond Neptune, or a cold brown dwarf near the Sun, gives itself away as Pluto did: it moves. Today the search runs on infrared images taken years apart. WISE 0855, the coldest brown dwarf known, was found in 2014 by its motion in the images of WISE; in the image 2MASS took of its place in 1998 nothing shows, as it is too cold to shine at 2.2 microns. Chronosphere’s Years view finds it again without being told where to look: 8.10 arcseconds a year, in all 23 visits of WISE and NEOWISE (the catalogue gives 8.15). Luhman 16, the nearest pair of brown dwarfs, found in 2013 the same way, is found again too.', cap: 'WISE 0855 in the image of 2MASS (December 1998), where nothing shows at its place, and in that of SPHEREx (April 2026), 3.7 arcminutes to the west.', open: 'Open WISE 0855 over 27 years' },
+    ystar: { eyebrow: 'Over a quarter of a century', label: 'Over 27 years', names: { proxima: 'Proxima Centauri', luhman16: 'Luhman 16', teegarden: 'Teegarden\'s Star' }, what: { proxima: 'The star nearest to the Sun, 4.2 light-years away: a small red dwarf, too faint to see with the naked eye.', luhman16: 'The nearest pair of brown dwarfs, 6.5 light-years away, found in 2013 by its motion in the images of NASA’s WISE.', teegarden: 'A faint red dwarf 12.5 light-years away, found only in 2003, by its fast motion across old photographs of the sky.' },
+      measured: (n, a, ma, b, mb, k, pm, cat) => `From ${a} in ${ma} to ${b} in ${mb}, ${n} walks across the field. Chronosphere measures its motion from these ${k} images: ${pm} arcseconds a year; the catalogue gives ${cat}.`,
+      found: n => `In the visits of WISE and NEOWISE the page also finds ${n} by itself, without being told where to look.`,
+      open: n => `Open ${n} over 27 years` },
     pxTitle: 'Planet X, Pluto and SPHEREx',
     pxLead: 'The search for a planet beyond Neptune found Pluto in 1930. How it was found, what astronomers predict today, and whether NASA’s SPHEREx could see it.',
     plutoAlt: 'Two SPHEREx exposures of the same patch of sky, taken six days apart in October 2025 and shown in turn. One dot moves: Pluto.',
@@ -66,6 +73,10 @@ const DOC = {
       facts: (k, n1, a, n2, b) => `SPHEREx’in ona ait ${k} pozu var: ${n1} (${a}) ve ${n2} (${b}).`,
     },
     pxCold: { h: 'Soğuk dünyalar bugün nasıl bulunuyor', text: 'Neptün’ün ötesindeki bir dünya ya da Güneş’in yakınındaki soğuk bir kahverengi cüce, kendini Plüton gibi ele verir: hareket eder. Bugün bu arama, yıllar arayla çekilmiş kızılötesi görüntülerde yapılıyor. Bilinen en soğuk kahverengi cüce WISE 0855, 2014’te WISE görüntülerindeki hareketinden bulundu; 2MASS’ın 1998’de onun yerini çektiği görüntüde hiçbir şey görünmüyor, çünkü 2,2 mikronda parlayamayacak kadar soğuk. Chronosphere’in Yıllar görünümü, nereye bakacağı söylenmeden onu yeniden buluyor: WISE ve NEOWISE’ın 23 ziyaretinin hepsinde yılda 8,10 yay saniyesi (katalog: 8,15). Güneş’e en yakın kahverengi cüce çifti Luhman 16 da 2013’te aynı yolla bulunmuştu; o da yeniden bulunuyor.', cap: 'WISE 0855: 2MASS’ın görüntüsünde (Aralık 1998) yerinde hiçbir şey yok; SPHEREx’in görüntüsünde (Nisan 2026) ise 3,7 yay dakikası batıda.', open: 'WISE 0855’i 27 yıl boyunca aç' },
+    ystar: { eyebrow: 'Çeyrek yüzyıl boyunca', label: '27 yıl boyunca', names: { proxima: 'Proxima Centauri', luhman16: 'Luhman 16', teegarden: 'Teegarden Yıldızı' }, what: { proxima: 'Güneş’e en yakın yıldız, 4,2 ışık yılı uzakta: çıplak gözle görülemeyecek kadar sönük, küçük bir kırmızı cüce.', luhman16: 'Güneş’e en yakın kahverengi cüce çifti, 6,5 ışık yılı uzakta; 2013’te NASA’nın WISE görüntülerindeki hareketinden bulundu.', teegarden: '12,5 ışık yılı uzakta sönük bir kırmızı cüce; ancak 2003’te, eski gökyüzü fotoğraflarındaki hızlı hareketinden bulundu.' },
+      measured: (n, a, ma, b, mb, k, pm, cat) => `${ma} tarihli ${a} görüntüsünden ${mb} tarihli ${b} görüntüsüne kadar ${n} alanın içinde yürüyor. Chronosphere hareketini bu ${k} görüntüden ölçüyor: yılda ${pm} yay saniyesi; katalog ${cat} veriyor.`,
+      found: n => `Sayfa onu, nereye bakacağı söylenmeden WISE ve NEOWISE ziyaretlerinde kendi başına da buluyor.`,
+      open: n => `${n}: 27 yılı aç` },
     pxTitle: 'X Gezegeni, Plüton ve SPHEREx',
     pxLead: 'Neptün’ün ötesindeki bir gezegeni arayanlar 1930’da Plüton’u buldu. Plüton nasıl bulundu, gökbilimciler bugün neyi öngörüyor ve NASA’nın SPHEREx teleskobu onu görebilir mi?',
     plutoAlt: 'Aynı gökyüzü parçasının Ekim 2025’te altı gün arayla çekilmiş iki SPHEREx pozu, sırayla gösteriliyor. Bir nokta yer değiştiriyor: Plüton.',
@@ -88,6 +99,10 @@ const DOC = {
       facts: (k, n1, a, n2, b) => `SPHEREx tiene ${k} exposiciones suyas: ${n1} (${a}) y ${n2} (${b}).`,
     },
     pxCold: { h: 'Cómo se encuentran hoy los mundos fríos', text: 'Un mundo más allá de Neptuno, o una enana marrón fría cerca del Sol, se delata como Plutón: se mueve. Hoy la búsqueda se hace en imágenes infrarrojas tomadas con años de diferencia. WISE 0855, la enana marrón más fría que se conoce, se encontró en 2014 por su movimiento en las imágenes de WISE; en la imagen que 2MASS tomó de su lugar en 1998 no se ve nada, porque es demasiado fría para brillar a 2,2 micras. La vista Años de Chronosphere la vuelve a encontrar sin que nadie le diga dónde mirar: 8,10 segundos de arco al año, en las 23 visitas de WISE y NEOWISE (el catálogo da 8,15). Luhman 16, la pareja de enanas marrones más cercana, hallada en 2013 del mismo modo, también vuelve a aparecer.', cap: 'WISE 0855 en la imagen de 2MASS (diciembre de 1998), donde no se ve nada en su lugar, y en la de SPHEREx (abril de 2026), 3,7 minutos de arco al oeste.', open: 'Abrir WISE 0855 a lo largo de 27 años' },
+    ystar: { eyebrow: 'A lo largo de un cuarto de siglo', label: 'A lo largo de 27 años', names: { proxima: 'Próxima Centauri', luhman16: 'Luhman 16', teegarden: 'Estrella de Teegarden' }, what: { proxima: 'La estrella más cercana al Sol, a 4,2 años luz: una pequeña enana roja, demasiado débil para verla a simple vista.', luhman16: 'La pareja de enanas marrones más cercana, a 6,5 años luz, hallada en 2013 por su movimiento en las imágenes de WISE, de la NASA.', teegarden: 'Una débil enana roja a 12,5 años luz, hallada apenas en 2003 por su rápido movimiento en viejas fotografías del cielo.' },
+      measured: (n, a, ma, b, mb, k, pm, cat) => `De ${a} en ${ma} a ${b} en ${mb}, ${n} cruza el campo. Chronosphere mide su movimiento a partir de estas ${k} imágenes: ${pm} segundos de arco al año; el catálogo da ${cat}.`,
+      found: n => `En las visitas de WISE y NEOWISE la página también encuentra ${n} por sí sola, sin que nadie le diga dónde mirar.`,
+      open: n => `Abrir ${n} a lo largo de 27 años` },
     pxTitle: 'El Planeta X, Plutón y SPHEREx',
     pxLead: 'La búsqueda de un planeta más allá de Neptuno encontró a Plutón en 1930. Cómo se encontró, qué predicen hoy los astrónomos y si SPHEREx, de la NASA, podría verlo.',
     plutoAlt: 'Dos exposiciones de SPHEREx de la misma zona del cielo, tomadas con seis días de diferencia en octubre de 2025 y mostradas por turnos. Un punto se mueve: Plutón.',
@@ -110,6 +125,10 @@ const DOC = {
       facts: (k, n1, a, n2, b) => `SPHEREx hat ${k} Aufnahmen von ihm: ${n1} (${a}) und ${n2} (${b}).`,
     },
     pxCold: { h: 'Wie man kalte Welten heute findet', text: 'Eine Welt jenseits des Neptun oder ein kalter Brauner Zwerg nahe der Sonne verrät sich wie Pluto: Sie bewegt sich. Heute läuft die Suche über Infrarotbilder, die Jahre auseinanderliegen. WISE 0855, der kälteste bekannte Braune Zwerg, wurde 2014 an seiner Bewegung in den Bildern von WISE gefunden; im Bild, das 2MASS 1998 von seiner Stelle aufnahm, ist nichts zu sehen, denn er ist zu kalt, um bei 2,2 Mikrometern zu leuchten. Die Ansicht „Jahre“ von Chronosphere findet ihn wieder, ohne dass man ihr sagt, wo sie suchen soll: 8,10 Bogensekunden im Jahr, in allen 23 Besuchen von WISE und NEOWISE (der Katalog gibt 8,15 an). Auch Luhman 16, das nächste Paar Brauner Zwerge, 2013 auf dieselbe Weise entdeckt, wird wiedergefunden.', cap: 'WISE 0855 im Bild von 2MASS (Dezember 1998), wo an seiner Stelle nichts zu sehen ist, und in dem von SPHEREx (April 2026), 3,7 Bogenminuten weiter westlich.', open: 'WISE 0855 über 27 Jahre öffnen' },
+    ystar: { eyebrow: 'Über ein Vierteljahrhundert', label: 'Über 27 Jahre', names: { proxima: 'Proxima Centauri', luhman16: 'Luhman 16', teegarden: 'Teegardens Stern' }, what: { proxima: 'Der sonnennächste Stern, 4,2 Lichtjahre entfernt: ein kleiner Roter Zwerg, zu lichtschwach für das bloße Auge.', luhman16: 'Das nächste Paar Brauner Zwerge, 6,5 Lichtjahre entfernt, 2013 an seiner Bewegung in den Bildern von WISE der NASA entdeckt.', teegarden: 'Ein lichtschwacher Roter Zwerg in 12,5 Lichtjahren Entfernung, erst 2003 an seiner schnellen Bewegung auf alten Himmelsfotos entdeckt.' },
+      measured: (n, a, ma, b, mb, k, pm, cat) => `Von ${a} im ${ma} bis ${b} im ${mb} wandert ${n} durch das Feld. Chronosphere misst seine Bewegung aus diesen ${k} Bildern: ${pm} Bogensekunden im Jahr; der Katalog gibt ${cat} an.`,
+      found: n => `In den Besuchen von WISE und NEOWISE findet die Seite ${n} auch von selbst, ohne dass man ihr sagt, wo sie suchen soll.`,
+      open: n => `${n} über 27 Jahre öffnen` },
     pxTitle: 'Planet X, Pluto und SPHEREx',
     pxLead: 'Die Suche nach einem Planeten jenseits des Neptun fand 1930 Pluto. Wie er gefunden wurde, was Astronomen heute vorhersagen und ob SPHEREx, das Teleskop der NASA, ihn sehen könnte.',
     plutoAlt: 'Zwei SPHEREx-Aufnahmen derselben Himmelsgegend, im Oktober 2025 im Abstand von sechs Tagen aufgenommen und abwechselnd gezeigt. Ein Punkt wandert: Pluto.',
@@ -132,6 +151,10 @@ const DOC = {
       facts: (k, n1, a, n2, b) => `SPHEREx a ${k} poses d’elle : ${n1} (${a}) et ${n2} (${b}).`,
     },
     pxCold: { h: 'Comment on trouve aujourd’hui les mondes froids', text: 'Un monde au-delà de Neptune, ou une naine brune froide proche du Soleil, se trahit comme Pluton : il se déplace. Aujourd’hui, la recherche se fait sur des images infrarouges prises à des années d’intervalle. WISE 0855, la naine brune la plus froide connue, a été trouvée en 2014 grâce à son mouvement sur les images de WISE ; sur l’image que 2MASS a prise de sa position en 1998, rien n’apparaît, car elle est trop froide pour briller à 2,2 microns. La vue Années de Chronosphere la retrouve sans qu’on lui dise où regarder : 8,10 secondes d’arc par an, sur les 23 visites de WISE et NEOWISE (le catalogue donne 8,15). Luhman 16, le couple de naines brunes le plus proche, découvert en 2013 de la même façon, est lui aussi retrouvé.', cap: 'WISE 0855 sur l’image de 2MASS (décembre 1998), où rien n’apparaît à sa place, et sur celle de SPHEREx (avril 2026), 3,7 minutes d’arc plus à l’ouest.', open: 'Ouvrir WISE 0855 sur 27 ans' },
+    ystar: { eyebrow: 'Sur un quart de siècle', label: 'Sur 27 ans', names: { proxima: 'Proxima du Centaure', luhman16: 'Luhman 16', teegarden: 'Étoile de Teegarden' }, what: { proxima: 'L’étoile la plus proche du Soleil, à 4,2 années-lumière : une petite naine rouge, trop faible pour être vue à l’œil nu.', luhman16: 'Le couple de naines brunes le plus proche, à 6,5 années-lumière, découvert en 2013 grâce à son mouvement sur les images de WISE, de la NASA.', teegarden: 'Une faible naine rouge à 12,5 années-lumière, découverte seulement en 2003 grâce à son mouvement rapide sur de vieilles photographies du ciel.' },
+      measured: (n, a, ma, b, mb, k, pm, cat) => `De ${a} en ${ma} à ${b} en ${mb}, ${n} traverse le champ. Chronosphere en mesure le mouvement sur ces ${k} images : ${pm} secondes d’arc par an ; le catalogue donne ${cat}.`,
+      found: n => `Dans les visites de WISE et NEOWISE, la page trouve aussi ${n} d’elle-même, sans qu’on lui dise où regarder.`,
+      open: n => `Ouvrir ${n} sur 27 ans` },
     pxTitle: 'La planète X, Pluton et SPHEREx',
     pxLead: 'La recherche d’une planète au-delà de Neptune a trouvé Pluton en 1930. Comment elle a été trouvée, ce que prédisent aujourd’hui les astronomes, et si SPHEREx, le télescope de la NASA, pourrait la voir.',
     plutoAlt: 'Deux poses SPHEREx de la même région du ciel, prises à six jours d’intervalle en octobre 2025 et montrées tour à tour. Un point se déplace : Pluton.',
@@ -154,6 +177,10 @@ const DOC = {
       facts: (k, n1, a, n2, b) => `SPHEREx ma ${k} jej ekspozycji: ${n1} (${a}) i ${n2} (${b}).`,
     },
     pxCold: { h: 'Jak dziś znajduje się zimne światy', text: 'Świat za Neptunem albo zimny brązowy karzeł blisko Słońca zdradza się tak jak Pluton: porusza się. Dziś szuka się ich na obrazach w podczerwieni wykonanych w odstępie lat. WISE 0855, najzimniejszy znany brązowy karzeł, został odkryty w 2014 roku dzięki ruchowi na obrazach WISE; na obrazie jego miejsca wykonanym przez 2MASS w 1998 roku nic nie widać, bo jest zbyt zimny, by świecić przy 2,2 mikrona. Widok Lata w Chronosphere odnajduje go ponownie bez wskazówki, gdzie szukać: 8,10 sekundy kątowej na rok, we wszystkich 23 wizytach WISE i NEOWISE (katalog podaje 8,15). Luhman 16, najbliższa para brązowych karłów, odkryta w 2013 roku w ten sam sposób, również zostaje odnaleziona.', cap: 'WISE 0855 na obrazie 2MASS (grudzień 1998), gdzie w jego miejscu nic nie widać, i na obrazie SPHEREx (kwiecień 2026), 3,7 minuty kątowej dalej na zachód.', open: 'Otwórz WISE 0855 na przestrzeni 27 lat' },
+    ystar: { eyebrow: 'Na przestrzeni ćwierć wieku', label: 'Na przestrzeni 27 lat', names: { proxima: 'Proxima Centauri', luhman16: 'Luhman 16', teegarden: 'Gwiazda Teegardena' }, what: { proxima: 'Najbliższa Słońcu gwiazda, odległa o 4,2 roku świetlnego: mały czerwony karzeł, zbyt słaby, by dostrzec go gołym okiem.', luhman16: 'Najbliższa para brązowych karłów, odległa o 6,5 roku świetlnego, odkryta w 2013 roku dzięki ruchowi na obrazach WISE NASA.', teegarden: 'Słaby czerwony karzeł odległy o 12,5 roku świetlnego, odkryty dopiero w 2003 roku dzięki szybkiemu ruchowi na starych fotografiach nieba.' },
+      measured: (n, a, ma, b, mb, k, pm, cat) => `Od ${a} w ${ma} do ${b} w ${mb} obiekt ${n} przechodzi przez pole. Chronosphere mierzy jego ruch na tych ${k} obrazach: ${pm} sekundy kątowej na rok; katalog podaje ${cat}.`,
+      found: n => `Na wizytach WISE i NEOWISE strona sama odnajduje też obiekt ${n}, bez wskazówki, gdzie szukać.`,
+      open: n => `Otwórz ${n} na przestrzeni 27 lat` },
     pxTitle: 'Planeta X, Pluton i SPHEREx',
     pxLead: 'Poszukiwania planety za Neptunem doprowadziły w 1930 roku do odkrycia Plutona. Jak go znaleziono, co przewidują dziś astronomowie i czy teleskop SPHEREx należący do NASA mógłby ją zobaczyć.',
     plutoAlt: 'Dwie ekspozycje SPHEREx tego samego fragmentu nieba, wykonane w październiku 2025 roku w odstępie sześciu dni i pokazywane na zmianę. Jeden punkt się przesuwa: to Pluton.',
@@ -288,6 +315,7 @@ function content(code, id) {
     <p class="fine">${esc(D.sources)}: ${pxSources(code).map(([t, u]) => `<a href="${u}" target="_blank" rel="noopener">${esc(t)}</a>`).join(' · ')}</p>`;
     return { body, title: D.pxTitle, lead: D.pxLead, image: 'img/pluto-blink.jpg' };
   }
+  if (YEARS_FILES[id]) return yearsPage(code, id, up);
   const o = TARGETS.find(t => OBJECT_FILES[t.slug] && t.slug === id), name = NAME(code, o, w);
   if (o.follow) return followedPage(code, o, name, up);
   const how = o.view.mode === 'trail' ? D.how.stop : o.view.mode === 'bands' ? D.how.det : o.slug === 'rdra' ? D.how.month : D.how.visit;
@@ -316,6 +344,32 @@ function content(code, id) {
       : `<a href="${simbad}" target="_blank" rel="noopener">SIMBAD</a> · <a href="https://www.cosmos.esa.int/web/gaia/dr3" target="_blank" rel="noopener">Gaia DR3</a>`}${years ? ` · <a href="https://irsa.ipac.caltech.edu/Missions/2mass.html" target="_blank" rel="noopener">2MASS</a> · <a href="https://irsa.ipac.caltech.edu/Missions/wise.html" target="_blank" rel="noopener">WISE, NEOWISE</a>` : ''}${wiki ? ` · <a href="${wiki}" target="_blank" rel="noopener">Wikipedia</a>` : ''}</p>`;
   // a link to the page shows the star's oldest and newest image side by side, where the Years view was built for it
   return { body, title: D.title(name), lead: `${w[o.blurb]} ${D.alt(name, how)}.`, image: years ? `img/${o.slug}-years.jpg` : `img/${o.slug}.jpg` };
+}
+
+/**
+ * The page of a star whose Years view was built though it is not a showcase object (scripts/build_years.py, EXTRA):
+ * what it is, its walk from 2MASS to SPHEREx as one moving picture, the motion that the page measures from those images
+ * (worked out the same way by scripts/build_years.py --measure), and a link that opens it, followed, in the Years view.
+ */
+function yearsPage(code, id, up) {
+  const D = DOC[code], Y = YEARS[id], m = Y.measured || {}, name = D.ystar.names[id];
+  const month = mjd => new Intl.DateTimeFormat(code, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date((mjd - 40587) * 864e5));
+  const num = v => new Intl.NumberFormat(code, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+  const [ra2000, dec2000, pmra, pmdec, plx] = Y.track;
+  const now = 2026.9, ra = ra2000 + pmra * (now - 2000) / 3.6e6 / Math.cos(dec2000 * Math.PI / 180), dec = dec2000 + pmdec * (now - 2000) / 3.6e6;
+  const open = `${up}?ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&fov=5&star=${[ra2000.toFixed(7), dec2000.toFixed(7), pmra.toFixed(2), pmdec.toFixed(2), plx.toFixed(3)].join('%2C')}&name=${encodeURIComponent(Y.name)}&det=${m.det || 5}&mode=years${code === 'en' ? '' : `&lang=${code}`}`;
+  const found = { luhman16: true, teegarden: true }[id];
+  const wiki = { proxima: 'Proxima_Centauri', luhman16: 'Luhman_16', teegarden: "Teegarden's_Star" }[id];
+  const cap = D.years.cap(name, month(Y.span[0]), month(Y.span[1]));
+  const body = `
+    <p class="eyebrow">${esc(D.ystar.eyebrow)}</p>
+    <h1>${esc(name)}</h1>
+    <p class="lead">${esc(D.ystar.what[id])}</p>
+    <figure class="docfig"><img src="${up}img/${id}-years.webp" width="392" height="392" alt="${attr(cap)}"><figcaption>${esc(cap)}</figcaption></figure>
+    ${m.pm ? `<p>${esc(D.ystar.measured(name, m.first[0], month(m.first[1]), m.last[0], month(m.last[1]), m.images, num(m.pm), num(m.cat)))}${found ? ` ${esc(D.ystar.found(name))}` : ''}</p>` : ''}
+    <p class="docgo"><a class="cta" href="${open}">${esc(D.ystar.open(name))}</a></p>
+    <p class="fine">${esc(D.sources)}: <a href="https://irsa.ipac.caltech.edu/Missions/2mass.html" target="_blank" rel="noopener">2MASS</a> · <a href="https://irsa.ipac.caltech.edu/Missions/wise.html" target="_blank" rel="noopener">WISE, NEOWISE</a> · <a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noopener">SPHEREx, NASA/JPL-Caltech, IRSA</a> · <a href="https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${encodeURIComponent(Y.name)}" target="_blank" rel="noopener">SIMBAD</a> · <a href="https://en.wikipedia.org/wiki/${encodeURIComponent(wiki)}" target="_blank" rel="noopener">Wikipedia</a></p>`;
+  return { body, title: `${name} · ${D.ystar.eyebrow}`, lead: `${D.ystar.what[id]} ${cap}`, image: `img/${id}-years.jpg` };
 }
 
 /** The page of a body that is followed (comet 3I/ATLAS): its story, what the exposures show, and how the pictures are known to be centred on it. */
@@ -361,7 +415,7 @@ for (const code of codes) {
     const about = lead.length > 300 ? `${lead.slice(0, 297).replace(/\s+\S*$/, '')}…` : lead;
     const url = SITE + path(code, id);
     urls.push(url);
-    const link = o => `<a href="${FILES[o]}"${o === id ? ' aria-current="page"' : ''}>${esc(o === 'planetx' ? w['tour.px.title'] : OBJECT_FILES[o] ? NAME(code, TARGETS.find(t => t.slug === o), w) : nav[o])}</a>`;
+    const link = o => `<a href="${FILES[o]}"${o === id ? ' aria-current="page"' : ''}>${esc(o === 'planetx' ? w['tour.px.title'] : OBJECT_FILES[o] ? NAME(code, TARGETS.find(t => t.slug === o), w) : YEARS_FILES[o] ? D.ystar.names[o] : nav[o])}</a>`;
     const html = `<!doctype html>
 <html lang="${code}">
 <head>
@@ -415,6 +469,8 @@ ${codes.map(c => `<link rel="alternate" hreflang="${c}" href="${SITE}${path(c, i
       ${[...Object.keys(SHEET_FILES), 'planetx'].map(link).join('\n      ')}
       <span></span>
       <em>${esc(D.objects)}:</em> ${Object.keys(OBJECT_FILES).map(link).join('\n      ')}
+      <span></span>
+      <em>${esc(D.ystar.label)}:</em> ${Object.keys(YEARS_FILES).map(link).join('\n      ')}
       <span></span>
       ${codes.map(c => `<a href="${up}${path(c, id)}" lang="${c}" hreflang="${c}"${c === code ? ' aria-current="true"' : ''}>${LANGS[c]}</a>`).join('\n      ')}
     </nav>

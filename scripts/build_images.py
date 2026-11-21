@@ -308,8 +308,12 @@ def years(slug, det=None):
     SPHEREx, each telescope in its band nearest to the detector the star is shown in; each picture on its own scale of
     brightness (the telescopes differ), the ring where the catalogue puts the star on that date. The first and the last
     picture are held longer."""
-    t = next(x for x in json.load(open(WEB / "data" / "targets.json", encoding="utf-8")) if x["slug"] == slug)
-    det = det or t["view"]["det"]
+    t = next((x for x in json.load(open(WEB / "data" / "targets.json", encoding="utf-8")) if x["slug"] == slug), None)
+    if t is None:                                      # a star built for the tour's last step, not a showcase object
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from build_years import EXTRA
+        t = {**EXTRA[slug], "slug": slug}
+    det = det or (t.get("view") or {}).get("det") or t.get("det") or 5
     near = {1: ("J", "W1"), 2: ("H", "W1"), 3: ("Ks", "W1"), 4: ("Ks", "W1"), 5: ("Ks", "W2"), 6: ("Ks", "W2")}[det]
     frames, g = [], None
     for name in ("years-2mass.ndjson", "years-w1.ndjson" if near[1] == "W1" else "years-w2.ndjson", "years-spherex.ndjson"):

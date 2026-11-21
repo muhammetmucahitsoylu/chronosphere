@@ -5,6 +5,7 @@ and in one unit (MJy/sr), so that what a star did over a quarter of a century ca
     python scripts/build_years.py [slug ...]
     python scripts/build_years.py --2mass [slug ...]     # only the 2MASS picture again (the rest is kept)
     python scripts/build_years.py --cat [slug ...]       # only the catalogue brightness of each WISE visit again
+    python scripts/build_years.py --measure [slug ...]   # only the motion measured in the built images (for the plain pages)
 
 Writes, for each star, web/data/<slug>/years-2mass.ndjson, years-w1.ndjson, years-w2.ndjson and
 years-spherex.ndjson, and its entry in web/data/years.json (the grid, the files, the dates).
@@ -41,9 +42,9 @@ STARS = ["barnard", "epsindib", "wise0855", "rwaur", "rdra"]
 # they get the WISE and NEOWISE visits rather than the sky maps. Year-2000 positions and motions (milliarcseconds a
 # year) and parallaxes as the tour gives them (SIMBAD: Gaia DR3; Luhman 16: Lazorenko & Sahlmann 2018).
 EXTRA = {
-    "proxima": {"label": "Proxima Centauri", "resolved": {"ra2000": 217.42894222, "dec2000": -62.67949019, "pmra": -3781.741, "pmdec": 769.465}, "dist": {"plx": 768.0665}},
-    "luhman16": {"label": "Luhman 16", "resolved": {"ra2000": 162.328814, "dec2000": -53.319466, "pmra": -2767.502, "pmdec": 356.856}, "dist": {"plx": 501.557}},
-    "teegarden": {"label": "Teegarden's Star", "resolved": {"ra2000": 43.25371581, "dec2000": 16.88128672, "pmra": 3429.083, "pmdec": -3805.541}, "dist": {"plx": 260.9884}},
+    "proxima": {"label": "Proxima Centauri", "det": 5, "resolved": {"ra2000": 217.42894222, "dec2000": -62.67949019, "pmra": -3781.741, "pmdec": 769.465}, "dist": {"plx": 768.0665}},
+    "luhman16": {"label": "Luhman 16", "det": 6, "resolved": {"ra2000": 162.328814, "dec2000": -53.319466, "pmra": -2767.502, "pmdec": 356.856}, "dist": {"plx": 501.557}},
+    "teegarden": {"label": "Teegarden's Star", "det": 5, "resolved": {"ra2000": 43.25371581, "dec2000": 16.88128672, "pmra": 3429.083, "pmdec": -3805.541}, "dist": {"plx": 260.9884}},
 }
 
 # Zero points: 2MASS (Cohen, Wheaton & Megeath 2003), WISE (Jarrett et al. 2011). Flux density of a source of magnitude 0.
@@ -326,6 +327,92 @@ def catalogue_visits(t: dict, d) -> dict:
     return out
 
 
+# ------------------------------------------------------------------ the motion the images show (for the plain pages)
+NEAR = {1: ("J", "W1"), 2: ("H", "W1"), 3: ("Ks", "W1"), 4: ("Ks", "W1"), 5: ("Ks", "W2"), 6: ("Ks", "W2")}
+
+
+def measure(t: dict, d, det: int) -> dict:
+    """What the page's Years box says, worked out the same way from the built images: in each image of 2MASS, of WISE
+    in its band nearest to the detector and of SPHEREx in it, where the star's light lies against the catalogue's place
+    for that date (motion and parallax); a missing saturated core counts as the window's brightest light and the
+    centre is taken over six pixels; a star counts as seen when its light stands 10 sigma above the sky within 4"
+    (8" when saturated). The motion is the catalogue's corrected by the straight line through the offsets."""
+    import base64
+    near = NEAR[det]
+    frames, g = [], None
+    for name in ("years-2mass.ndjson", "years-w1.ndjson" if near[1] == "W1" else "years-w2.ndjson", "years-spherex.ndjson"):
+        for line in open(d / name, encoding="utf-8"):
+            o = json.loads(line)
+            if o["t"] == "head":
+                g = o["grid"]
+            elif o["t"] == "frame" and ((o["survey"] != "SPHEREx" and o["band"] in near) or (o.get("det") == det and o["n"] >= 5)):
+                o["img"] = np.frombuffer(base64.b64decode(o.pop("b64")), "<f2").astype(np.float32).reshape(g["n"], g["n"])
+                frames.append(o)
+    frames.sort(key=lambda f: f["mjd"])
+    n, sc = g["n"], g["scale"]
+    r = t["resolved"]; pm = t.get("pm") or r; plx = (t.get("dist") or {}).get("plx", 0) or 0
+    rad = math.pi / 180
+
+    def predict(mjd):
+        yr = mjd_to_year(mjd); dt = yr - 2000
+        dec = r["dec2000"] + pm["pmdec"] * dt / 3.6e6; ra = r["ra2000"] + pm["pmra"] * dt / 3.6e6 / math.cos(r["dec2000"] * rad)
+        if plx > 20:
+            nn = mjd - 51544.5; gg = (357.528 + 0.9856003 * nn) * rad; q = 280.459 + 0.98564736 * nn
+            L = (q + 1.915 * math.sin(gg) + 0.020 * math.sin(2 * gg)) * rad; R = 1.00014 - 0.01671 * math.cos(gg) - 0.00014 * math.cos(2 * gg)
+            eps = (23.439 - 0.00000036 * nn) * rad; X, Y, Z = -R * math.cos(L), -R * math.cos(eps) * math.sin(L), -R * math.sin(eps) * math.sin(L)
+            a, dd, p = ra * rad, dec * rad, plx / 1000
+            e, no = p * (X * math.sin(a) - Y * math.cos(a)), p * (X * math.cos(a) * math.sin(dd) + Y * math.sin(a) * math.sin(dd) - Z * math.cos(dd))
+            ra += e / 3600 / max(math.cos(dec * rad), 1e-6); dec += no / 3600
+        a0, d0, a, dd = g["ra"] * rad, g["dec"] * rad, ra * rad, dec * rad
+        D = math.sin(d0) * math.sin(dd) + math.cos(d0) * math.cos(dd) * math.cos(a - a0)
+        xi = math.cos(dd) * math.sin(a - a0) / D / rad * 3600; eta = (math.cos(d0) * math.sin(dd) - math.sin(d0) * math.cos(dd) * math.cos(a - a0)) / D / rad * 3600
+        c = (n - 1) / 2
+        return c - xi / sc, c + eta / sc
+
+    yy, xx = np.mgrid[0:n, 0:n]
+
+    def centroid(img, x, y, R):
+        for _ in range(4):
+            win = np.hypot(xx - x, yy - y)
+            vals = img[(win <= R + 3) & np.isfinite(img)]
+            if vals.size < 10:
+                return None
+            bg = np.median(vals)
+            v = np.where((win <= R + 0.5) & np.isfinite(img), img - bg, 0); v = np.clip(v, 0, None)
+            if v.sum() <= 0:
+                return None
+            nx, ny = (v * xx).sum() / v.sum(), (v * yy).sum() / v.sum()
+            if math.hypot(nx - x, ny - y) < 0.02:
+                return nx, ny, float(v.max())
+            x, y = nx, ny
+        return x, y, float(v.max())
+
+    seen = []
+    for f in frames:
+        img, (px, py) = f["img"], predict(f["mjd"])
+        if not (9 < px < n - 10 and 9 < py < n - 10):
+            continue
+        x0, y0 = int(round(px)), int(round(py))
+        core = img[y0 - 2:y0 + 3, x0 - 2:x0 + 3]
+        sat = bool(np.isnan(core).any())
+        if sat:
+            win = np.hypot(xx - px, yy - py) <= 8
+            img = img.copy(); img[win & ~np.isfinite(img)] = np.nanmax(np.where(win, img, np.nan))
+        m = centroid(img, px, py, 6 if sat else 3)
+        sig = f["sig"] or 1e-6
+        if not m or not (m[2] > 10 * sig) or math.hypot(m[0] - px, m[1] - py) * sc > (8 if sat else 4):
+            continue
+        seen.append((mjd_to_year(f["mjd"]), -(m[0] - px) * sc, (m[1] - py) * sc, f["survey"], f["mjd"]))
+    if len(seen) < 3:
+        return {}
+    t_ = np.array([q[0] for q in seen])
+    fit = lambda v: float(np.polyfit(t_, np.array(v), 1)[0])
+    pmE, pmN = pm["pmra"] / 1000 + fit([q[1] for q in seen]), pm["pmdec"] / 1000 + fit([q[2] for q in seen])
+    rms = math.sqrt(sum(q[1] ** 2 + q[2] ** 2 for q in seen) / len(seen))
+    return {"det": det, "pm": round(math.hypot(pmE, pmN), 2), "cat": round(math.hypot(pm["pmra"], pm["pmdec"]) / 1000, 2), "images": len(seen),
+            "rms": round(rms, 1), "first": [seen[0][3], round(seen[0][4], 2)], "last": [seen[-1][3], round(seen[-1][4], 2)]}
+
+
 # ------------------------------------------------------------------ SPHEREx
 def spherex_visits(grid: dict) -> list[dict]:
     frames = sx.search_frames(grid["ra"], grid["dec"])
@@ -380,6 +467,12 @@ def main():
         head = {"t": "head", "grid": {k: grid[k] for k in ("ra", "dec", "n", "scale", "size")}}
         d = ROOT / "web" / "data" / t["slug"]
         d.mkdir(parents=True, exist_ok=True)
+        if "--measure" in sys.argv:          # only the motion the built images show, for the plain pages
+            det = (t.get("view") or {}).get("det") or t.get("det") or 5
+            index[t["slug"]]["measured"] = measure(t, d, det)
+            print(f"   measured in D{det}: {index[t['slug']]['measured']}", flush=True)
+            idx_path.write_text(json.dumps(index, indent=1) + chr(10), encoding="utf-8")
+            continue
         if "--cat" in sys.argv:          # only the catalogue brightness: the images stay as they are
             index[t["slug"]]["cat"] = catalogue_visits(t, ROOT / "web" / "data" / t["slug"])
             idx_path.write_text(json.dumps(index, indent=1) + chr(10), encoding="utf-8")
@@ -404,7 +497,8 @@ def main():
         index[t["slug"]] = {"grid": head["grid"], "files": ["years-2mass.ndjson", "years-w1.ndjson", "years-w2.ndjson", "years-spherex.ndjson"], "span": [round(min(span), 3), round(max(span), 3)],
                             "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
         if t.get("extra_years"):          # found by its place when opened by name: where it is now, and what it is called
-            index[t["slug"]].update({"at": [t["ra"], t["dec"]], "name": t["label"]})
+            r = t["resolved"]
+            index[t["slug"]].update({"at": [t["ra"], t["dec"]], "name": t["label"], "track": [r["ra2000"], r["dec2000"], r["pmra"], r["pmdec"], t["dist"]["plx"]]})
         if "--no-cat" not in sys.argv:
             index[t["slug"]]["cat"] = catalogue_visits(t, d)
         idx_path.write_text(json.dumps(index, indent=1) + "\n", encoding="utf-8")
