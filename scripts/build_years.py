@@ -38,12 +38,14 @@ IRSA = "https://irsa.ipac.caltech.edu/ibe"
 CACHE = ROOT / "spike" / "cache" / "years"
 UA = {"User-Agent": "sky-viewer-prebuild/1.0"}
 STARS = ["barnard", "epsindib", "wise0855", "rwaur", "rdra"]
-# Stars that are not showcase objects but that the guided tour's last step offers: built too, so that opened by name
-# they get the WISE and NEOWISE visits rather than the sky maps. Year-2000 positions and motions (milliarcseconds a
-# year) and parallaxes as the tour gives them (SIMBAD: Gaia DR3; Luhman 16: Lazorenko & Sahlmann 2018).
+# Stars that are not showcase objects but are built too, so that opened by name they get the WISE and NEOWISE visits
+# rather than the sky maps: the three the guided tour's last step offers, and Kapteyn's Star and Wolf 359. Year-2000
+# positions and motions (milliarcseconds a year) and parallaxes from SIMBAD (Gaia DR3; Luhman 16: Lazorenko & Sahlmann 2018).
 EXTRA = {
     "proxima": {"label": "Proxima Centauri", "det": 5, "resolved": {"ra2000": 217.42894222, "dec2000": -62.67949019, "pmra": -3781.741, "pmdec": 769.465}, "dist": {"plx": 768.0665}},
     "luhman16": {"label": "Luhman 16", "det": 6, "resolved": {"ra2000": 162.328814, "dec2000": -53.319466, "pmra": -2767.502, "pmdec": 356.856}, "dist": {"plx": 501.557}},
+    "kapteyn": {"label": "Kapteyn's Star", "det": 5, "resolved": {"ra2000": 77.91912433, "dec2000": -45.01843382, "pmra": 6491.223, "pmdec": -5708.614}, "dist": {"plx": 254.1986}},
+    "wolf359": {"label": "Wolf 359", "det": 5, "resolved": {"ra2000": 164.12050363, "dec2000": 7.01472313, "pmra": -3866.338, "pmdec": -2699.215}, "dist": {"plx": 415.1794}},
     "teegarden": {"label": "Teegarden's Star", "det": 5, "resolved": {"ra2000": 43.25371581, "dec2000": 16.88128672, "pmra": 3429.083, "pmdec": -3805.541}, "dist": {"plx": 260.9884}},
 }
 

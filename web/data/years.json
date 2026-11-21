@@ -1724,5 +1724,99 @@
    -3805.541,
    260.9884
   ]
+ },
+ "kapteyn": {
+  "grid": {
+   "ra": 77.950244,
+   "dec": -45.03778,
+   "n": 196,
+   "scale": 3.075,
+   "size": 10.0
+  },
+  "files": [
+   "years-2mass.ndjson",
+   "years-w1.ndjson",
+   "years-w2.ndjson",
+   "years-spherex.ndjson"
+  ],
+  "span": [
+   51462.334,
+   61285.899
+  ],
+  "built": "2026-11-21T16:25:11Z",
+  "at": [
+   77.987741,
+   -45.06109
+  ],
+  "name": "Kapteyn's Star",
+  "track": [
+   77.91912433,
+   -45.01843382,
+   6491.223,
+   -5708.614,
+   254.1986
+  ],
+  "measured": {
+   "det": 5,
+   "pm": 8.66,
+   "cat": 8.64,
+   "images": 27,
+   "rms": 0.5,
+   "first": [
+    "2MASS",
+    51462.33
+   ],
+   "last": [
+    "SPHEREx",
+    61271.71
+   ]
+  }
+ },
+ "wolf359": {
+  "grid": {
+   "ra": 164.107302,
+   "dec": 7.005576,
+   "n": 196,
+   "scale": 3.075,
+   "size": 10.0
+  },
+  "files": [
+   "years-2mass.ndjson",
+   "years-w1.ndjson",
+   "years-w2.ndjson",
+   "years-spherex.ndjson"
+  ],
+  "span": [
+   51604.204,
+   61182.491
+  ],
+  "built": "2026-11-21T16:29:35Z",
+  "at": [
+   164.091396,
+   6.994554
+  ],
+  "name": "Wolf 359",
+  "track": [
+   164.12050363,
+   7.01472313,
+   -3866.338,
+   -2699.215,
+   415.1794
+  ],
+  "measured": {
+   "det": 5,
+   "pm": 4.72,
+   "cat": 4.72,
+   "images": 27,
+   "rms": 0.3,
+   "first": [
+    "2MASS",
+    51604.2
+   ],
+   "last": [
+    "SPHEREx",
+    61182.49
+   ]
+  }
  }
 }
