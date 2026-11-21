@@ -8,6 +8,7 @@ import * as Archive from './archive.js';
 import * as Movers from './movers.js';
 import * as Bodies from './bodies.js';
 import * as Lang from './lang.js';
+import * as Years from './years.js';
 
 const T = Lang.t, G = Lang.G;          // the words of the front page, the tour and the walk through the panel, in the language in use
 const PAGE_FILES = { planetx: 'planet-x.html', hunt: 'find-asteroids.html', spherex: 'what-is-spherex.html', how: 'how-it-works.html', about: 'about.html' };
@@ -39,6 +40,7 @@ const SURVEY0 = 60785, surveyDays = () => Math.ceil(Date.now() / 864e5 + 40587 -
 
 const MODES = {
   epochs: G`One stacked image per SPHEREx visit to this spot, played in a loop. Anything that moved between visits jumps.`,
+  years: G`The same patch of sky over a quarter of a century: 2MASS (1997 to 2001), WISE in 2010 and every half year from 2014 to 2024 (NEOWISE), then each SPHEREx visit, every telescope in its band nearest to this detector. A star that moves walks across the field; one too cold for the shorter wavelengths shows only at the longer ones.`,
   frames: G`Every single exposure in time order. Each one sees the sky at a slightly different wavelength, so stars flicker naturally.`,
   color: G`Time shown as colour: first visit in red, last in blue. Stars that stayed put look white; anything that moved or changed splits into colours.`,
   diff: G`A later visit minus an earlier one. Steady stars mostly cancel, leaving at most a faint smudge; a moving object leaves a strong dark-and-bright pair.`,
@@ -46,6 +48,9 @@ const MODES = {
   bands: G`The same patch of sky in each of the six detectors, from 0.75 to 5 microns, then all six as one colour picture (short wavelengths blue, long red). Cold objects only appear at the long end.`,
   trail: G`One image for every stop of the telescope that caught this body, in time order. The stars stay where they are; the body moves on.`,
 };
+
+// The Years view of a place that has no images built for it: the sky maps of the older telescopes.
+const YEARS_MAPS = G`This place as 2MASS saw it (1997 to 2001) and as WISE saw it (2010), from the sky maps that NASA/IPAC serves, then each SPHEREx visit: every telescope in its band nearest to this detector. The older pictures are shown as their makers stretched them: to look at, not to measure.`;
 
 // The same views of a body that is followed (every exposure cut out around the body itself): what each one shows then.
 const FOLLOWED = {
@@ -61,7 +66,7 @@ const S = {
   seq: [], idx: 0, playing: false, fps: 2, timer: null,
   sel: null, view: { z: 1, cx: 0, cy: 0 }, white: 0, invert: false, smooth: false, mask: false,
   showGaia: true, marks: true, busyUntil: 0, gaia: null, off: new Set(), abort: null, deep: null, hi: 1, gen: 0,
-  info: null, infoState: 'idle', wiki: null, openTok: 0, showBands: true, embed: false, find: {},
+  info: null, infoState: 'idle', wiki: null, openTok: 0, showBands: true, embed: false, find: {}, years: null, yearsIdx: {},
 };
 
 const cv = $('sky'), ctx = cv.getContext('2d');
@@ -79,6 +84,10 @@ const tourTargets = () => S.targets.filter(t => !t.extra);
 const fovPick = () => +(S.fovKept ?? $('fov').value);
 /** Where the sky is taken for a measurement: a ring 18″ to 30″ from the spot; around a followed comet, whose glow reaches far, 100″ to 140″. */
 const skyRing = () => (followed() ? [100, 140] : [18, 30]);
+/** The Years view: for a showcase star with images built for it, and for any other place (sky maps); not for bodies of the solar system. */
+const yearsOk = () => !!S.grid && !followed() && !S.track?.eph && !S.hunt && (isPreset() ? !!S.yearsIdx?.[S.target.slug] : true);
+/** The grid the images on show are laid on: in the Years view of a showcase star, a wider one of its own (the star walks across it). */
+const vg = () => (S.mode === 'years' && S.years?.grid) || S.grid;
 /**
  * A measurement of a followed body in which something else has a part: catalogued stars behind it that add a quarter
  * or more of the light measured ('star'), or pixels that the pipeline marks as faulty over a quarter of the circle
@@ -120,7 +129,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   const gen = ++S.gen;
   stop();
   Object.assign(S, { ra, dec, size: size || 5, target, track: track || (target && (target.eph ? { name: target.label, eph: target.eph } : target.resolved)) || null,
-    head: null, grid: null, dets: {}, seq: [], idx: 0, sel: null, gaia: null, catwise: null, deep: null, off: new Set(), stacks: null, epochs: null, pts: [], bandCache: {}, stackCache: {}, haloDets: [] });
+    head: null, grid: null, dets: {}, seq: [], idx: 0, sel: null, gaia: null, catwise: null, deep: null, off: new Set(), stacks: null, epochs: null, pts: [], bandCache: {}, stackCache: {}, haloDets: [], years: null });
   S.info = info; S.infoState = info ? 'done' : 'loading'; S.wiki = null; S.found = null; S.moved = null; S.find = {};
   S.movers = null; S.bodyMemo = null; S.scMemo = null; S.hunt = hunt; S.expect = null;
   S.detPicked = !!det; S.autoNote = '';
@@ -327,6 +336,8 @@ function rebuild() {
   if (S.mode === 'trail' && S.sel && !bodyStops()) S.mode = 'epochs';          // nothing is being followed any more
   const own = followed();
   if (own && ['color', 'diff', 'deep'].includes(S.mode)) S.mode = 'epochs';    // views that set one patch of sky against itself: a followed body has no such patch
+  if (S.mode === 'years' && !yearsOk()) S.mode = 'epochs';
+  const fresh = S.mode !== S.builtMode; S.builtMode = S.mode;
   const n = S.grid.n, npx = n * n, frames = usable(S.det);
   const keepMjd = S.seq[S.idx]?.mjd, keepDet = S.seq[S.idx]?.det;
   // Group by the archive-wide observing seasons so every detector agrees on what "season 2" is.
@@ -355,6 +366,7 @@ function rebuild() {
       ...(own ? { hi: stacks.find(st => st.ep.i === gEpoch(f.mjd))?.top } : {}),          // each exposure of a followed body on the scale of its own visit
       title: C.fmtDate(f.mjd, true), sub: `${lamAt(f).toFixed(3)} µm · ${f.id}` }));
   } else if (S.mode === 'epochs') seq = stacks;
+  else if (S.mode === 'years') seq = yearsSeq(stacks);
   else if (S.mode === 'deep') {
     if (S.deep) seq = [{ kind: 'stack', img: S.deep, sig: S.deepSig, mjd: frames[frames.length >> 1].mjd, n: frames.length,
       title: G`Deep sum`, sub: G`${nExp(frames.length)}, all visits` }];
@@ -402,8 +414,9 @@ function rebuild() {
     if (stacks.length > 2) seq.push(pair(stacks[0], stacks[stacks.length - 1]));
   }
   S.seq = seq;
+  if (S.viewOf !== vg()) { S.viewOf = vg(); resetView(); }          // the Years view of a showcase star has a grid of its own
   let idx = 0;
-  if (keepMjd !== undefined && seq.length) {
+  if (keepMjd !== undefined && seq.length && !(fresh && S.mode === 'years')) {          // the Years view starts at its oldest image
     let bd = Infinity;
     seq.forEach((it, i) => { const d = Math.abs(it.mjd - keepMjd); if (d < bd) { bd = d; idx = i; } });
   }
@@ -416,8 +429,158 @@ function rebuild() {
   S.idx = clamp(idx, 0, Math.max(0, seq.length - 1));
   if (!S.sel && !S.hunt) defaultSelection();          // on a hunt nothing is circled until a body has been found
   $('seek').max = Math.max(0, seq.length - 1);
-  renderModes(); renderMotion(); renderScan();
+  renderModes(); renderMotion(); renderScan(); renderYears();
   show();
+}
+
+// ------------------------------------------------------------ the Years view
+/** The images of the Years view for the detector in use: 2MASS and WISE in their bands nearest to it, then SPHEREx. */
+function yearsSeq(stacks) {
+  const Y = S.years, [b2, bw] = Years.NEAR[S.det];
+  if (!Y || Y.need !== S.det) loadYears();
+  if (!S.years?.frames) return [];
+  const Z = S.years;
+  const old = Z.frames.filter(f => f.survey !== 'SPHEREx' && (f.band === b2 || f.band === bw));
+  const now = Z.src === 'built' ? Z.frames.filter(f => f.survey === 'SPHEREx' && f.det === S.det && f.n >= 5)          // a visit of fewer exposures is too noisy to set beside the others
+    : stacks.map(st => ({ survey: 'SPHEREx', det: S.det, mjd: st.mjd, t0: st.ep.t0, t1: st.ep.t1, n: st.n, img: st.img, sig: st.sig, hi: st.top }));
+  return [...old, ...now].sort((a, b) => a.mjd - b.mjd).map(f => {
+    if (f.pic && f.lo === undefined) { const st = C.robustStats(f.img); f.lo = st.med; f.top = Math.max(st.p(0.999), st.med + 40); }          // a picture is drawn from its sky to its brightest stars
+    const { title, sub } = Years.caption(f);
+    return { kind: f.pic ? 'pic' : 'stack', img: f.img, sig: f.sig, hi: f.hi, lo: f.lo, top: f.top, mjd: f.mjd, det: 0, years: f, color: Years.COLOR[f.survey], title, sub };
+  });
+}
+/**
+ * What the Years view needs: for a showcase star, the built images for the detector in use (2MASS, the nearer band of
+ * WISE, SPHEREx); for any other place, the 2MASS and AllWISE sky maps, read once for all detectors.
+ */
+async function loadYears() {
+  if (!S.grid) return;
+  const gen = S.gen, det = S.det, Y = S.years ||= { frames: null, files: new Set() };
+  Y.need = det;
+  if (Y.busy) return;
+  const entry = isPreset() ? S.yearsIdx?.[S.target.slug] : null;
+  const want = entry ? Years.filesFor(det).filter(f => !Y.files.has(f)) : Y.frames ? [] : ['maps'];
+  if (!want.length) return;
+  Y.busy = true; setStatus(G`Loading the images of 2MASS and WISE…`);
+  try {
+    if (entry) {
+      Y.src = 'built'; Y.grid = entry.grid;
+      const got = await Promise.all(want.map(f => Years.loadBuilt(`data/${S.target.slug}/${f}?v=${encodeURIComponent(entry.built)}`, S.abort.signal)));
+      if (gen !== S.gen) return;
+      Y.frames = [...(Y.frames || []), ...got.flat()]; want.forEach(f => Y.files.add(f));
+    } else {
+      Y.src = 'maps'; Y.grid = null;
+      const night = await Info.twomassNight(S.grid.ra, S.grid.dec).catch(() => null);
+      const frames = await Years.loadMaps(S.grid, night, S.abort.signal);
+      if (gen !== S.gen) return;
+      Y.frames = frames;
+    }
+  } catch (e) {
+    if (e.name === 'AbortError' || gen !== S.gen) return;
+    Y.failed = true; Y.frames ||= [];
+  } finally { if (gen === S.gen) Y.busy = false; }
+  setStatus('');
+  if (S.mode === 'years') rebuild();
+  if (Y.need !== det && S.mode === 'years') loadYears();          // the detector changed while these were on their way
+}
+/**
+ * Where a star's light is centred near a place, also when it is so bright that the core of its image is missing (the
+ * detector was saturated there): the missing pixels count as the brightest light around them, and the centre is taken
+ * over a window of six pixels. On Barnard's Star, saturated in every WISE image, this puts its light 0.6″ (r.m.s.) from
+ * the catalogue's place in 27 images over 26 years; windows of 2.5 or 4 pixels without the filling stray by 7 to 8″.
+ */
+function starAt(img, n, x, y) {
+  const x0 = Math.round(x), y0 = Math.round(y);
+  let holes = 0;
+  for (let j = y0 - 2; j <= y0 + 2; j++) for (let i = x0 - 2; i <= x0 + 2; i++) { const v = img[j * n + i]; if (v !== v) holes++; }
+  if (!holes) { const m = C.locate(img, n, x, y, 3); return m && { ...m, sat: false }; }
+  const out = Float32Array.from(img), R = 8;
+  let top = -Infinity;
+  for (let j = y0 - R; j <= y0 + R; j++) for (let i = x0 - R; i <= x0 + R; i++) { const v = img[j * n + i]; if (v > top) top = v; }
+  for (let j = y0 - R; j <= y0 + R; j++) for (let i = x0 - R; i <= x0 + R; i++) {
+    const k = j * n + i; if (out[k] !== out[k] && Math.hypot(i - x, j - y) <= R) out[k] = top;
+  }
+  const m = C.locate(out, n, x, y, 6);
+  return m && { ...m, sat: true };
+}
+/** Where the ring goes in the Years view: on a catalogued star, where it was on that date; on a spot, the same place in the sky. */
+function yearsSel(mjd) {
+  const g = vg();
+  if (!S.sel || !g) return null;
+  if (S.sel.follow && S.track && !S.track.eph) { const p = trackPos(mjd, g); return p[0] === p[0] ? p : null; }
+  if (S.sel.x !== undefined) return C.skyToGrid(g, ...C.gridToSky(S.grid, S.sel.x, S.sel.y));
+  return null;
+}
+/**
+ * Under the images in the Years view: for a catalogued star in built images, where its light lies in each image
+ * against the place the catalogue gives for that date, and the motion that the images themselves show; for sky maps,
+ * what they are, and whether the star stood inside the field when 2MASS looked.
+ */
+function renderYears() {
+  const el = $('years');
+  if (!el) return;
+  const Y = S.years;
+  if (S.mode !== 'years' || !Y?.frames || Y.busy) { el.innerHTML = ''; return; }
+  const name = S.target ? nameOf(S.target) : S.info?.name || G`The star`;
+  const rows = [];
+  if (Y.failed && !Y.frames.length) { el.innerHTML = `<p class="hint">${G`The images of 2MASS and WISE could not be fetched just now.`}</p>`; return; }
+  if (Y.src === 'maps') {
+    const old = Y.frames.find(f => f.survey === '2MASS');
+    let out = '';
+    if (S.track && !S.track.eph && old) {
+      const p = trackPos(old.mjd), n = S.grid.n;
+      if (!(p[0] > 2 && p[1] > 2 && p[0] < n - 3 && p[1] < n - 3)) {
+        const far = Math.hypot(p[0] - (n - 1) / 2, p[1] - (n - 1) / 2) * S.grid.scale / 60, need = [10, 20, 40].find(v => v / 2 > far + 0.7);
+        out += `<p class="yearsnote">${G`When 2MASS looked, in ${C.fmtMonth(old.mjd)}, ${esc(name)} stood ${far.toFixed(1)}′ from where it is now: outside this field.`}${need ? ` <button type="button" data-wider="${need}">${G`Open a field of ${need}′`}</button>` : ''}</p>`;
+      }
+    }
+    if (old?.guessed) out += `<p class="hint">${G`The night 2MASS looked at this place could not be looked up: its images are dated 1997 to 2001.`}</p>`;
+    el.innerHTML = out;
+    el.querySelector('[data-wider]')?.addEventListener('click', e => {
+      const size = +e.currentTarget.dataset.wider;
+      go({ ra: S.ra, dec: S.dec, size, target: S.target, track: S.track, info: S.info, det: S.det, mode: 'years', fly: true });
+    });
+    return;
+  }
+  if (!S.track || S.track.eph || !S.seq.length) { el.innerHTML = ''; return; }
+  const g = vg(), seen = [], missed = [];
+  for (const it of S.seq) {
+    const p = trackPos(it.mjd, g);
+    if (!(p[0] > 9 && p[1] > 9 && p[0] < g.n - 10 && p[1] < g.n - 10)) continue;
+    // a saturated star is centred from its wings, which a neighbour can pull a little: it may lie up to 8″ off; any other within 4″
+    const m = starAt(it.img, g.n, p[0], p[1]);
+    if (!m || !(m.peak > 10 * it.sig) || Math.hypot(m.x - p[0], m.y - p[1]) * g.scale > (m.sat ? 8 : 4)) { missed.push(it); continue; }
+    seen.push({ it, dE: -(m.x - p[0]) * g.scale, dN: (m.y - p[1]) * g.scale, t: C.mjdToYear(it.mjd) });
+  }
+  if (seen.length < 2) { el.innerHTML = ''; return; }
+  // The motion the images show: the catalogue's, corrected by the straight line through the offsets of the light from it.
+  const fit = key => {
+    const tm = seen.reduce((a, q) => a + q.t, 0) / seen.length, vm = seen.reduce((a, q) => a + q[key], 0) / seen.length;
+    const num = seen.reduce((a, q) => a + (q.t - tm) * (q[key] - vm), 0), den = seen.reduce((a, q) => a + (q.t - tm) ** 2, 0);
+    return den > 0 ? num / den : 0;
+  };
+  const pmE = (S.track.pmra || 0) / 1000 + fit('dE'), pmN = (S.track.pmdec || 0) / 1000 + fit('dN');
+  const cat = Math.hypot(S.track.pmra || 0, S.track.pmdec || 0) / 1000, mine = Math.hypot(pmE, pmN);
+  const a = seen[0], b = seen[seen.length - 1], years = b.t - a.t;
+  const rms = Math.sqrt(seen.reduce((s2, q) => s2 + q.dE ** 2 + q.dN ** 2, 0) / seen.length);
+  const by = new Map();
+  for (const q of seen) { const k = q.it.years.survey; if (!by.has(k)) by.set(k, []); by.get(k).push(q); }
+  for (const [k, v] of by) {
+    const r = Math.sqrt(v.reduce((s2, q) => s2 + q.dE ** 2 + q.dN ** 2, 0) / v.length), y0 = Math.floor(v[0].t), y1 = Math.floor(v[v.length - 1].t);
+    rows.push(`<tr><td>${k}</td><td>${v.length}</td><td>${y0 === y1 ? y0 : `${y0}–${y1}`}</td><td>${r.toFixed(1)}″</td></tr>`);
+  }
+  const moved = cat * years;
+  let say = '';
+  if (moved >= 2 * g.scale) {
+    say = G`From ${a.it.years.survey} in ${C.fmtMonth(a.it.mjd)} to ${b.it.years.survey} in ${C.fmtMonth(b.it.mjd)}, ${esc(name)} moved ${arc(mine * years)} towards the ${compass(pmE, pmN)}. Measured in these ${seen.length} images: ${mine.toFixed(2)}″ a year; the catalogue gives ${cat.toFixed(2)}″.`;
+  } else {
+    say = G`In ${years.toFixed(0)} years, from ${a.it.years.survey} to ${b.it.years.survey}, ${esc(name)} moved less than this view can show (${(cat * years).toFixed(1)}″ by the catalogue).`;
+  }
+  // a telescope in whose images it does not show at all: too faint, or too cold, at that wavelength (WISE 0855 in 2MASS)
+  const unseen = [...new Set(missed.map(it => it.years.survey))].filter(k => !by.has(k)).map(k => missed.find(it => it.years.survey === k).years);
+  const none = unseen.map(f => G`It does not show in the ${f.survey} image (${f.band}, ${Years.LAM[f.band].toFixed(2)} µm, ${f.guessed ? '1997–2001' : C.fmtMonth(f.mjd)}): at that wavelength it is too faint for ${f.survey}.`).join(' ');
+  el.innerHTML = `<p class="yearssay">${say} ${G`Its light lies ${rms.toFixed(1)}″ (r.m.s.) from where the catalogue puts it on each date.`}${none ? ` ${none}` : ''}</p>
+    <table class="t"><thead><tr><th>${G`Telescope`}</th><th>${G`Images`}</th><th>${G`Years`}</th><th>${G`Off the catalogue`}</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
 }
 const lamRange = fr => { const v = fr.map(f => f.lam).sort((a, b) => a - b); return v.length > 1 ? `${v[0].toFixed(2)}–${v[v.length - 1].toFixed(2)} µm` : `${v[0].toFixed(2)} µm`; };
 
@@ -433,11 +596,11 @@ function defaultSelection() {
 }
 /** Where the catalogued target should be on a date: its year-2000 position, moved by its proper
  *  motion and, for nearby stars, by its parallax. Returned in grid pixels. */
-function trackPos(mjd) {
-  if (followed()) { const c = (S.grid.n - 1) / 2; return [c, c]; }          // every exposure is cut out around it
+function trackPos(mjd, g = S.grid) {
+  if (followed()) { const c = (g.n - 1) / 2; return [c, c]; }          // every exposure is cut out around it
   if (S.track.eph) {          // a body of the solar system: its path is given for the centre of the Earth, the spacecraft sees it a little to the side
     const p = ephAt(S.track.eph, mjd);
-    return p ? C.skyToGrid(S.grid, ...Bodies.fromSpacecraft(p[0], p[1], p[2], scAt(mjd))) : [NaN, NaN];
+    return p ? C.skyToGrid(g, ...Bodies.fromSpacecraft(p[0], p[1], p[2], scAt(mjd))) : [NaN, NaN];
   }
   let [ra, dec] = C.propagate({ ra: S.track.ra2000, dec: S.track.dec2000, pmra: S.track.pmra, pmdec: S.track.pmdec }, 2000, C.mjdToYear(mjd));
   const plx = S.target?.dist?.plx ?? S.track.plx;
@@ -445,7 +608,7 @@ function trackPos(mjd) {
     const [dE, dN] = C.parallaxOffset(ra, dec, plx, mjd);
     ra += dE / 3600 / Math.max(Math.cos(dec * Math.PI / 180), 1e-6); dec += dN / 3600;
   }
-  return C.skyToGrid(S.grid, ra, dec);
+  return C.skyToGrid(g, ra, dec);
 }
 function selPos(mjd) {
   if (!S.sel) return null;
@@ -528,7 +691,7 @@ function paint() {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
   const it = S.seq[S.idx];
   if (!it || !S.grid) return;
-  const n = S.grid.n, npx = n * n;
+  const n = vg().n, npx = n * n;
   if (off.width !== n) { off.width = off.height = n; }
   const im = octx.createImageData(n, n), px = im.data;
   const hi = S.hi * Math.pow(10, -S.white);
@@ -545,6 +708,15 @@ function paint() {
       const r = a.img[p], bl = b.img[p], g = m ? m.img[p] : bl;
       if (r !== r || bl !== bl || g !== g) { px[o] = S.mask ? 90 : 0; px[o + 1] = 0; px[o + 2] = 0; px[o + 3] = 255; continue; }
       px[o] = 255 * fa(r); px[o + 1] = 255 * (fm ? fm(g) : fb(g)); px[o + 2] = 255 * fb(bl); px[o + 3] = 255;
+    }
+  } else if (it.kind === 'pic') {
+    // a sky map's picture: grey levels as its makers stretched them, made lighter or darker by the brightness slider
+    const gain = Math.pow(10, -0.6 * S.white), span = Math.max(1, it.top - it.lo);
+    for (let p = 0; p < npx; p++) {
+      const o = ((n - 1 - ((p / n) | 0)) * n + (p % n)) * 4, v = it.img[p];
+      let t = v === v ? clamp(0.06 + 0.94 * (v - it.lo) / span * gain, 0, 1) : 0;
+      if (S.invert) t = 1 - t;
+      px[o] = px[o + 1] = px[o + 2] = 255 * t; px[o + 3] = 255;
     }
   } else {
     const diff = it.kind === 'diff', f = chan(it.img, it.sig, it.hi), k = 8 * it.sig * Math.pow(10, -S.white);
@@ -574,16 +746,16 @@ function paint() {
 }
 const g2c = (x, y, W, H, s) => [(x - S.view.cx) * s + W / 2, (S.view.cy - y) * s + H / 2];
 function c2g(X, Y) {
-  const W = cv.clientWidth, H = cv.clientHeight, s = W / S.grid.n * S.view.z;
+  const W = cv.clientWidth, H = cv.clientHeight, s = W / vg().n * S.view.z;
   return [S.view.cx + (X - W / 2) / s, S.view.cy - (Y - H / 2) / s];
 }
 
 function overlays(it, W, H, s) {
-  const g = S.grid, year = C.mjdToYear(it.mjd), own = followed();          // a followed body: nothing in its images is fixed to the sky, so no star is marked and no path drawn
+  const g = vg(), year = C.mjdToYear(it.mjd), own = followed(), yrs = S.mode === 'years';          // a followed body: nothing in its images is fixed to the sky, so no star is marked and no path drawn
   ctx.lineWidth = 1.2; ctx.font = '12px system-ui, sans-serif';
   // The circled spot. Everything else is drawn so that the inside of this ring stays clear:
   // a faint object must never be hidden by the marks that point at it.
-  const sel = S.marks ? selPos(it.mjd) : null;
+  const sel = S.marks ? (yrs ? yearsSel(it.mjd) : selPos(it.mjd)) : null;
   const [PX, PY] = sel ? g2c(sel[0], sel[1], W, H, s) : [-1e6, -1e6], rAp = 9.2 / g.scale * s, clear = rAp + 3;
   if (S.marks) {
     // Gaia: circle at each star's catalogue position for this date; arrows for fast movers.
@@ -619,8 +791,9 @@ function overlays(it, W, H, s) {
     // Predicted path of the catalogued target: a dotted line with one tick per visit. The line stops
     // short of the ring and the ticks sit beside the path, so the object itself stays in view.
     if (S.track && S.head?.epochs?.length && !own) {
-      const eps = S.head.epochs;
-      const a = trackPos(eps[0][0] - 200), b = trackPos(eps[eps.length - 1][1] + 200);
+      // in the Years view the path runs from the oldest image to the newest, without the ticks of the SPHEREx visits
+      const eps = yrs ? [[S.seq[0].mjd, S.seq[0].mjd], [S.seq[S.seq.length - 1].mjd, S.seq[S.seq.length - 1].mjd]] : S.head.epochs;
+      const a = trackPos(eps[0][0] - 200, g), b = trackPos(eps[eps.length - 1][1] + 200, g);
       const [AX, AY] = g2c(a[0], a[1], W, H, s), [BX, BY] = g2c(b[0], b[1], W, H, s), L = Math.hypot(BX - AX, BY - AY);
       if (L > 10) {
         const ux = (BX - AX) / L, uy = (BY - AY) / L, nx = -uy, ny = ux;
@@ -633,7 +806,7 @@ function overlays(it, W, H, s) {
         } else { ctx.moveTo(AX, AY); ctx.lineTo(BX, BY); }
         ctx.stroke(); ctx.setLineDash([]);
         ctx.lineWidth = 2;
-        eps.forEach((e, i) => {
+        if (!yrs) eps.forEach((e, i) => {
           const q = trackPos((e[0] + e[1]) / 2), [QX, QY] = g2c(q[0], q[1], W, H, s);
           ctx.strokeStyle = C.EPOCH_COLORS[i % C.EPOCH_COLORS.length];
           for (const sgn of [-1, 1]) {
@@ -645,7 +818,7 @@ function overlays(it, W, H, s) {
       }
     }
     // A body of the solar system that is being followed: its path from stop to stop, with a dot at each stop. Kept out of the ring.
-    const path = own ? null : bodyStops();
+    const path = own || yrs ? null : bodyStops();
     if (path && path.length > 1) {
       ctx.save();
       ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.arc(PX, PY, clear, 0, 7); ctx.clip('evenodd');
@@ -657,7 +830,7 @@ function overlays(it, W, H, s) {
     }
     // The other bodies that the search found in the exposures of this very stop: a gold corner mark and a name.
     const here = it.frame ? Movers.stopOf(it.frame.id) : it.at?.stop;
-    if (here && S.movers?.tracks) for (const t of S.movers.tracks) {
+    if (here && S.movers?.tracks && !yrs) for (const t of S.movers.tracks) {
       if (t === S.sel?.trail || (t.body?.own && S.sel?.follow)) continue;
       const q = t.sightings.find(x => x.stop === here); if (!q) continue;
       const [X, Y] = g2c(q.x, q.y, W, H, s), r = rAp + 4, k = 6;
@@ -666,7 +839,7 @@ function overlays(it, W, H, s) {
       ctx.stroke(); ctx.fillText(bodyLabel(t), X + r + 5, Y + 4);
     }
     // Stars that the field check flagged: a diamond, wide enough to leave the star in view.
-    if (scanResult?.flags?.length && scanKey.startsWith(`${S.gen}:${S.det}:`)) {
+    if (scanResult?.flags?.length && scanKey.startsWith(`${S.gen}:${S.det}:`) && !yrs) {
       ctx.strokeStyle = '#f2c14e'; ctx.lineWidth = 1.4;
       for (const f of scanResult.flags) {
         if (f.own) continue;
@@ -706,7 +879,7 @@ function show() {
   const it = S.seq[S.idx];
   $('seek').value = S.idx;
   $('count').textContent = S.seq.length ? `${S.idx + 1} / ${S.seq.length}` : '';
-  $('caption').innerHTML = it ? `<b><i style="background:${epochColor(it.mjd)}"></i>${it.title}</b><span>${it.det === 0 ? '' : `D${it.det || S.det} · `}${it.sub}</span>` : '';
+  $('caption').innerHTML = it ? `<b><i style="background:${it.color || epochColor(it.mjd)}"></i>${it.title}</b><span>${it.det === 0 ? '' : `D${it.det || S.det} · `}${it.sub}</span>` : '';
   const single = S.seq.length < 2;
   $('play').disabled = $('prev').disabled = $('next').disabled = single;
   if (single) stop();
@@ -1228,9 +1401,10 @@ function renderChips() {
     .map(n => `<option value="${n.replace(/"/g, '&quot;')}">`).join('');
 }
 const openTarget = t => go({ ra: t.ra, dec: t.dec, size: t.size, target: t, info: t.info || null, ...(t.view || { mode: 'epochs' }) });
-$('heroshot').onclick = () => {
-  const t = S.targets.find(x => x.slug === 'pluto');
-  if (t) openTarget(t); else location.search = '?target=pluto';          // pressed before the list of objects has arrived
+$('heroshot').onclick = () => {          // the front page's picture: Barnard's Star over 26 years, opened in the Years view
+  const t = S.targets.find(x => x.slug === 'barnard');
+  if (t) go({ ra: t.ra, dec: t.dec, size: t.size, target: t, info: t.info || null, det: t.view?.det || 5, mode: 'years' });
+  else location.search = '?target=barnard&mode=years';          // pressed before the list of objects has arrived
 };
 
 function openPanel() {
@@ -1599,9 +1773,11 @@ function renderModes() {
   for (const b of $('modes').children) {
     const m = b.dataset.mode;
     b.setAttribute('aria-pressed', m === S.mode);
-    b.hidden = m === 'trail' ? !body : own && ['color', 'diff', 'deep'].includes(m);          // views that set one patch of sky against itself: not for a followed body
+    b.hidden = m === 'trail' ? !body : m === 'years' ? !yearsOk() : own && ['color', 'diff', 'deep'].includes(m);          // views that set one patch of sky against itself: not for a followed body
   }
-  $('explain').textContent = (own && FOLLOWED[S.mode]) || MODES[S.mode];
+  $('explain').textContent = (own && FOLLOWED[S.mode]) || (S.mode === 'years' && S.years?.src === 'maps' ? YEARS_MAPS : MODES[S.mode]);
+  const small = $('overtime');
+  if (small) small.textContent = S.mode === 'years' ? G`2MASS, WISE and SPHEREx images of this spot` : G`every SPHEREx exposure of this spot`;
 }
 
 // ------------------------------------------------------------ bodies of the solar system passing through
@@ -2036,6 +2212,14 @@ function renderMeta() {
     add(G`PSF width`, `${f.fwhm}″`);
     add(G`Source file`, G`<a href="${f.url}" target="_blank" rel="noopener">FITS at IRSA</a>`);
     add(G`Pixel flags`, `<div class="pxbox">${flagsHtml(f)}</div>`);
+  } else if (it.years) {
+    const f = it.years;
+    add(G`Image`, it.title);
+    add(G`Telescope`, f.survey === 'SPHEREx' ? `SPHEREx D${f.det} (${C.DET_BANDS[f.det].join('–')} µm)` : `${f.survey} ${f.band} (${Years.LAM[f.band].toFixed(2)} µm)`);
+    add(G`Taken`, f.survey === 'AllWISE' ? G`in WISE’s passes over this place in 2010 and early 2011, added together` : f.guessed ? G`between 1997 and 2001 (the night could not be looked up)` : f.t1 - f.t0 > 1 ? C.fmtRange(f.t0, f.t1) : C.fmtDate(f.mjd));
+    if (f.n) add(G`Built from`, f.survey === '2MASS' ? G`${f.n} Atlas Images of 2MASS, joined` : G`${nExp(f.n)}, the middle value of each pixel`);
+    if (!f.pic) add(G`Noise (1σ)`, `${f.sig.toFixed(3)} MJy/sr`);
+    add(G`Source`, f.pic ? G`sky map (HiPS) at NASA/IPAC, as its makers stretched it: not measured` : f.survey === 'SPHEREx' ? G`SPHEREx level 2 exposures at NASA/IPAC` : f.survey === '2MASS' ? G`2MASS Atlas Images at NASA/IPAC` : G`WISE and NEOWISE single exposures (level 1b) at NASA/IPAC`);
   } else {
     add(G`Image`, it.title);
     add(G`Built from`, it.sub);
@@ -2044,7 +2228,7 @@ function renderMeta() {
     if (it.ep) add(G`Releases`, [...new Set(it.ep.frames.map(f => f.coll))].join(', '));
     add(G`Pixel flags`, G`Flags belong to single exposures: choose “Exposures” above, then read them here.`);
   }
-  if (S.grid) add(G`Pixel scale`, G`${S.grid.scale.toFixed(2)}″ (resampled, north up, east left)`);
+  if (S.grid) add(G`Pixel scale`, G`${vg().scale.toFixed(2)}″ (resampled, north up, east left)`);
   el.innerHTML = rows.join('');
   if (it.frame) {
     const f = it.frame;
@@ -2272,7 +2456,7 @@ new ResizeObserver(() => paint()).observe(cv);
 // pointer: tap = measure, drag = pan, pinch / wheel = zoom
 const ptrs = new Map(); let pinch = null;
 function clampView() {
-  const n = S.grid.n; S.view.z = clamp(S.view.z, 1, 32);
+  const n = vg().n; S.view.z = clamp(S.view.z, 1, 32);
   const half = n / (2 * S.view.z);                       // the image always fills the frame
   S.view.cx = clamp(S.view.cx, half - 0.5, n - 0.5 - half); S.view.cy = clamp(S.view.cy, half - 0.5, n - 0.5 - half);
   // Not zoomed in: a vertical swipe scrolls the page. Zoomed in: dragging pans the image.
@@ -2280,13 +2464,13 @@ function clampView() {
 }
 function resetView() {
   if (!S.grid) return;
-  const c = (S.grid.n - 1) / 2; S.view = { z: 1, cx: c, cy: c };
+  const c = (vg().n - 1) / 2; S.view = { z: 1, cx: c, cy: c };
   cv.classList.remove('zoomed');
 }
 function zoomAt(X, Y, factor) {
   const [gx, gy] = c2g(X, Y);
   S.view.z = clamp(S.view.z * factor, 1, 32);
-  const W = cv.clientWidth, H = cv.clientHeight, s = W / S.grid.n * S.view.z;
+  const W = cv.clientWidth, H = cv.clientHeight, s = W / vg().n * S.view.z;
   S.view.cx = gx - (X - W / 2) / s; S.view.cy = gy + (Y - H / 2) / s;
   clampView(); paint();
 }
@@ -2300,7 +2484,7 @@ cv.addEventListener('pointermove', e => {
   if (!S.grid) return;
   const p = ptrs.get(e.pointerId);
   if (!p) {
-    const [gx, gy] = c2g(e.offsetX, e.offsetY), [ra, dec] = C.gridToSky(S.grid, gx, gy);
+    const [gx, gy] = c2g(e.offsetX, e.offsetY), [ra, dec] = C.gridToSky(vg(), gx, gy);
     $('readout').textContent = `${C.fmtSex(ra, dec)}   (${ra.toFixed(5)}°, ${dec.toFixed(5)}°)`;
     return;
   }
@@ -2308,7 +2492,7 @@ cv.addEventListener('pointermove', e => {
   p.x = e.offsetX; p.y = e.offsetY;
   if (Math.hypot(p.x - p.x0, p.y - p.y0) > 6) p.moved = true;
   if (ptrs.size === 1 && p.moved) {
-    const s = cv.clientWidth / S.grid.n * S.view.z;
+    const s = cv.clientWidth / vg().n * S.view.z;
     S.view.cx -= dx / s; S.view.cy += dy / s; clampView(); paint();
   } else if (ptrs.size === 2 && pinch) {
     const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
@@ -2327,6 +2511,7 @@ cv.addEventListener('dblclick', e => { if (S.grid) zoomAt(e.offsetX, e.offsetY, 
 
 function pick(X, Y) {
   if (followed()) return;          // the images are centred on the body: no other spot keeps its place in them
+  if (S.mode === 'years') return;          // the ring stays on what was chosen in the other views
   const [gx, gy] = c2g(X, Y), it = S.seq[S.idx];
   // Clicking on the tracked target's predicted spot re-attaches the moving aperture.
   if (S.track && it) { const t = trackPos(it.mjd); if (Math.hypot(t[0] - gx, t[1] - gy) < 3) { S.sel = { follow: true }; paint(); renderMotion(); refreshPlots(); return; } }
@@ -3090,6 +3275,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   pick.onchange = () => Lang.choose(pick.value);
   renderModes(); renderDets();
   try { S.targets = await (await fetch('data/targets.json')).json(); } catch { S.targets = []; }
+  try { S.yearsIdx = await (await fetch('data/years.json')).json(); } catch { S.yearsIdx = {}; }
   renderChips();
   $('layer').innerHTML = Sky.LAYERS.map(l => `<option value="${l.id}">${G(l.label)}</option>`).join('');
   if (!S.embed) {

@@ -16,10 +16,10 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 ## What you can do
 
 - **See it move before you press anything.** The front page says that the sky is not still, and shows it:
-  beside the title Pluto walks across a patch of sky in 17 real SPHEREx pictures (3 to 12 October 2025), the
-  ring on it and the stars standing still. The pictures are the tool's own "Passing body" view of Pluto,
-  saved from the page itself; a press opens Pluto in the tool. People who asked their device for less motion
-  get one still picture.
+  beside the title Barnard's Star walks across a patch of sky in sixteen real images, from 2MASS in May 2000
+  through WISE and NEOWISE to SPHEREx in August 2026, the ring on it and the stars standing still. A press opens
+  it in the *Years* view (below). People who asked their device for less motion get one still picture, with the
+  path drawn in. A link to the site shows the same walk as its preview: the oldest image beside the newest.
 - **Roam the sky.** The map is the SPHEREx all-sky data cube served by NASA/IPAC, shown with Aladin Lite. A
   slider moves through all 102 wavelengths; 2MASS, WISE and visible-light maps are one click away. A new
   colour, a new place or a new zoom dissolves in as a whole: the map never flashes or shows half-loaded sky.
@@ -46,6 +46,19 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 - **Watch it over time.** Every SPHEREx exposure covering the spot is read, aligned and played back.
   *Visits* stacks each SPHEREx visit and loops through them, *Time as colour* paints early red and late blue,
   *Difference* subtracts visits, *Wavelengths* steps through the six detectors.
+- **A quarter of a century in one view.** *Years: 2MASS, WISE, SPHEREx*, first among the views, plays the same
+  patch of sky as three telescopes saw it: 2MASS on the night it looked (between 1997 and 2001), WISE in 2010
+  and NEOWISE every half year from 2014 to 2024, then each SPHEREx visit, every telescope in its band nearest to
+  the detector in use. For the five test objects the images were built from the telescopes' own exposures, on
+  one grid and in one unit, every WISE visit stacked. Barnard's Star walks 4.6 arcminutes north across a field
+  of 10 arcminutes; WISE 0855 is missing from 2MASS, too faint at 2.2 microns, and walks west through WISE and
+  SPHEREx: this is how a cold, nearby world gives itself away, and how WISE 0855 was found. Under the images the
+  page measures the motion from the images themselves and sets it against the catalogue (SIMBAD): 10.42
+  arcseconds a year for Barnard's Star (catalogue: 10.39), 4.71 for Epsilon Indi B (4.68), 8.19 for WISE 0855 (8.15). For any
+  other place the page reads the 2MASS and AllWISE sky maps (HiPS) at NASA/IPAC in the browser and lays them on
+  the grid of the SPHEREx images, dated by the night 2MASS looked (from the 2MASS catalogue): pictures to look
+  at, not measurements. When a fast star stood outside the field on that night (Kapteyn's Star, 3.9
+  arcminutes away in October 1999), the page says so and offers a wider field.
 - **Did it move?** For any spot you click, its position is measured in every visit and compared with how
   well ordinary stars in the same images repeat. A catalogued fast mover is also set against its predicted path.
 - **Did it change?** Brightness changes between visits are checked against ordinary stars in the same images:
@@ -136,7 +149,7 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
 | Public web tool | A static site with no server and no login; works on a phone and offline |
 | Enter RA and Dec | Decimal degrees, sexagesimal, or an object name; or just click the map. Coordinates can be pasted with their labels, as the challenge text gives them ("Right Ascension 08h55m10.831s, declination -7d14m42.53s"); for old coordinates of a fast mover the tool offers to jump to where the object is now |
 | Series of images like a little video | Starts playing by itself; pause, step, speed; zoom and pan |
-| Easy to spot moving objects | Visit stacks, time-as-colour, difference images; every clear star in the field is checked for motion and flagged; the shift of any clicked spot is measured and judged against ordinary stars; catalogued movers are compared with their prediction |
+| Easy to spot moving objects | The same spot in 2MASS, WISE, NEOWISE and SPHEREx images over a quarter of a century, the motion measured from them; visit stacks, time-as-colour, difference images; every clear star in the field is checked for motion and flagged; the shift of any clicked spot is measured and judged against ordinary stars; catalogued movers are compared with their prediction |
 | Tested on Barnard's Star, Epsilon Indi B, WISE 0855, RW Aurigae, R Draconis | On the front page and in the guided tour, each with a note on what to look for |
 | Easy to update with new data releases | Nothing about releases is hard-coded: a scheduled job rebuilds the sky index from the archive, and each release can be switched on or off in the viewer |
 | Use the 102 bands, add detectors, spectra on the fly | Per-detector stacks; the 102-band all-sky map; click-to-spectrum computed in the browser |
@@ -311,6 +324,38 @@ talking directly to NASA's open data.
   by name leads to it; the panel of the five test objects is word for word what it was before; the tour has
   its thirteen steps, also with the network cut; no text spills in five languages on a laptop and a phone;
   WebKit and Firefox give the same numbers.
+- **The Years view (21 November 2026).**
+  *The sky maps read in the browser.* Which way the pixels of a HiPS tile are laid out was found by trying all
+  eight ways a square can be turned or mirrored on three fields (on the equator, in the north and in the south)
+  and comparing each with Gaia stars (`spike/hips_orient.py`, `spike/hips_check.py`): one puts the stars of
+  2MASS K within 0.52 arcseconds (r.m.s.) of their Gaia places moved back to 2000.4 in Barnard's field and within
+  0.75 near R Draconis; the next best is off by 4.5 arcseconds. The night 2MASS looked is the date of the
+  brightest 2MASS source near the place (VizieR, II/246); when that cannot be looked up, the picture is labelled
+  1997 to 2001 and the page says why.
+  *The images built for the five test objects* (`scripts/build_years.py`). 2MASS Atlas Images (IRSA), joined
+  where a field spans two scans and dated by the scan the star is in; WISE and NEOWISE single exposures (level
+  1b) read from IRSA's open data on AWS, only the rows of each exposure that the field needs; SPHEREx level 2
+  exposures. Every image is resampled onto one grid and turned into MJy/sr with its own zero point; each WISE
+  visit is the median of up to 16 exposures (24 for Barnard's Star), each SPHEREx visit of its exposures in one
+  detector (visits of fewer than five exposures are left out).
+  *Where the star's light lies* in each image, against the place the catalogue (SIMBAD) gives for that date (its
+  motion and, for nearby stars, its parallax), worked out by the page itself:
+
+  | Star | Images | 2MASS | WISE 2010 | NEOWISE | SPHEREx | Motion measured (catalogue) |
+  |---|---|---|---|---|---|---|
+  | Barnard's Star | 27 | 0.2″ | 1.1″ | 0.4″ (21) | 1.0″ (3) | 10.42″ a year (10.39) |
+  | Epsilon Indi B | 29 | 0.2″ | 0.2″ | 0.5″ (21) | 0.5″ (5) | 4.71″ a year (4.68) |
+  | WISE 0855 | 25 | not seen | 0.5″ | 0.4″ (21) | 1.3″ (2) | 8.19″ a year (8.15) |
+  | RW Aurigae | 27 | 0.4″ | 0.5″ | 0.4″ (21) | 0.7″ (3) | moves 0.6″ in 27 years |
+  | R Draconis | 32 | 0.1″ | 0.6″ | 1.0″ (22) | 1.3″ (7) | moves 0.6″ in 27 years |
+
+  A WISE pixel is 2.75 arcseconds, a SPHEREx pixel 6.15. Barnard's Star is so bright that the core of every WISE
+  image of it is missing (saturated): the missing pixels are counted as the brightest light around them and
+  the centre is taken over six pixels, which puts its light 0.6 arcseconds (r.m.s.) from the catalogue's place;
+  windows of 2.5 or 4 pixels without the filling stray by 7 to 8 arcseconds (`spike/years_centre.py`). WISE
+  0855 does not show in 2MASS: the page says so, and measures it from WISE and SPHEREx only.
+  *In use.* On a laptop and a phone, in English and Turkish, with no page errors; nothing passes the right edge
+  of a phone's screen; the live maps on Kapteyn's Star (a place with no images built for it).
 - **Picking a field for a hunt.** Twelve picks in a row: eleven gave a field, after one to six asteroids
   tried and 1 to 10 seconds; one gave none (ten asteroids are tried now, where six were). The two fields then
   read in full are the two hunts above.
@@ -429,6 +474,8 @@ python -m venv .venv
 .venv/Scripts/python scripts/build_index.py          # bring the sky index up to date (downloads only what is new)
 .venv/Scripts/python scripts/prebuild.py             # rebuild the five showcase objects
 .venv/Scripts/python scripts/prebuild.py --meta      # refresh only their descriptions and catalogue facts
+.venv/Scripts/python scripts/build_years.py          # the Years view of the five test objects: 2MASS, WISE and NEOWISE, SPHEREx (about 10 minutes each)
+.venv/Scripts/python scripts/build_images.py --years barnard   # its moving picture for the plain pages (also --hero, --share for the front page)
 node scripts/build_body.mjs pluto                    # rebuild Pluto: its path from JPL Horizons, its field from the archive
 node scripts/build_body.mjs 3i-atlas                 # rebuild comet 3I/ATLAS: every exposure that had it in view, cut out around it
 ```
@@ -451,6 +498,8 @@ web/js/plot.js        the scatter plots on a canvas: axes, error bars, hover too
 web/js/sky.js         the explorable sky map (Aladin Lite + IRSA sky maps)
 web/js/rice.js        Rice decompression, for the flags layer of an exposure
 web/js/healpix.js     which sky-map tiles a view needs (HEALPix)
+web/js/years.js       the Years view: the images built for the test objects, and the 2MASS and AllWISE sky maps
+                      read in the browser and laid on the grid of the SPHEREx images, for any other place
 web/js/movers.js      bodies of the solar system passing through a field: the dots that are not always there
 web/js/bodies.js      a body by name: its path (Miriade), the days SPHEREx had it in view, the shift to where the
                       spacecraft was, the report in the Minor Planet Center's format, a field for a hunt
@@ -460,7 +509,8 @@ web/js/lang.js        the words of the front page, the tour and the walk through
 web/js/lang/          the measurement panel in Turkish, Spanish, German, French and Polish (one file each)
 web/js/pages.js       the "Asteroid hunt", "What is SPHEREx?", "How it works" and "About" pages, in English
 web/js/pages/         the same four pages in the other five languages (one file each)
-web/hero-pluto.webp   the front page's moving picture: the tool's own "Passing body" view of Pluto (hero-pluto.jpg: one still frame)
+web/hero-barnard.webp the front page's moving picture: Barnard's Star from 2000 to 2026 in 2MASS, WISE, NEOWISE and SPHEREx
+                      images (hero-barnard.jpg: one still picture, the path drawn in); web/share.jpg: a link's preview
 web/sw.js             service worker: offline cache
 web/404.html          what a wrong address shows, with the way back to the map
 web/manifest.webmanifest, web/icon-192.png, web/icon-512.png, web/apple-touch-icon.png, web/favicon.ico
@@ -483,7 +533,8 @@ web/robots.txt, web/sitemap.xml   for search engines (the sitemap is generated w
 web/db83ba526cb561c174feda741610f139.txt   the IndexNow key: Bing, Yandex and others read it to check that a
                       notice of new pages (scripts/indexnow.py) comes from this site
 web/index/            the sky index (generated)
-web/data/             the showcase objects: the five test objects, Pluto and comet 3I/ATLAS (generated)
+web/data/             the showcase objects: the five test objects, Pluto and comet 3I/ATLAS (generated); for the five
+                      test objects also years-*.ndjson, the images of the Years view, listed in web/data/years.json
 web/vendor/aladin.js  Aladin Lite 3.8.2 (CDS, GPL-3.0), unmodified
 web/fonts/            IBM Plex and Instrument Serif (SIL Open Font License)
 scripts/              build_index.py, prebuild.py; build_body.mjs builds Pluto and comet 3I/ATLAS with the site's own reader (Node);
@@ -498,6 +549,11 @@ No build step: plain HTML, CSS and JavaScript modules.
 
 ## Honest limits
 
+- The Years view shows where things were and measures where a star's light lies; it does not yet measure how
+  bright a star was over the years. The variable test objects are saturated in WISE, and the bands of the
+  three telescopes differ, so a light curve across them needs more care than a picture does. Away from the
+  test objects the older images are the sky maps' pictures, stretched by their makers, and are not measured;
+  AllWISE added up WISE's passes of 2010 and early 2011, and the page dates it 2010.
 - A SPHEREx pixel is 6.15 arcseconds. Even Barnard's Star moves only about 1.7 pixels per year, so motion shows
   up as a small shift between visits, not a streak. Positions repeat to a few tenths of an arcsecond, so
   anything slower than roughly one to two arcseconds per year cannot be seen yet.
@@ -566,6 +622,9 @@ No build step: plain HTML, CSS and JavaScript modules.
 - SPHEREx images and all-sky cube: NASA/JPL-Caltech, served by the NASA/IPAC Infrared Science Archive (IRSA)
   and the `nasa-irsa-spherex` open data bucket on AWS.
 - 2MASS, AllWISE and DSS sky maps: HiPS built by CDS, served by IRSA.
+- The Years view: 2MASS Atlas Images (Skrutskie et al. 2006; University of Massachusetts and IPAC/Caltech, for
+  NASA and the NSF), from IRSA; WISE (Wright et al. 2010) and NEOWISE (Mainzer et al. 2011, 2014) single
+  exposures, JPL/Caltech and UCLA for NASA, from IRSA's open data bucket `nasa-irsa-wise` on AWS.
 - Gaia DR3: ESA/Gaia/DPAC. CatWISE2020: Marocco et al. 2021. AllWISE: Cutri et al. 2013. Queried through IRSA
   for the test objects and through VizieR (CDS and its mirror at Harvard) everywhere else.
 - Object identification and name resolution: SIMBAD and Sesame, CDS, Strasbourg, and their mirrors at the

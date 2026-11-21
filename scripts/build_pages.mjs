@@ -11,7 +11,7 @@
 //
 // Writes web/<name>.html for English, web/<code>/<name>.html for the other languages, and web/sitemap.xml.
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -22,6 +22,8 @@ const ENGLISH_NAV = { hunt: 'Asteroid hunt', spherex: 'What is SPHEREx?', how: '
 const OBJECT_FILES = { barnard: 'barnards-star.html', epsindib: 'epsilon-indi-b.html', wise0855: 'wise-0855.html', rwaur: 'rw-aurigae.html', rdra: 'r-draconis.html', pluto: 'pluto.html', '3i-atlas': '3i-atlas.html' };
 const FILES = { ...SHEET_FILES, planetx: 'planet-x.html', ...OBJECT_FILES };
 const TARGETS = JSON.parse(readFileSync(join(WEB, 'data', 'targets.json'), 'utf8'));
+// The showcase stars that have the Years view (scripts/build_years.py), with the moving picture of it (scripts/build_images.py --years).
+const YEARS = (() => { try { return JSON.parse(readFileSync(join(WEB, 'data', 'years.json'), 'utf8')); } catch { return {}; } })();
 const TOUR_KEYS = ['tour.3.title', 'tour.3.text', 'tour.px.title', 'tour.px.text', 'tour.faint.title', 'tour.faint.text', 'tour.4.title', 'tour.4.text',
   'hero.tour', 'ladder.title', 'ladder.note', 'ladder.limit', 'ladder.r1', 'ladder.r2', 'ladder.r3', 'ladder.r4', 'ladder.r5', 'ladder.r6', ...TARGETS.filter(o => !o.extra).map(o => `tour.${o.slug}`)];
 // The ladder of brightness, as the tour shows it (see RUNGS in web/js/app.js for the numbers and their sources).
@@ -47,6 +49,7 @@ const DOC = {
     plutoCap: 'Pluto in SPHEREx images of 6 and 12 October 2025, shown in turn: the one dot that moves, 50 arcseconds in six days. Tombaugh’s two plates were also six days apart, taken on 23 and 29 January 1930.',
     title: n => `${n} in SPHEREx images`, alt: (n, how) => `SPHEREx images of ${n}: ${how}`,
     how: { visit: 'one picture per visit', month: 'one picture per month', det: 'one picture per detector, from 0.75 to 5 microns', stop: 'one picture for every stop of the telescope that caught it' },
+    years: { h: 'Over a quarter of a century', cap: (n, a, b) => `Images of 2MASS (${a}), of WISE and NEOWISE (every half year) and of SPHEREx (${b}): the ring marks where the catalogue places ${n} on each date.`, open: 'Open the Years view' },
     openIt: n => `Open ${n} in Chronosphere`, facts: (k, a, b) => `SPHEREx has ${k} exposures of this spot, from ${a} to ${b}.`,
   },
   tr: {
@@ -67,6 +70,7 @@ const DOC = {
     plutoCap: '6 ve 12 Ekim 2025 tarihli SPHEREx görüntülerinde Plüton, sırayla gösteriliyor: yeri değişen tek nokta, altı günde 50 yay saniyesi. Tombaugh’un iki fotoğraf plakası da altı gün arayla, 23 ve 29 Ocak 1930’da çekilmişti.',
     title: n => `SPHEREx görüntülerinde ${n}`, alt: (n, how) => `${n}, SPHEREx görüntüleri: ${how}`,
     how: { visit: 'her ziyaret için bir resim', month: 'her ay için bir resim', det: '0,75 ile 5 mikron arasında her dedektör için bir resim', stop: 'teleskobun onu yakaladığı her durak için bir resim' },
+    years: { h: 'Çeyrek yüzyıl boyunca', cap: (n, a, b) => `2MASS (${a}), WISE ve NEOWISE (altı ayda bir) ve SPHEREx (${b}) görüntüleri: halka, kataloğun her tarihte ${n} için verdiği yeri gösterir.`, open: 'Yıllar görünümünü aç' },
     openIt: n => `Chronosphere’de aç: ${n}`, facts: (k, a, b) => `SPHEREx’in bu noktaya ait ${k} pozu var: ${a} ile ${b} arasında.`,
   },
   es: {
@@ -87,6 +91,7 @@ const DOC = {
     plutoCap: 'Plutón en imágenes de SPHEREx del 6 y el 12 de octubre de 2025, mostradas por turnos: el único punto que se mueve, 50 segundos de arco en seis días. Las dos placas de Tombaugh también se tomaron con seis días de diferencia, el 23 y el 29 de enero de 1930.',
     title: n => `${n} en imágenes de SPHEREx`, alt: (n, how) => `Imágenes de SPHEREx de ${n}: ${how}`,
     how: { visit: 'una imagen por visita', month: 'una imagen por mes', det: 'una imagen por detector, de 0,75 a 5 micras', stop: 'una imagen por cada parada del telescopio que lo captó' },
+    years: { h: 'A lo largo de un cuarto de siglo', cap: (n, a, b) => `Imágenes de 2MASS (${a}), de WISE y NEOWISE (cada medio año) y de SPHEREx (${b}): el anillo marca dónde sitúa el catálogo a ${n} en cada fecha.`, open: 'Abrir la vista Años' },
     openIt: n => `Abrir ${n} en Chronosphere`, facts: (k, a, b) => `SPHEREx tiene ${k} exposiciones de este punto, del ${a} al ${b}.`,
   },
   de: {
@@ -107,6 +112,7 @@ const DOC = {
     plutoCap: 'Pluto auf SPHEREx-Aufnahmen vom 6. und 12. Oktober 2025, abwechselnd gezeigt: der einzige Punkt, der wandert, 50 Bogensekunden in sechs Tagen. Auch Tombaughs zwei Fotoplatten lagen sechs Tage auseinander, aufgenommen am 23. und 29. Januar 1930.',
     title: n => `${n} auf SPHEREx-Aufnahmen`, alt: (n, how) => `SPHEREx-Aufnahmen von ${n}: ${how}`,
     how: { visit: 'eine Aufnahme pro Besuch', month: 'eine Aufnahme pro Monat', det: 'eine Aufnahme pro Detektor, von 0,75 bis 5 Mikrometer', stop: 'ein Bild für jeden Halt des Teleskops, bei dem er erfasst wurde' },
+    years: { h: 'Über ein Vierteljahrhundert', cap: (n, a, b) => `Bilder von 2MASS (${a}), von WISE und NEOWISE (jedes halbe Jahr) und von SPHEREx (${b}): Der Ring steht für jedes Datum dort, wo der Katalog ${n} verortet.`, open: 'Ansicht „Jahre“ öffnen' },
     openIt: n => `${n} in Chronosphere öffnen`, facts: (k, a, b) => `SPHEREx hat ${k} Aufnahmen dieser Stelle, vom ${a} bis zum ${b}.`,
   },
   fr: {
@@ -127,6 +133,7 @@ const DOC = {
     plutoCap: 'Pluton sur des images SPHEREx des 6 et 12 octobre 2025, montrées tour à tour : le seul point qui se déplace, 50 secondes d’arc en six jours. Les deux plaques de Tombaugh avaient elles aussi été prises à six jours d’intervalle, les 23 et 29 janvier 1930.',
     title: n => `${n} sur les images SPHEREx`, alt: (n, how) => `Images SPHEREx de ${n} : ${how}`,
     how: { visit: 'une image par visite', month: 'une image par mois', det: 'une image par détecteur, de 0,75 à 5 microns', stop: 'une image pour chaque arrêt du télescope qui l’a saisie' },
+    years: { h: 'Sur un quart de siècle', cap: (n, a, b) => `Images de 2MASS (${a}), de WISE et NEOWISE (tous les six mois) et de SPHEREx (${b}) : l’anneau marque l’endroit où le catalogue situe ${n} à chaque date.`, open: 'Ouvrir la vue Années' },
     openIt: n => `Ouvrir ${n} dans Chronosphere`, facts: (k, a, b) => `SPHEREx a ${k} poses de ce point, du ${a} au ${b}.`,
   },
   pl: {
@@ -147,6 +154,7 @@ const DOC = {
     plutoCap: 'Pluton na zdjęciach SPHEREx z 6 i 12 października 2025 roku, pokazywanych na zmianę: jedyny punkt, który się przesuwa, o 50 sekund łuku w sześć dni. Dwie klisze Tombaugha również dzieliło sześć dni: wykonano je 23 i 29 stycznia 1930 roku.',
     title: n => `${n} na zdjęciach SPHEREx`, alt: (n, how) => `Zdjęcia SPHEREx: ${n}, ${how}`,
     how: { visit: 'jedno zdjęcie na wizytę', month: 'jedno zdjęcie na miesiąc', det: 'jedno zdjęcie na detektor, od 0,75 do 5 mikrometrów', stop: 'jedno zdjęcie na każdy postój teleskopu, który go uchwycił' },
+    years: { h: 'Na przestrzeni ćwierć wieku', cap: (n, a, b) => `Obrazy z 2MASS (${a}), z WISE i NEOWISE (co pół roku) i z SPHEREx (${b}): pierścień pokazuje, gdzie katalog umieszcza obiekt ${n} w danym dniu.`, open: 'Otwórz widok Lata' },
     openIt: n => `Otwórz w Chronosphere: ${n}`, facts: (k, a, b) => `SPHEREx ma ${k} ekspozycji tego miejsca, od ${a} do ${b}.`,
   },
 };
@@ -275,6 +283,12 @@ function content(code, id) {
   const open = `${up}?target=${o.slug}${code === 'en' ? '' : `&lang=${code}`}`;
   const simbad = `https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${encodeURIComponent(o.info?.mainId || o.query)}`;
   const wiki = o.wikiCard?.title ? `https://en.wikipedia.org/wiki/${encodeURIComponent(o.wikiCard.title.replace(/ /g, '_'))}` : null;
+  // the same spot over a quarter of a century, where it was built: 2MASS, WISE and NEOWISE, SPHEREx
+  const Y = YEARS[o.slug], month = mjd => new Intl.DateTimeFormat(code, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date((mjd - 40587) * 864e5));
+  const years = Y && existsSync(join(WEB, 'img', `${o.slug}-years.webp`)) ? `
+    <h2>${esc(D.years.h)}</h2>
+    <figure class="docfig"><img src="${up}img/${o.slug}-years.webp" width="392" height="392" loading="lazy" alt="${attr(D.years.cap(name, month(Y.span[0]), month(Y.span[1])))}"><figcaption>${esc(D.years.cap(name, month(Y.span[0]), month(Y.span[1])))}</figcaption></figure>
+    <p class="docgo"><a href="${open}&mode=years">${esc(D.years.open)}</a></p>` : '';
   const body = `
     <p class="eyebrow">${esc(w[o.type])}${o.sp ? ` · ${esc(o.sp)}` : ''}</p>
     <h1>${esc(name)}</h1>
@@ -284,10 +298,10 @@ function content(code, id) {
     <h2>${esc(w['What to look for'])}</h2>
     <p>${esc(w[o.look])}</p>
     <p>${esc(facts)}</p>
-    <p class="docgo"><a class="cta" href="${open}">${esc(D.openIt(name))}</a></p>
+    <p class="docgo"><a class="cta" href="${open}">${esc(D.openIt(name))}</a></p>${years}
     <p class="fine">${esc(D.sources)}: <a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noopener">SPHEREx, NASA/JPL-Caltech, IRSA</a> · ${o.eph
       ? `<a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener">JPL Horizons</a> · <a href="https://ssp.imcce.fr/webservices/skybot/" target="_blank" rel="noopener">SkyBoT, IMCCE</a>`
-      : `<a href="${simbad}" target="_blank" rel="noopener">SIMBAD</a> · <a href="https://www.cosmos.esa.int/web/gaia/dr3" target="_blank" rel="noopener">Gaia DR3</a>`}${wiki ? ` · <a href="${wiki}" target="_blank" rel="noopener">Wikipedia</a>` : ''}</p>`;
+      : `<a href="${simbad}" target="_blank" rel="noopener">SIMBAD</a> · <a href="https://www.cosmos.esa.int/web/gaia/dr3" target="_blank" rel="noopener">Gaia DR3</a>`}${years ? ` · <a href="https://irsa.ipac.caltech.edu/Missions/2mass.html" target="_blank" rel="noopener">2MASS</a> · <a href="https://irsa.ipac.caltech.edu/Missions/wise.html" target="_blank" rel="noopener">WISE, NEOWISE</a>` : ''}${wiki ? ` · <a href="${wiki}" target="_blank" rel="noopener">Wikipedia</a>` : ''}</p>`;
   return { body, title: D.title(name), lead: `${w[o.blurb]} ${D.alt(name, how)}.`, image: `img/${o.slug}.jpg` };
 }
 

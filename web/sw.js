@@ -5,8 +5,8 @@
 const VERSION = 'dev-168';
 const SHELL = `chrono-shell-${VERSION}`, DATA = 'chrono-data-v2', TILES = 'chrono-tiles-v1', LOOKUP = 'chrono-lookup-v1';
 const KEEP = new Set([SHELL, DATA, TILES, LOOKUP, 'chrono-live-v1']);
-const SHELL_FILES = ['./', 'opening.jpg', 'hero-pluto.webp', 'hero-pluto.jpg', 'css/style.css', 'css/fonts.css', 'config.js', 'vendor/aladin.js', 'data/targets.json',
-  'js/app.js', 'js/lang.js', 'js/lang/tr.js', 'js/lang/es.js', 'js/lang/de.js', 'js/lang/fr.js', 'js/lang/pl.js', 'js/core.js', 'js/plot.js', 'js/sky.js', 'js/info.js', 'js/tour.js', 'js/pages.js', 'js/pages/tr.js', 'js/pages/es.js', 'js/pages/de.js', 'js/pages/fr.js', 'js/pages/pl.js', 'js/archive.js', 'js/movers.js', 'js/bodies.js', 'js/rice.js', 'js/healpix.js',
+const SHELL_FILES = ['./', 'opening.jpg', 'hero-barnard.webp', 'hero-barnard.jpg', 'css/style.css', 'css/fonts.css', 'config.js', 'vendor/aladin.js', 'data/targets.json', 'data/years.json',
+  'js/app.js', 'js/lang.js', 'js/lang/tr.js', 'js/lang/es.js', 'js/lang/de.js', 'js/lang/fr.js', 'js/lang/pl.js', 'js/core.js', 'js/plot.js', 'js/sky.js', 'js/info.js', 'js/tour.js', 'js/pages.js', 'js/pages/tr.js', 'js/pages/es.js', 'js/pages/de.js', 'js/pages/fr.js', 'js/pages/pl.js', 'js/archive.js', 'js/movers.js', 'js/bodies.js', 'js/rice.js', 'js/healpix.js', 'js/years.js',
   'planet-x.html', 'tr/planet-x.html', 'es/planet-x.html', 'de/planet-x.html', 'fr/planet-x.html', 'pl/planet-x.html', 'img/pluto-blink.gif',
   'fonts/IBMPlexMono-400-latin-ext.woff2', 'fonts/IBMPlexMono-400-latin.woff2', 'fonts/IBMPlexMono-500-latin-ext.woff2', 'fonts/IBMPlexMono-500-latin.woff2', 'fonts/IBMPlexSans-400-latin-ext.woff2', 'fonts/IBMPlexSans-400-latin.woff2', 'fonts/IBMPlexSans-500-latin-ext.woff2', 'fonts/IBMPlexSans-500-latin.woff2', 'fonts/IBMPlexSans-600-latin-ext.woff2', 'fonts/IBMPlexSans-600-latin.woff2', 'fonts/InstrumentSerif-400-latin-ext.woff2', 'fonts/InstrumentSerif-400-latin.woff2', 'fonts/InstrumentSerif-400i-latin-ext.woff2', 'fonts/InstrumentSerif-400i-latin.woff2'];
 

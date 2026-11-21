@@ -2,6 +2,9 @@
 
     python scripts/build_images.py                          # the showcase objects (web/data) -> web/img/<slug>.gif and .jpg
     python scripts/build_images.py --pluto DIR EPHEM.json   # Pluto, six days apart -> web/img/pluto-blink.gif and .jpg
+    python scripts/build_images.py --years SLUG [det]       # a star over 27 years (scripts/build_years.py) -> web/img/<slug>-years.webp and .jpg
+    python scripts/build_images.py --hero                   # the front page's moving picture: Barnard's Star, 2000 to 2026 -> web/hero-barnard.webp and .jpg
+    python scripts/build_images.py --share                  # the front page's link preview (1200 x 630) -> web/share.jpg
 
 DIR holds Pluto's field as d1..d6.ndjson in the site's own format (read from the archive with the site's reader,
 centred on 304.17 -23.612, 10 arcminutes); EPHEM.json holds JPL Horizons positions of Pluto ({"eph": [{mjd, ra, dec}]}).
@@ -300,9 +303,146 @@ def pluto(src, eph_path):
     print(f"pluto: {date(A[0]['mjd'])} ({len(A)} exposures) and {date(B[0]['mjd'])} ({len(B)}), moved {hop:.0f} arcseconds")
 
 
+def years(slug, det=None):
+    """A star over a quarter of a century, from the images built by scripts/build_years.py: 2MASS, WISE and NEOWISE,
+    SPHEREx, each telescope in its band nearest to the detector the star is shown in; each picture on its own scale of
+    brightness (the telescopes differ), the ring where the catalogue puts the star on that date. The first and the last
+    picture are held longer."""
+    t = next(x for x in json.load(open(WEB / "data" / "targets.json", encoding="utf-8")) if x["slug"] == slug)
+    det = det or t["view"]["det"]
+    near = {1: ("J", "W1"), 2: ("H", "W1"), 3: ("Ks", "W1"), 4: ("Ks", "W1"), 5: ("Ks", "W2"), 6: ("Ks", "W2")}[det]
+    frames, g = [], None
+    for name in ("years-2mass.ndjson", "years-w1.ndjson" if near[1] == "W1" else "years-w2.ndjson", "years-spherex.ndjson"):
+        for line in open(WEB / "data" / slug / name, encoding="utf-8"):
+            d = json.loads(line)
+            if d["t"] == "head":
+                g = d["grid"]
+            elif d["t"] == "frame" and (d["band"] in near or d.get("det") == det):
+                d["data"] = np.frombuffer(base64.b64decode(d.pop("b64")), "<f2").astype(np.float32)
+                frames.append(d)
+    frames.sort(key=lambda f: f["mjd"])
+    n, scale = g["n"], 2
+    pics = []
+    for f in frames:
+        img = f["data"].reshape(n, n)
+        top = max(np.nanpercentile(img, 99.7), 25 * robust_sig(img))
+        x, y = to_grid(g, *track(t, f["mjd"]))
+        what = f"SPHEREx D{det}" if f["survey"] == "SPHEREx" else f"{f['survey']} {f['band']}"
+        pics.append(picture(stretch(img, top), scale, [(x, n - 1 - y, 14 / g["scale"])], date(f["mjd"], False), what))
+    OUT.mkdir(exist_ok=True)
+    ms = [1600] + [260] * (len(pics) - 2) + [1600]
+    pics[0].save(OUT / f"{slug}-years.webp", save_all=True, append_images=pics[1:], duration=ms, loop=0, quality=72, method=6)
+    preview(pics, f"{t['label']} · {date(frames[0]['mjd'], False)} → {date(frames[-1]['mjd'], False)} · 2MASS, WISE, SPHEREx", OUT / f"{slug}-years.jpg")
+    print(f"{slug}: {len(pics)} pictures, {date(frames[0]['mjd'], False)} to {date(frames[-1]['mjd'], False)}, {(OUT / (slug + '-years.webp')).stat().st_size // 1024} kB webp")
+
+
+def hero(slug="barnard", det=5, side=320, crop_arcmin=7.2):
+    """The front page's moving picture: the star's walk, cut to the part of the field it crosses, in the way the site
+    draws its images (north up, the ring on the star where the catalogue puts it); the year in a corner. One image a
+    year of WISE and NEOWISE (the visits of early in each year), every SPHEREx visit. For people who asked their device
+    for less motion, one still picture: the newest image, with the path from the oldest drawn in."""
+    t = next(x for x in json.load(open(WEB / "data" / "targets.json", encoding="utf-8")) if x["slug"] == slug)
+    near = {5: ("Ks", "W2"), 6: ("Ks", "W2"), 4: ("Ks", "W1")}[det]
+    frames, g = [], None
+    for name in ("years-2mass.ndjson", "years-w2.ndjson" if near[1] == "W2" else "years-w1.ndjson", "years-spherex.ndjson"):
+        for line in open(WEB / "data" / slug / name, encoding="utf-8"):
+            d = json.loads(line)
+            if d["t"] == "head":
+                g = d["grid"]
+            elif d["t"] == "frame" and (d["band"] in near or d.get("det") == det):
+                d["data"] = np.frombuffer(base64.b64decode(d.pop("b64")), "<f2").astype(np.float32)
+                frames.append(d)
+    frames.sort(key=lambda f: f["mjd"])
+    yr = lambda f: 2000 + (f["mjd"] - 51544.5) / 365.25
+    keep, seen = [], set()
+    for f in frames:                                   # WISE and NEOWISE: the first visit of each year
+        if f["survey"] in ("WISE", "NEOWISE"):
+            y = int(yr(f))
+            if y in seen:
+                continue
+            seen.add(y)
+        keep.append(f)
+    n = g["n"]
+    a, b = to_grid(g, *track(t, keep[0]["mjd"])), to_grid(g, *track(t, keep[-1]["mjd"]))
+    w = int(round(crop_arcmin * 60 / g["scale"]))
+    cx, cy = (a[0] + b[0]) / 2, n - 1 - (a[1] + b[1]) / 2
+    x0, y0 = int(round(cx - w / 2)), int(round(cy - w / 2))
+    f_year = font(22)
+    pics = []
+    for f in keep:
+        img = f["data"].reshape(n, n)
+        top = max(np.nanpercentile(img, 99.7), 25 * robust_sig(img))
+        tt = stretch(img, top)[y0:y0 + w, x0:x0 + w]
+        im = Image.fromarray((tt * 255).astype(np.uint8), "L").resize((side, side), Image.LANCZOS).convert("RGB")
+        d = ImageDraw.Draw(im)
+        k = side / w
+        x, y = to_grid(g, *track(t, f["mjd"]))
+        X, Y, R = (x - x0 + 0.5) * k, (n - 1 - y - y0 + 0.5) * k, 9.2 / g["scale"] * k
+        d.ellipse([X - R, Y - R, X + R, Y + R], outline=GREEN, width=2)
+        d.text((10, 8), str(int(yr(f))), fill=INK, font=f_year)
+        pics.append(im)
+    ms = [1400] + [330] * (len(pics) - 2) + [1400]
+    pics[0].save(WEB / f"hero-{slug}.webp", save_all=True, append_images=pics[1:], duration=ms, loop=0, quality=62, method=6)
+    still = pics[-1].copy(); d = ImageDraw.Draw(still)
+    pts = [((to_grid(g, *track(t, f["mjd"]))[0] - x0 + 0.5) * side / w, (n - 1 - to_grid(g, *track(t, f["mjd"]))[1] - y0 + 0.5) * side / w) for f in keep]
+    for p0, p1 in zip(pts, pts[1:]):
+        d.line([p0, p1], fill=(255, 255, 255), width=1)
+    d.ellipse([pts[0][0] - 4, pts[0][1] - 4, pts[0][0] + 4, pts[0][1] + 4], outline=INK, width=2)
+    d.text((pts[0][0] + 10, pts[0][1] - 10), str(int(yr(keep[0]))), fill=INK, font=font(18))
+    still.save(WEB / f"hero-{slug}.jpg", quality=84, optimize=True)
+    print(f"hero: {len(pics)} pictures ({int(yr(keep[0]))} to {int(yr(keep[-1]))}), {(WEB / f'hero-{slug}.webp').stat().st_size // 1024} kB webp, {(WEB / f'hero-{slug}.jpg').stat().st_size // 1024} kB still")
+
+
+def share(slug="barnard", det=5):
+    """The picture that a link to the front page shows (1200 x 630): the star's walk, its oldest image beside its newest
+    and the path between them, under one line that says what the site does."""
+    t = next(x for x in json.load(open(WEB / "data" / "targets.json", encoding="utf-8")) if x["slug"] == slug)
+    near = ("Ks", "W2")
+    frames, g = [], None
+    for name in ("years-2mass.ndjson", "years-spherex.ndjson"):
+        for line in open(WEB / "data" / slug / name, encoding="utf-8"):
+            d = json.loads(line)
+            if d["t"] == "head":
+                g = d["grid"]
+            elif d["t"] == "frame" and (d["band"] in near or d.get("det") == det):
+                d["data"] = np.frombuffer(base64.b64decode(d.pop("b64")), "<f2").astype(np.float32)
+                frames.append(d)
+    frames.sort(key=lambda f: f["mjd"])
+    first, last = frames[0], frames[-1]
+    n, side = g["n"], 430
+    W, H = 1200, 630
+    im = Image.new("RGB", (W, H), BG); d = ImageDraw.Draw(im)
+    d.text((W // 2, 46), "The sky is not still.", fill=INK, font=font(44), anchor="mm")
+    d.text((W // 2, 96), "The same patch of sky, 26 years apart: Barnard's Star has walked 4.6 arcminutes north.", fill=DIM, font=font(24), anchor="mm")
+    xs = (W // 2 - side - 30, W // 2 + 30)
+    for x, f, label in ((xs[0], first, f"{date(first['mjd'], False)} · 2MASS"), (xs[1], last, f"{date(last['mjd'], False)} · NASA SPHEREx")):
+        img = f["data"].reshape(n, n)
+        tt = stretch(img, max(np.nanpercentile(img, 99.7), 25 * robust_sig(img)))
+        pic = Image.fromarray((tt * 255).astype(np.uint8), "L").resize((side, side), Image.LANCZOS).convert("RGB")
+        dd = ImageDraw.Draw(pic)
+        for ff, col in ((first, (255, 255, 255)), (last, GREEN)):
+            px, py = to_grid(g, *track(t, ff["mjd"]))
+            X, Y, R = (px + 0.5) * side / n, (n - 1 - py + 0.5) * side / n, 9.2 / g["scale"] * side / n
+            if ff is f:
+                dd.ellipse([X - R, Y - R, X + R, Y + R], outline=GREEN, width=3)
+            else:
+                dd.ellipse([X - 3, Y - 3, X + 3, Y + 3], outline=col, width=2)
+        im.paste(pic, (x, 128))
+        d.text((x + 12, 128 + side - 34), label, fill=INK, font=font(22))
+    d.text((W // 2, H - 34), "chronospherex.com  ·  real images: 2MASS, NASA WISE and NEOWISE, NASA SPHEREx", fill=DIM, font=font(22), anchor="mm")
+    im.save(WEB / "share.jpg", quality=86, optimize=True)
+    print(f"share: {(WEB / 'share.jpg').stat().st_size // 1024} kB")
+
+
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--pluto"]:
         pluto(sys.argv[2], sys.argv[3])
+    elif sys.argv[1:2] == ["--share"]:
+        share()
+    elif sys.argv[1:2] == ["--hero"]:
+        hero()
+    elif sys.argv[1:2] == ["--years"]:
+        years(sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else None)
     else:
         want = sys.argv[1:]
         for t in json.load(open(WEB / "data" / "targets.json", encoding="utf-8")):

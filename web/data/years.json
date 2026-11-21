@@ -1,0 +1,102 @@
+{
+ "barnard": {
+  "grid": {
+   "ra": 269.449351,
+   "dec": 4.728482,
+   "n": 196,
+   "scale": 3.075,
+   "size": 10.0
+  },
+  "files": [
+   "years-2mass.ndjson",
+   "years-w1.ndjson",
+   "years-w2.ndjson",
+   "years-spherex.ndjson"
+  ],
+  "span": [
+   51692.428,
+   61277.522
+  ],
+  "built": "2026-11-21T12:03:43Z"
+ },
+ "epsindib": {
+  "grid": {
+   "ra": 331.06878,
+   "dec": -56.791204,
+   "n": 196,
+   "scale": 3.075,
+   "size": 10.0
+  },
+  "files": [
+   "years-2mass.ndjson",
+   "years-w1.ndjson",
+   "years-w2.ndjson",
+   "years-spherex.ndjson"
+  ],
+  "span": [
+   51616.159,
+   61320.974
+  ],
+  "built": "2026-11-21T12:03:44Z"
+ },
+ "wise0855": {
+  "grid": {
+   "ra": 133.791156,
+   "dec": -7.244767,
+   "n": 196,
+   "scale": 3.075,
+   "size": 10.0
+  },
+  "files": [
+   "years-2mass.ndjson",
+   "years-w1.ndjson",
+   "years-w2.ndjson",
+   "years-spherex.ndjson"
+  ],
+  "span": [
+   51175.333,
+   61163.288
+  ],
+  "built": "2026-11-21T12:03:44Z"
+ },
+ "rwaur": {
+  "grid": {
+   "ra": 76.956589,
+   "dec": 30.401286,
+   "n": 98,
+   "scale": 3.075,
+   "size": 5.0
+  },
+  "files": [
+   "years-2mass.ndjson",
+   "years-w1.ndjson",
+   "years-w2.ndjson",
+   "years-spherex.ndjson"
+  ],
+  "span": [
+   51509.291,
+   61298.504
+  ],
+  "built": "2026-11-21T12:03:44Z"
+ },
+ "rdra": {
+  "grid": {
+   "ra": 248.16722,
+   "dec": 66.755025,
+   "n": 98,
+   "scale": 3.075,
+   "size": 5.0
+  },
+  "files": [
+   "years-2mass.ndjson",
+   "years-w1.ndjson",
+   "years-w2.ndjson",
+   "years-spherex.ndjson"
+  ],
+  "span": [
+   51324.338,
+   61299.438
+  ],
+  "built": "2026-11-21T12:03:44Z"
+ }
+}

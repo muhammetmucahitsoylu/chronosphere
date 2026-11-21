@@ -296,6 +296,13 @@ async function vizier(source, ra, dec, radiusArcmin, cols, sortBy, max = 600) {
   throw last;
 }
 
+/** The day 2MASS looked at a place (MJD): the date of the brightest 2MASS source within a few arcminutes of it. */
+export async function twomassNight(ra, dec, radiusArcmin = 3) {
+  const rows = await vizier('II/246/out', ra, dec, radiusArcmin, ['JD', 'Kmag'], 'Kmag', 5);
+  const r = rows.find(x => x.JD != null);
+  return r ? r.JD - 2400000.5 : null;
+}
+
 /** Gaia DR3 stars with their proper motions (positions at 2016.0). */
 export async function gaiaStars(ra, dec, radiusArcmin) {
   const rows = await vizier('I/355/gaiadr3', ra, dec, radiusArcmin, ['RA_ICRS', 'DE_ICRS', 'pmRA', 'pmDE', 'Gmag', 'Plx'], 'Gmag');

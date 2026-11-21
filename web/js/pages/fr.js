@@ -127,6 +127,7 @@ export default {
     <ul>
       <li><b>Images et carte du ciel entier de SPHEREx :</b> NASA/JPL-Caltech, servies par le NASA/IPAC Infrared Science Archive (IRSA).</li>
       <li><b>Autres cartes du ciel :</b> 2MASS, WISE et DSS, en HiPS construits par le CDS et servis par l’IRSA.</li>
+      <li><b>Images plus anciennes du même ciel (la vue Années) :</b> images de l’atlas de 2MASS (de 1997 à 2001), poses individuelles de WISE et NEOWISE (de 2010 à 2024), diffusées par l’IRSA.</li>
       <li><b>Catalogues :</b> Gaia DR3 (ESA), CatWISE2020, SIMBAD (CDS, Strasbourg).</li>
       <li><b>Composant d’atlas du ciel :</b> Aladin Lite (CDS).</li>
       <li><b>Fiches d’encyclopédie :</b> Wikipédia, affichées avec un lien vers l’article.</li>

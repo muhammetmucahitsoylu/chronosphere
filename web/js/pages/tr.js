@@ -127,6 +127,7 @@ export default {
     <ul>
       <li><b>SPHEREx görüntüleri ve tüm gökyüzü haritası:</b> NASA/JPL-Caltech; NASA/IPAC Kızılötesi Bilim Arşivi (IRSA) sunar.</li>
       <li><b>Öteki gökyüzü haritaları:</b> 2MASS, WISE ve DSS; CDS’in hazırladığı HiPS olarak, IRSA sunar.</li>
+      <li><b>Aynı gökyüzünün eski görüntüleri (Yıllar görünümü):</b> 2MASS atlas görüntüleri (1997–2001), WISE ve NEOWISE tekil pozları (2010–2024); IRSA sunar.</li>
       <li><b>Kataloglar:</b> Gaia DR3 (ESA), CatWISE2020, SIMBAD (CDS, Strazburg).</li>
       <li><b>Gökyüzü atlası bileşeni:</b> Aladin Lite (CDS).</li>
       <li><b>Ansiklopedi kartları:</b> Wikipedia; maddeye bağlantıyla birlikte gösterilir.</li>

@@ -127,6 +127,7 @@ export default {
     <ul>
       <li><b>Obrazy SPHEREx i mapa całego nieba:</b> NASA/JPL-Caltech, udostępniane przez NASA/IPAC Infrared Science Archive (IRSA).</li>
       <li><b>Inne mapy nieba:</b> 2MASS, WISE i DSS, jako HiPS przygotowane przez CDS i udostępniane przez IRSA.</li>
+      <li><b>Starsze obrazy tego samego nieba (widok Lata):</b> obrazy atlasu 2MASS (od 1997 do 2001) oraz pojedyncze ekspozycje WISE i NEOWISE (od 2010 do 2024), udostępniane przez IRSA.</li>
       <li><b>Katalogi:</b> Gaia DR3 (ESA), CatWISE2020, SIMBAD (CDS, Strasburg).</li>
       <li><b>Komponent atlasu nieba:</b> Aladin Lite (CDS).</li>
       <li><b>Karty encyklopedyczne:</b> Wikipedia, pokazywane z odnośnikiem do artykułu.</li>
