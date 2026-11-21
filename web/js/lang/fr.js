@@ -839,4 +839,5 @@ export default {
   "Found without being told where to look.": "Trouvé sans qu’on lui dise où regarder.",
   "In the {0} visits of WISE and NEOWISE at {1} µm, the page looked for anything that moves in a straight line. It found:": "Dans les {0} visites de WISE et NEOWISE à {1} µm, la page a cherché tout ce qui se déplace en ligne droite. Elle a trouvé :",
   "This is how cold, faint worlds near the Sun are found: by their motion, in infrared images years apart.": "C’est ainsi que l’on trouve les mondes froids et peu lumineux proches du Soleil : par leur mouvement, sur des images infrarouges prises à des années d’intervalle.",
+  "The AllWISE picture is dated by the middle of 2010 (AllWISE adds up WISE’s passes over this place in 2010 and early 2011).": "L’image d’AllWISE est datée du milieu de 2010 (AllWISE additionne les passages de WISE au-dessus de ce lieu en 2010 et début 2011).",
 };

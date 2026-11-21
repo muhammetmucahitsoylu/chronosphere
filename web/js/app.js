@@ -551,7 +551,7 @@ function renderYears() {
     }
     if (old?.guessed) out += `<p class="hint">${G`The night 2MASS looked at this place could not be looked up: its images are dated 1997 to 2001.`}</p>`;
     // a catalogued star inside the field, on dated pictures, is measured as in the images built for the test objects
-    if (outside || old?.guessed || !S.track || S.track.eph) {
+    if (outside || !S.track || S.track.eph) {
       el.innerHTML = out;
       el.querySelector('[data-wider]')?.addEventListener('click', e => {
         const size = +e.currentTarget.dataset.wider;
@@ -559,11 +559,13 @@ function renderYears() {
       });
       return;
     }
-    notes = `${out}<p class="hint">${G`The pictures of 2MASS and AllWISE are dated by the night 2MASS looked at this place and by the middle of 2010 (AllWISE adds up WISE’s passes over it in 2010 and early 2011).`}</p>`;
+    notes = `${out}<p class="hint">${old?.guessed ? G`The AllWISE picture is dated by the middle of 2010 (AllWISE adds up WISE’s passes over this place in 2010 and early 2011).`
+      : G`The pictures of 2MASS and AllWISE are dated by the night 2MASS looked at this place and by the middle of 2010 (AllWISE adds up WISE’s passes over it in 2010 and early 2011).`}</p>`;
   }
   if (!S.track || S.track.eph || !S.seq.length) { el.innerHTML = ''; return; }
   const g = vg(), seen = [], missed = [];
   for (const it of S.seq) {
+    if (it.years?.guessed) continue;          // a 2MASS picture whose night could not be looked up has no date to measure against
     const p = trackPos(it.mjd, g);
     if (!(p[0] > 9 && p[1] > 9 && p[0] < g.n - 10 && p[1] < g.n - 10)) continue;
     // a saturated star is centred from its wings, which a neighbour can pull a little: it may lie up to 8″ off; any other within 4″

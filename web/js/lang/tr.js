@@ -839,4 +839,5 @@ export default {
   "Found without being told where to look.": "Nereye bakacağı söylenmeden bulundu.",
   "In the {0} visits of WISE and NEOWISE at {1} µm, the page looked for anything that moves in a straight line. It found:": "WISE ve NEOWISE’ın {1} µm’deki {0} ziyaretinde sayfa, düz bir çizgi üzerinde hareket eden her şeyi aradı. Bulduğu:",
   "This is how cold, faint worlds near the Sun are found: by their motion, in infrared images years apart.": "Güneş’in yakınındaki soğuk, sönük dünyalar böyle bulunur: yıllar arayla çekilmiş kızılötesi görüntülerdeki hareketleriyle.",
+  "The AllWISE picture is dated by the middle of 2010 (AllWISE adds up WISE’s passes over this place in 2010 and early 2011).": "AllWISE resmi 2010’un ortasına tarihlendi (AllWISE, WISE’ın 2010’da ve 2011 başında buradan geçişlerini toplar).",
 };
