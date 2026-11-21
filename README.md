@@ -401,8 +401,8 @@ talking directly to NASA's open data.
   found by the search), Luhman 16 2.79 (2.79; found, 2.95), Teegarden's Star 5.14 (5.12; found, 5.26),
   Kapteyn's Star 8.66 over 27 images (8.64) and Wolf 359 4.72 (4.72), both saturated in WISE and not found by the
   search. The plain pages give these numbers as `scripts/build_years.py --measure` works them out, the same way
-  as the page: compared in the same detector (Barnard's Star, Epsilon Indi B, WISE 0855, Luhman 16, Kapteyn's
-  Star), it gives the page's figures to the hundredth; in another detector they differ by up to 0.01.
+  as the page: compared in the same detector (Barnard's Star, Epsilon Indi B, WISE 0855, Luhman 16), it gives the
+  page's figures to the hundredth; in another detector they differ by up to 0.01.
   *On the sky maps, for any star.* Five fast stars typed into the search box, nothing built for them: the motion
   measured on the 2MASS and AllWISE pictures and the SPHEREx visits against the catalogue (SIMBAD), arcseconds a
   year: Proxima Centauri 3.80 (3.86), Wolf 359 4.68 (4.72), Luhman 16 2.76 (2.79), Teegarden's Star 5.13 (5.12),
