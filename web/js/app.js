@@ -3412,6 +3412,9 @@ async function keepLastObjects(list, say) {
         if (card?.thumb) await isPhoto(card.thumb);          // loads the encyclopedia's picture, which keeps it
       }
       await Info.gaiaStars(o.ra, o.dec, TRY_SIZE * 0.75 + 0.5).catch(() => null);
+      // Its Years view, where it was built (the stars of the tour's last step): the files of every detector's bands.
+      const yk = Object.keys(S.yearsIdx || {}).find(k => S.yearsIdx[k].at && sepArcsec(S.yearsIdx[k].at[0], S.yearsIdx[k].at[1], o.ra, o.dec) < 90);
+      if (yk) for (const f of ['years-2mass.ndjson', 'years-w1.ndjson', 'years-w2.ndjson', 'years-spherex.ndjson']) await fetch(`data/${yk}/${f}?v=${encodeURIComponent(S.yearsIdx[yk].built)}`).then(r => r.arrayBuffer()).catch(() => null);
       // The images, detector by detector, exactly as opening the object reads them.
       const frames = await Archive.findFrames(o.ra, o.dec);
       let whole = true;
