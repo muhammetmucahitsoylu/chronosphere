@@ -640,7 +640,7 @@ function yearsHunt(el, name) {
     const pmx = S.track ? -(S.track.pmra || 0) / 1000 / g.scale : 0, pmy = S.track ? (S.track.pmdec || 0) / 1000 / g.scale : 0;
     // moving the way the object in the ring does (within 10° and 30%) but elsewhere: its reflection in WISE's optics, or the
     // glare of a companion moving with it (Epsilon Indi A, just outside its field): not reported
-    const v = Math.hypot(t.vx, t.vy), w = Math.hypot(pmx, pmy), turn = Math.abs(((Math.atan2(t.vy, t.vx) - Math.atan2(pmy, pmx)) * 180 / Math.PI + 540) % 360 - 180);
+    const v = Math.hypot(t.fvx, t.fvy), w = Math.hypot(pmx, pmy), turn = Math.abs(((Math.atan2(t.fvy, t.fvx) - Math.atan2(pmy, pmx)) * 180 / Math.PI + 540) % 360 - 180);
     const same = !!S.track && w > 0 && turn < 10 && v > 0.7 * w && v < 1.3 * w;
     const at = !!p && Math.hypot(t.x - p[0], t.y - p[1]) < 3;
     if (same && !at) continue;
@@ -649,7 +649,7 @@ function yearsHunt(el, name) {
   if (!mine.length) return;
   const lam = Years.LAM[band].toFixed(1);
   const lines = mine.map(t => {
-    const speed = Math.hypot(t.vx, t.vy) * g.scale, dir = compass(-t.vx, t.vy);
+    const speed = Math.hypot(t.fvx, t.fvy) * g.scale, dir = compass(-t.fvx, t.fvy);
     return t.it ? G`moving ${speed.toFixed(2)}″ a year towards the ${dir}, in ${t.hits} of the ${t.inside} visits: it is ${esc(name)}${S.track ? G` (${(Math.hypot(S.track.pmra || 0, S.track.pmdec || 0) / 1000).toFixed(2)}″ a year by the catalogue)` : ''}`
       : G`moving ${speed.toFixed(2)}″ a year towards the ${dir}, in ${t.hits} of the ${t.inside} visits: not the object in the ring. Check it in the other tools before believing it`;
   });
@@ -672,12 +672,35 @@ function findMovers(fr, n, scale) {
     for (let j = 0; j < n; j++) for (let i = 1; i < n - 1; i++) { const p = j * n + i; sm[p] = W[0] * d[p - 1] + W[1] * d[p] + W[2] * d[p + 1]; }
     for (let j = 1; j < n - 1; j++) for (let i = 0; i < n; i++) { const p = j * n + i; out[p] = W[0] * sm[p - n] + W[1] * sm[p] + W[2] * sm[p + n]; }
     const sig = C.robustStats(out).sig;
+    // a saturated star: its core is missing in this visit while the median has it, next to very bright light. The
+    // centre of that patch counts as the star's dot, and the dots of its wings around it are left out (Barnard's Star,
+    // Proxima Centauri, Kapteyn's Star and Wolf 359 are found this way; spike/years_blind2.py)
+    const sat = new Uint8Array(npx), cores = [];
+    for (let j = 2; j < n - 2; j++) for (let i = 2; i < n - 2; i++) {
+      const p = j * n + i;
+      if (it.img[p] === it.img[p] || med[p] !== med[p]) continue;
+      let top = -Infinity;
+      for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { const q = p + b * n + a, w = it.img[q] - med[q]; if (w > top) top = w; }
+      if (top > 30 * it.sig) sat[p] = 1;
+    }
+    const seen = new Uint8Array(npx);
+    for (let p0 = 0; p0 < npx; p0++) {
+      if (!sat[p0] || seen[p0]) continue;
+      const stack = [p0]; seen[p0] = 1; let sx = 0, sy = 0, m = 0;
+      while (stack.length) {
+        const p = stack.pop(), x = p % n, y = (p / n) | 0; sx += x; sy += y; m++;
+        for (const q of [x > 0 ? p - 1 : -1, x < n - 1 ? p + 1 : -1, p - n, p + n]) if (q >= 0 && q < npx && sat[q] && !seen[q]) { seen[q] = 1; stack.push(q); }
+      }
+      const cx = sx / m, cy = sy / m;
+      if (m >= 3 && cx > 6 && cy > 6 && cx < n - 6 && cy < n - 6) cores.push({ x: cx, y: cy });
+    }
     for (let j = 6; j < n - 6; j++) for (let i = 6; i < n - 6; i++) {
       const v = out[j * n + i]; if (!(v > 7 * sig)) continue;
       let top = true;
       for (let b = -2; b <= 2 && top; b++) for (let a = -2; a <= 2; a++) if ((a || b) && out[(j + b) * n + i + a] > v) { top = false; break; }
-      if (top) dets.push({ k, x: i, y: j, snr: v / sig, t: C.mjdToYear(it.mjd) });
+      if (top && !cores.some(c => Math.hypot(c.x - i, c.y - j) <= 4)) dets.push({ k, x: i, y: j, snr: v / sig, t: C.mjdToYear(it.mjd) });
     }
+    for (const c of cores) dets.push({ k, x: c.x, y: c.y, snr: 1000, t: C.mjdToYear(it.mjd) });
   });
   const t0 = C.mjdToYear(fr[0].mjd), t1 = C.mjdToYear(fr[K - 1].mjd), years = fr.map(it => C.mjdToYear(it.mjd));
   // the dots of each visit in cells of 2 pixels, so that a dot near a place is found at once
@@ -695,15 +718,22 @@ function findMovers(fr, n, scale) {
     // a star that stays put wanders a pixel or two about it, and such dots can line up at 1″ a year (near Luhman 16)
     if (speed < 1.5 || speed > 15) continue;
     let hits = 0, inside = 0, snr = 0, sx = 0, sy = 0;
+    const on = [];
     for (let k = 0; k < K; k++) {
       const px = a.x + vx * (years[k] - a.t), py = a.y + vy * (years[k] - a.t);
       if (!(px > 2 && py > 2 && px < n - 3 && py < n - 3)) continue;
       inside++; sx += px; sy += py;
       const q = near(k, px, py);
-      if (q) { hits++; snr += q.snr; } else if (inside - hits > 0.1 * K + 1) break;          // it can no longer be in 90% of the visits
+      if (q) { hits++; snr += q.snr; on.push(q); } else if (inside - hits > 0.1 * K + 1) break;          // it can no longer be in 90% of the visits
     }
     const mx = sx / Math.max(1, inside), my = sy / Math.max(1, inside);
-    if (inside >= 8 && hits >= 0.9 * inside && mx > 12 && my > 12 && mx < n - 13 && my < n - 13) tracks.push({ hits, inside, vx, vy, x: a.x, y: a.y, t: a.t, snr });
+    if (inside >= 8 && hits >= 0.9 * inside && mx > 12 && my > 12 && mx < n - 13 && my < n - 13) {
+      // its speed: the straight line through all its dots, not only the two it was found from
+      const tm = on.reduce((s2, q) => s2 + q.t, 0) / on.length, xm = on.reduce((s2, q) => s2 + q.x, 0) / on.length, ym = on.reduce((s2, q) => s2 + q.y, 0) / on.length;
+      const den = on.reduce((s2, q) => s2 + (q.t - tm) ** 2, 0) || 1;
+      const fvx = on.reduce((s2, q) => s2 + (q.t - tm) * (q.x - xm), 0) / den, fvy = on.reduce((s2, q) => s2 + (q.t - tm) * (q.y - ym), 0) / den;
+      tracks.push({ hits, inside, vx, vy, fvx, fvy, x: a.x, y: a.y, t: a.t, snr });
+    }
   }
   // one line per thing: the strongest of those with one motion (a star and what moves with it), and of those that
   // pass the same place at the same time (one object linked from different dots)

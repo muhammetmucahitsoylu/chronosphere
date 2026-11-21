@@ -388,9 +388,14 @@ talking directly to NASA's open data.
   last, and a line counts when a dot lies on it in 90% of the visits it crosses, at 1.5 arcseconds a year or
   more, away from the edge (`spike/years_blind.py`, then the same in the page). Of the ten bands of the five fields, it
   finds WISE 0855 in W2 (8.10, catalogue 8.15; it does not show in W1) and Epsilon Indi B in W1 and W2 (4.69,
-  catalogue 4.68). It does not find Barnard's Star: saturated, it leaves no clean dot. What it does find there,
-  in W1, moves exactly like Barnard's Star 2.8 arcminutes away from it, a reflection of the star in WISE's
-  optics; in Epsilon Indi B's field the glare of Epsilon Indi A, just outside it, moves the same way. A line that
+  catalogue 4.68). A saturated star leaves no clean dot, only a missing core ringed by bright wings: that patch,
+  missing in the visit but present in the median and next to very bright light, counts as one dot at its centre,
+  and the wings' dots around it are left out (`spike/years_blind2.py`). With that, Barnard's Star is found in both
+  bands (10.47 and 10.57 arcseconds a year, the line fitted through all its dots; catalogue 10.39), and so are
+  Proxima Centauri (3.94), Kapteyn's Star (8.77), Wolf 359 (4.71), Luhman 16 (2.82) and Teegarden's Star (5.22),
+  while RW Aurigae and R Draconis, which stay put, give nothing, and no line in the twenty bands of the ten fields
+  is anything but the star in the ring. Before it, what the search found in Barnard's field, in W1, moved exactly
+  like Barnard's Star 2.8 arcminutes away from it, a reflection of the star in WISE's optics; in Epsilon Indi B's field the glare of Epsilon Indi A, just outside it, moves the same way. A line that
   moves like the object in the ring (within 10° and 30%) but passes elsewhere is therefore not reported. A first
   rule set (60% of the visits, 0.4 arcseconds a year) found up to nine lines per field, nearly all of them noise:
   the rules above keep only the two brown dwarfs. Near Luhman 16 a line at 1.0 arcsecond a year, 5 arcminutes

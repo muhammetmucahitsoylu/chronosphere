@@ -358,7 +358,7 @@ function yearsPage(code, id, up) {
   const [ra2000, dec2000, pmra, pmdec, plx] = Y.track;
   const now = 2026.9, ra = ra2000 + pmra * (now - 2000) / 3.6e6 / Math.cos(dec2000 * Math.PI / 180), dec = dec2000 + pmdec * (now - 2000) / 3.6e6;
   const open = `${up}?ra=${ra.toFixed(5)}&dec=${dec.toFixed(5)}&fov=5&star=${[ra2000.toFixed(7), dec2000.toFixed(7), pmra.toFixed(2), pmdec.toFixed(2), plx.toFixed(3)].join('%2C')}&name=${encodeURIComponent(Y.name)}&det=${m.det || 5}&mode=years${code === 'en' ? '' : `&lang=${code}`}`;
-  const found = { luhman16: true, teegarden: true }[id];          // the stars the page's search for movers finds by itself (spike/yearshunt.py)
+  const found = true;          // the page's search for movers finds each of these stars by itself (saturated ones by their missing core)
   const wiki = { proxima: 'Proxima_Centauri', luhman16: 'Luhman_16', teegarden: "Teegarden's_Star", kapteyn: "Kapteyn's_Star", wolf359: 'Wolf_359' }[id];
   const cap = D.years.cap(name, month(Y.span[0]), month(Y.span[1]));
   const body = `
