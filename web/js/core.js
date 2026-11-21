@@ -429,6 +429,39 @@ export const ICES = [
   // Beyond 3 microns methane ice leaves no bright stretch to compare with on the long side: the band is set against the short side alone.
   { name: 'Methane ice', f: 'CH₄', band: [3.15, 3.60], side: [[2.55, 2.80], null] },
 ];
+/**
+ * Where the gases around an active comet glow: each takes up sunlight and gives it back at its own wavelengths.
+ * With a stretch of plain spectrum on either side to compare with. These are the four that the SPHEREx team reports
+ * around comet 3I/ATLAS (Lisse et al. 2026, arXiv:2512.07318 and arXiv:2601.06759); "organic molecules" are the ones
+ * with carbon-hydrogen bonds, which all glow near 3.4 microns. `said` is the name inside a sentence.
+ */
+export const GASES = [
+  { name: 'Water vapour', said: 'water vapour', f: 'H₂O', band: [2.60, 2.76], side: [[2.28, 2.52], [2.84, 3.06]] },
+  { name: 'Organic molecules', said: 'organic molecules', f: 'C–H', band: [3.25, 3.55], side: [[3.00, 3.20], [3.62, 3.96]] },
+  { name: 'Carbon dioxide', said: 'carbon dioxide', f: 'CO₂', band: [4.20, 4.33], side: [[4.00, 4.16], [4.40, 4.54]] },
+  { name: 'Carbon monoxide', said: 'carbon monoxide', f: 'CO', band: [4.58, 4.80], side: [[4.40, 4.54], [4.84, 5.00]] },
+];
+/**
+ * Which of those bands glow in a set of measurements [{ lam, flux, err }]. The yardstick is the plain spectrum beside
+ * the band, and of its two sides the brighter one: a spectrum that merely falls away on one side (the edge of an ice
+ * band) is then not read as a glow. A band glows when two or more of its measurements stand above the yardstick by
+ * five times their uncertainty and by three tenths at least: one stray measurement is not enough.
+ * For each band: { glows, times } with `times` how many times as bright the brightest of those measurements is as
+ * the yardstick; `times` is null when there are too few measurements in or beside the band to say.
+ */
+export function glowBands(pts, table = GASES) {
+  const mid = v => { const s = [...v].sort((a, b) => a - b); return s[s.length >> 1]; };
+  return table.map(m => {
+    const inside = pts.filter(p => p.lam >= m.band[0] && p.lam <= m.band[1]);
+    const sides = m.side.map(r => pts.filter(p => p.lam >= r[0] && p.lam <= r[1])).filter(v => v.length >= 3)
+      .map(v => { const x = medMad(v.map(p => p.flux)); return { med: x.med, err: Math.max(x.err, mid(v.map(p => p.err)) / Math.sqrt(v.length)) }; });
+    if (inside.length < 2 || !sides.length) return { ...m, glows: false, times: null };
+    const base = sides.reduce((a, b) => (b.med > a.med ? b : a));
+    const level = Math.max(base.med, 2 * base.err, 1e-6);          // a level too faint to tell from nothing still sets a floor: twice its uncertainty
+    const up = inside.filter(p => p.flux - level > 5 * Math.hypot(p.err, base.err) && p.flux > 1.3 * level);
+    return { ...m, level, glows: up.length >= 2, times: up.length >= 2 ? Math.max(...up.map(p => p.flux)) / level : 0 };
+  });
+}
 /** How bright sunlight is at a wavelength (microns), up to a constant: a black body at the Sun's 5772 K, in the units the measurements use. */
 const sunlight = lam => 1 / (lam ** 3 * (Math.exp(14387.77 / (lam * 5772)) - 1));
 

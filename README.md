@@ -89,6 +89,16 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   found where water, methane, carbon monoxide and carbon dioxide absorb. A body of the solar system shines
   by reflected sunlight: its measurements are divided by the Sun's spectrum and checked for the bands of
   methane ice instead. Pluto shows them: 40 per cent at 1.3 to 1.4 microns, 47 at 2.2 to 2.4, 57 at 3.2 to 3.6.
+- **Follow a comet from another star.** *3I/ATLAS*, first in the front page's line of objects (or typed into
+  the search box as 3I/ATLAS, 3I or C/2025 N1), is the third body known to pass through the solar system from
+  outside. It crossed a field of ten arcminutes within hours, so here every exposure that had it in view is
+  cut out around the comet itself: 160 exposures of 1 to 15 August 2025, on its way in, and 104 of 8 to 15
+  December 2025, six weeks after it had passed the Sun. The comet stays in the middle and the stars behind it
+  change. Its two visits are shown on one scale of brightness (a faint dot in August; in December 21 times
+  as bright in D2, with a tail), its spectrum in powers of ten, and a table says which gases glow around it,
+  visit by visit: carbon dioxide in August (more than a hundred times the spectrum beside its band); water
+  vapour, organic molecules, carbon dioxide (49 times) and carbon monoxide in December. Measurements that a
+  catalogued star behind the comet, or faulty pixels, have a part in are drawn hollow and left out.
 - **Check it elsewhere.** One click opens the same coordinates in SIMBAD, WiseView (Backyard Worlds), ESASky,
   the Legacy Survey viewer and the VizieR photometry viewer. A body of the solar system links to its orbit
   at NASA/JPL and at the Minor Planet Center.
@@ -256,6 +266,51 @@ talking directly to NASA's open data.
   against 0.86. For Pluto, 35 au away, the shift is a tenth of an arcsecond and changes nothing (0.85 and
   0.81). What is left, about 0.8 arcseconds, is how well a dot can be placed on images resampled from pixels
   of 6.15 arcseconds; the reports state 0.7 arcseconds in each coordinate for a clear dot, more for a faint one.
+- **The comet that is followed (3I/ATLAS, 21 November 2026).**
+  *Which exposures.* IRSA publishes its own list of the SPHEREx exposures that contain the comet
+  (`obscore_3I_Atlas.vot`, 259 rows: 161 of August and 98 of December 2025). The site's index finds 258 of
+  them and six more in which the comet lies well inside the detector (one in D1, five in D6); the one it
+  lacks is an exposure its reader left out because the comet lay off the detector or on masked pixels.
+  SPHEREx had the comet in view a third time, in March and April 2026 (63 exposures at 15 stops, five times
+  the Earth's distance from the Sun): in the stack of those it does not stand out from a crowded field near
+  the Milky Way, and they are left out.
+  *Whether they are centred on it.* Each exposure is cut out around the place JPL Horizons gives for the
+  comet at the middle of that exposure, shifted to where the spacecraft was (as for the bodies by name,
+  above). In the 39 exposures of December in D1 to D3 with nothing else in the measuring circle, the centroid
+  of the comet's light lies 0.17 arcseconds (r.m.s.) from that place, 0.30 at most: a thirty-sixth of a pixel.
+  The places that IRSA's table predicts for the same exposures lie 2.68 arcseconds from the light; without
+  the shift to the spacecraft the site's own would be 1.8 off. In August the comet is faint in a crowded field
+  and its centroid is known no better than 1.4 arcseconds (14 exposures). The orbit service the site asks
+  about bodies typed by name puts this comet 1.7 arcminutes from where its light is, which is why it is a
+  showcase object with JPL's path, and why its names open that object.
+  *Which gases glow.* A band counts as glowing when two or more of its measurements stand above the brighter
+  of the two stretches of spectrum beside it by five times their uncertainty and by three tenths at least.
+  That gives carbon dioxide in August and, in December, water vapour (3.6 times the spectrum beside it),
+  organic molecules (2.7), carbon dioxide (49) and carbon monoxide (3.1). The SPHEREx team reports from the
+  same exposures water vapour and carbon dioxide in August (Lisse et al., arXiv:2512.07318) and, in December,
+  a much more active comet with CN, water vapour, organic C-H, carbon dioxide and carbon monoxide
+  (arXiv:2601.06759). The site's simple test agrees on all of these but two: in August only one measurement
+  in the water band clears its threshold, and CN, a rise of a twentieth near 0.93 microns, is too small for
+  it. It says "no clear glow", not "none".
+  *How the light is measured.* Within 9.2 arcseconds of the centre, the sky taken from a ring at 100 to 140
+  arcseconds. With the ring used for stars (18 to 30 arcseconds) the comet reads 15 per cent lower, because
+  that ring lies in its glow (258 against 306 mJy at 4.25 microns); a ring at 210 to 270 arcseconds gives the
+  same as the one used, to 1 per cent. The glow has no edge: within 20 arcseconds there is 2.2 times as much
+  light as within 9.2, within 40 arcseconds 4.3 times.
+  *Stars behind it, and faulty pixels.* For every stop of the telescope the stars around the comet's place
+  were read from Gaia DR3, 2MASS and AllWISE, and the light each adds inside the measuring circle was
+  estimated at the exposure's wavelength: 150 of the 264 exposures carry 0.02 mJy or more. In August, in
+  front of the Milky Way's bulge, the estimates follow what is measured: an exposure at 1.10 microns reads
+  16.3 mJy where the comet has 1.5, and the estimate for the star is 16.2; where the comet reads 2.2 instead
+  of 1.5 the estimates are 0.6 to 0.7. A measurement is drawn hollow when the estimate is a quarter of it or
+  more. The pipeline's own flags mark a quarter or more of the circle as faulty in two exposures: the two
+  worst measurements of the set (212 mJy at 4.35 microns, where the neighbours read 1; and -2.8 mJy at 4.85).
+  One stop of August has something 11 arcseconds from the comet that no catalogue lists, in both detectors
+  that looked (most likely a body passing by): its two measurements are not marked and stand out.
+  *In use.* Nine ways of typing its name open it, "Atlas" opens the star; an address written for the body
+  by name leads to it; the panel of the five test objects is word for word what it was before; the tour has
+  its thirteen steps, also with the network cut; no text spills in five languages on a laptop and a phone;
+  WebKit and Firefox give the same numbers.
 - **Picking a field for a hunt.** Twelve picks in a row: eleven gave a field, after one to six asteroids
   tried and 1 to 10 seconds; one gave none (ten asteroids are tried now, where six were). The two fields then
   read in full are the two hunts above.
@@ -375,6 +430,7 @@ python -m venv .venv
 .venv/Scripts/python scripts/prebuild.py             # rebuild the five showcase objects
 .venv/Scripts/python scripts/prebuild.py --meta      # refresh only their descriptions and catalogue facts
 node scripts/build_body.mjs pluto                    # rebuild Pluto: its path from JPL Horizons, its field from the archive
+node scripts/build_body.mjs 3i-atlas                 # rebuild comet 3I/ATLAS: every exposure that had it in view, cut out around it
 ```
 
 The `backend/` folder also contains an optional FastAPI service with the same pipeline in Python
@@ -419,16 +475,18 @@ web/barnards-star.html, web/epsilon-indi-b.html, web/wise-0855.html, web/rw-auri
                       front page's example objects are links to these pages and to Pluto's, and a plain press
                       opens the object in the tool instead
 web/pluto.html        Pluto as a plain page: one SPHEREx picture for every stop of the telescope that caught it (generated)
+web/3i-atlas.html     comet 3I/ATLAS as a plain page: its two visits, the gases that glow around it, how the pictures
+                      are known to be centred on it; the numbers are worked out from the stored exposures (generated)
 web/tr/, web/es/, web/de/, web/fr/, web/pl/   the same pages in the other languages (generated)
 web/img/              those pictures: real SPHEREx images, made by scripts/build_images.py
 web/robots.txt, web/sitemap.xml   for search engines (the sitemap is generated with the pages)
 web/db83ba526cb561c174feda741610f139.txt   the IndexNow key: Bing, Yandex and others read it to check that a
                       notice of new pages (scripts/indexnow.py) comes from this site
 web/index/            the sky index (generated)
-web/data/             the showcase objects: the five test objects and Pluto (generated)
+web/data/             the showcase objects: the five test objects, Pluto and comet 3I/ATLAS (generated)
 web/vendor/aladin.js  Aladin Lite 3.8.2 (CDS, GPL-3.0), unmodified
 web/fonts/            IBM Plex and Instrument Serif (SIL Open Font License)
-scripts/              build_index.py, prebuild.py; build_body.mjs builds Pluto with the site's own reader (Node);
+scripts/              build_index.py, prebuild.py; build_body.mjs builds Pluto and comet 3I/ATLAS with the site's own reader (Node);
                       build_pages.mjs writes the plain information pages
                       from web/js/pages.js, the tour's words and the showcase objects (run it with Node after
                       changing any of them); build_images.py makes their pictures from the showcase data;
@@ -448,6 +506,10 @@ No build step: plain HTML, CSS and JavaScript modules.
   that wavelength to separate real variability from colour.
 - Photometry is a simple 9-arcsecond aperture without aperture correction, meant for exploring, not for
   publication. It reads roughly 10 to 15 per cent low.
+- The comet's brightness is the light within 9 arcseconds of its centre, not the brightness of the whole
+  comet: its glow has no edge. In August it was faint in front of a crowded field, and single measurements
+  scatter by tens of per cent even where no catalogued star is to blame. The test for glowing gas is simple;
+  the SPHEREx team's analysis of the same exposures finds more (see "The comet that is followed").
 - Very bright stars saturate the detectors. They are measured from their outer halo and each detector is
   joined to its neighbour: the overall shape of the spectrum is right, the level and the fine detail are
   approximate. If every detector is saturated only relative brightness is shown.

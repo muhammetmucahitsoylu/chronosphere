@@ -11,7 +11,16 @@ import * as Lang from './lang.js';
 
 const T = Lang.t, G = Lang.G;          // the words of the front page, the tour and the walk through the panel, in the language in use
 const PAGE_FILES = { planetx: 'planet-x.html', hunt: 'find-asteroids.html', spherex: 'what-is-spherex.html', how: 'how-it-works.html', about: 'about.html' };
-const OBJECT_FILES = { barnard: 'barnards-star.html', epsindib: 'epsilon-indi-b.html', wise0855: 'wise-0855.html', rwaur: 'rw-aurigae.html', rdra: 'r-draconis.html', pluto: 'pluto.html' };
+const OBJECT_FILES = { barnard: 'barnards-star.html', epsindib: 'epsilon-indi-b.html', wise0855: 'wise-0855.html', rwaur: 'rw-aurigae.html', rdra: 'r-draconis.html', pluto: 'pluto.html', '3i-atlas': '3i-atlas.html' };
+/**
+ * A showcase body that is followed, when a typed text names it: one of its names (`aka` in the list of objects) as the
+ * whole text or at its start ("3I", "3I/ATLAS (C/2025 N1)"), also after a word or two that say what it is ("comet 3I").
+ */
+const followedNamed = text => {
+  const fold = v => String(v).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+  const said = fold(text), tries = [said, said.replace(/^\S+ /, ''), said.replace(/^\S+ \S+ /, '')];
+  return S.targets.find(t => t.follow && [t.label, ...(t.aka || [])].some(n => { const a = fold(n); return tries.some(v => v === a || (v.startsWith(a) && !/[a-z0-9]/.test(v[a.length]))); })) || null;
+};
 
 const API = (window.CHRONO_API || '').replace(/\/$/, '');
 const $ = id => document.getElementById(id);
@@ -38,6 +47,14 @@ const MODES = {
   trail: G`One image for every stop of the telescope that caught this body, in time order. The stars stay where they are; the body moves on.`,
 };
 
+// The same views of a body that is followed (every exposure cut out around the body itself): what each one shows then.
+const FOLLOWED = {
+  epochs: G`One stacked image for each visit of SPHEREx to the comet, on one scale of brightness. Every exposure is cut out around the comet, so the stars behind it differ from one exposure to the next and drop out of the stack.`,
+  frames: G`Every single exposure in time order, each cut out around the comet and each at a slightly different wavelength. The comet stays in the middle; the stars behind it change.`,
+  bands: G`The comet in each of the six detectors, from 0.75 to 5 microns, then all six as one colour picture (short wavelengths blue, long red): the exposures of its last visit, stacked.`,
+  trail: G`One image for every stop of the telescope that caught the comet, each cut out around it: the comet stays in the middle, the stars behind it change from stop to stop.`,
+};
+
 const S = {
   targets: [], target: null, track: null, ra: 0, dec: 0, size: 5,
   head: null, grid: null, det: 2, dets: {}, mode: 'epochs',
@@ -54,6 +71,20 @@ const lcPlot = new Plot($('lc'), $('lc').nextElementSibling);
 
 // ------------------------------------------------------------ loading
 const isPreset = () => !!(S.target && S.size === S.target.size);
+/** A showcase body whose every exposure is cut out around the body itself (scripts/build_body.mjs): it stays in the middle, the stars behind it change. */
+const followed = () => !!S.target?.follow && isPreset();
+/** The objects of the guided tour: the showcase objects without the ones that stand beside it. */
+const tourTargets = () => S.targets.filter(t => !t.extra);
+/** The size of field for the next object: the one chosen in the menu, or the one that was chosen before a followed body set its own. */
+const fovPick = () => +(S.fovKept ?? $('fov').value);
+/** Where the sky is taken for a measurement: a ring 18″ to 30″ from the spot; around a followed comet, whose glow reaches far, 100″ to 140″. */
+const skyRing = () => (followed() ? [100, 140] : [18, 30]);
+/**
+ * A measurement of a followed body in which something else has a part: catalogued stars behind it that add a quarter
+ * or more of the light measured ('star'), or pixels that the pipeline marks as faulty over a quarter of the circle
+ * ('fault'). Both come with the exposure, worked out when the object was built (scripts/build_body.mjs).
+ */
+const spoiledBy = (f, a) => (f.fault ? 'fault' : f.star >= 0.25 * Math.max(a.flux, 3 * a.err) ? 'star' : null);
 /** Address of a showcase file. It carries the build date, so a rebuilt showcase is fetched afresh. */
 const dataUrl = (t, file) => `data/${t.slug}/${file}?v=${encodeURIComponent(t.built || '')}`;
 
@@ -109,13 +140,15 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
   openPanel();
   const mapFirst = Sky.isReady() ? Promise.race([Sky.onItsWay(), nap(450)]) : null;
   loadInfo(gen);
+  // A followed body has one size of field, its own: the size the visitor had chosen comes back with the next object.
+  if (followed()) S.fovKept ??= $('fov').value; else S.fovKept = null;
   $('fov').value = String(S.size);
   $('notice').hidden = true; S.failed = null; $('reportask').hidden = true;
   syncUrl(); renderChips(); renderAbout(); renderModes(); renderDets(); show(); refreshPlots(); renderHunt(); renderMovers();
   setStatus(G`Finding the exposures that cover this spot…`);
-  loadCatalog(gen);
+  if (!followed()) loadCatalog(gen);          // a followed body has different stars behind it in every exposure: none are marked
   try {
-    if (S.showWise) setTimeout(loadCatwise, 1500);
+    if (S.showWise && !followed()) setTimeout(loadCatwise, 1500);
     // The map and the images want the same processor: the map goes first (it needs a fraction of a second).
     if (mapFirst) { await mapFirst; if (gen !== S.gen) return; }
     await loadDet(S.det, gen);
@@ -125,7 +158,7 @@ async function go({ ra, dec, size, target = null, track = null, det, mode, info 
       if (gen !== S.gen) return;
       if (!S.dets[d] && +S.head.avail[d] > 0) await loadDet(d, gen);
     }
-    if (gen === S.gen) { setStatus(''); autoDetector(); renderMotion(); maybeAutoplay(); findBodies(gen); }
+    if (gen === S.gen) { setStatus(''); autoDetector(); renderMotion(); maybeAutoplay(); if (!followed()) findBodies(gen); }
   } catch (e) {
     if (e.name === 'AbortError' || gen !== S.gen) return;
     console.error(e);
@@ -266,7 +299,7 @@ async function loadCatalog(gen) {
   } catch { /* overlay is optional */ }
 }
 async function loadCatwise() {
-  if (S.catwise || !S.grid) return;
+  if (S.catwise || !S.grid || followed()) return;
   const gen = S.gen;
   try {
     setStatus(G`Loading WISE sources…`);
@@ -292,6 +325,8 @@ const epochColor = mjd => C.EPOCH_COLORS[gEpoch(mjd) % C.EPOCH_COLORS.length];
 function rebuild() {
   if (!S.grid) return;
   if (S.mode === 'trail' && S.sel && !bodyStops()) S.mode = 'epochs';          // nothing is being followed any more
+  const own = followed();
+  if (own && ['color', 'diff', 'deep'].includes(S.mode)) S.mode = 'epochs';    // views that set one patch of sky against itself: a followed body has no such patch
   const n = S.grid.n, npx = n * n, frames = usable(S.det);
   const keepMjd = S.seq[S.idx]?.mjd, keepDet = S.seq[S.idx]?.det;
   // Group by the archive-wide observing seasons so every detector agrees on what "season 2" is.
@@ -301,10 +336,12 @@ function rebuild() {
     const fr = byEp.get(k); return { i: k, frames: fr, t0: fr[0].mjd, t1: fr[fr.length - 1].mjd, mid: (fr[0].mjd + fr[fr.length - 1].mjd) / 2 };
   });
   const stacks = S.epochs.map(e => {
-    const img = C.medianStack(e.frames, npx);
-    return { kind: 'stack', img, sig: C.robustStats(img).sig, mjd: e.mid, n: e.frames.length, ep: e,
+    const img = C.medianStack(e.frames, npx), st = C.robustStats(img);
+    return { kind: 'stack', img, sig: st.sig, top: Math.max(st.p(0.997), 25 * st.sig), mjd: e.mid, n: e.frames.length, ep: e,
       title: `${S.head?.split ? '' : G`Visit ${gEpoch(e.mid) + 1} · `}${C.fmtMonth(e.mid)}`, sub: `${nExp(e.frames.length)} · ${C.fmtRange(e.t0, e.t1)}` };
   });
+  // A followed body: its visits are shown on one scale of brightness, the brightest visit's, so that a visit in which it was faint looks faint.
+  if (own && stacks.length) { const top = Math.max(...stacks.map(st => st.top)); for (const st of stacks) st.hi = top; }
   S.stacks = stacks;
   const deepFrames = frames.length > 80 ? frames.filter((_, i) => i % Math.ceil(frames.length / 80) === 0) : frames;
   S.deep = frames.length ? C.medianStack(deepFrames, npx) : null;
@@ -315,6 +352,7 @@ function rebuild() {
   let seq = [];
   if (S.mode === 'frames') {
     seq = frames.map(f => ({ kind: 'frame', img: f.data, sig: f.sig, mjd: f.mjd, frame: f,
+      ...(own ? { hi: stacks.find(st => st.ep.i === gEpoch(f.mjd))?.top } : {}),          // each exposure of a followed body on the scale of its own visit
       title: C.fmtDate(f.mjd, true), sub: `${lamAt(f).toFixed(3)} µm · ${f.id}` }));
   } else if (S.mode === 'epochs') seq = stacks;
   else if (S.mode === 'deep') {
@@ -324,13 +362,14 @@ function rebuild() {
     S.bandCache = S.bandCache || {};
     const per = {};
     for (let d = 1; d <= 6; d++) {
-      const fr = usable(d); if (!fr.length) continue;
+      // a followed body is bright at one visit and faint at another: its last visit is shown, not a mix of the two
+      const all = usable(d), lastEp = own && all.length ? gEpoch(all[all.length - 1].mjd) : -1, fr = own ? all.filter(f => gEpoch(f.mjd) === lastEp) : all; if (!fr.length) continue;
       const key = `${S.gen}:${fr.length}:${S.off.size}`;
       if (S.bandCache[d]?.key !== key) {
         const sub = fr.length > 80 ? fr.filter((_, i) => i % Math.ceil(fr.length / 80) === 0) : fr;
         const img = C.medianStack(sub, npx), st = C.robustStats(img);
         S.bandCache[d] = { key, kind: 'stack', det: d, img, sig: st.sig, hi: Math.max(st.p(0.997), 25 * st.sig), mjd: fr[fr.length >> 1].mjd,
-          n: fr.length, title: G`${C.DET_BANDS[d][0]} to ${C.DET_BANDS[d][1]} µm`, sub: G`${nExp(fr.length)}, all visits` };
+          n: fr.length, title: G`${C.DET_BANDS[d][0]} to ${C.DET_BANDS[d][1]} µm`, sub: own ? `${nExp(fr.length)} · ${C.fmtRange(fr[0].mjd, fr[fr.length - 1].mjd)}` : G`${nExp(fr.length)}, all visits` };
       }
       per[d] = S.bandCache[d]; seq.push(per[d]);
     }
@@ -395,6 +434,7 @@ function defaultSelection() {
 /** Where the catalogued target should be on a date: its year-2000 position, moved by its proper
  *  motion and, for nearby stars, by its parallax. Returned in grid pixels. */
 function trackPos(mjd) {
+  if (followed()) { const c = (S.grid.n - 1) / 2; return [c, c]; }          // every exposure is cut out around it
   if (S.track.eph) {          // a body of the solar system: its path is given for the centre of the Earth, the spacecraft sees it a little to the side
     const p = ephAt(S.track.eph, mjd);
     return p ? C.skyToGrid(S.grid, ...Bodies.fromSpacecraft(p[0], p[1], p[2], scAt(mjd))) : [NaN, NaN];
@@ -539,7 +579,7 @@ function c2g(X, Y) {
 }
 
 function overlays(it, W, H, s) {
-  const g = S.grid, year = C.mjdToYear(it.mjd);
+  const g = S.grid, year = C.mjdToYear(it.mjd), own = followed();          // a followed body: nothing in its images is fixed to the sky, so no star is marked and no path drawn
   ctx.lineWidth = 1.2; ctx.font = '12px system-ui, sans-serif';
   // The circled spot. Everything else is drawn so that the inside of this ring stays clear:
   // a faint object must never be hidden by the marks that point at it.
@@ -547,7 +587,7 @@ function overlays(it, W, H, s) {
   const [PX, PY] = sel ? g2c(sel[0], sel[1], W, H, s) : [-1e6, -1e6], rAp = 9.2 / g.scale * s, clear = rAp + 3;
   if (S.marks) {
     // Gaia: circle at each star's catalogue position for this date; arrows for fast movers.
-    if (S.showGaia && S.gaia) {
+    if (S.showGaia && S.gaia && !own) {
       for (const src of S.gaia.sources) {
         if (src.g > (S.view.z < 2 ? 16.5 : S.view.z < 4 ? 18.5 : 99)) continue;
         const [ra, dec] = C.propagate(src, S.gaia.epoch, year), [x, y] = C.skyToGrid(g, ra, dec);
@@ -565,7 +605,7 @@ function overlays(it, W, H, s) {
       }
     }
     // WISE: squares, so they read differently from Gaia circles.
-    if (S.showWise && S.catwise) {
+    if (S.showWise && S.catwise && !own) {
       ctx.strokeStyle = '#ff9f1c99';
       for (const src of S.catwise.sources) {
         if (src.w2 > (S.view.z < 2 ? 15.5 : 99)) continue;
@@ -578,7 +618,7 @@ function overlays(it, W, H, s) {
     }
     // Predicted path of the catalogued target: a dotted line with one tick per visit. The line stops
     // short of the ring and the ticks sit beside the path, so the object itself stays in view.
-    if (S.track && S.head?.epochs?.length) {
+    if (S.track && S.head?.epochs?.length && !own) {
       const eps = S.head.epochs;
       const a = trackPos(eps[0][0] - 200), b = trackPos(eps[eps.length - 1][1] + 200);
       const [AX, AY] = g2c(a[0], a[1], W, H, s), [BX, BY] = g2c(b[0], b[1], W, H, s), L = Math.hypot(BX - AX, BY - AY);
@@ -605,7 +645,7 @@ function overlays(it, W, H, s) {
       }
     }
     // A body of the solar system that is being followed: its path from stop to stop, with a dot at each stop. Kept out of the ring.
-    const path = bodyStops();
+    const path = own ? null : bodyStops();
     if (path && path.length > 1) {
       ctx.save();
       ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.arc(PX, PY, clear, 0, 7); ctx.clip('evenodd');
@@ -640,8 +680,7 @@ function overlays(it, W, H, s) {
       ctx.strokeStyle = '#06d6a0'; ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.arc(PX, PY, rAp, 0, 7); ctx.stroke();
       ctx.strokeStyle = '#06d6a055'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(PX, PY, 18 / g.scale * s, 0, 7); ctx.stroke();
-      ctx.beginPath(); ctx.arc(PX, PY, 30 / g.scale * s, 0, 7); ctx.stroke();
+      for (const r of skyRing()) { ctx.beginPath(); ctx.arc(PX, PY, r / g.scale * s, 0, 7); ctx.stroke(); }
     }
   }
   // Compass and scale bar.
@@ -697,7 +736,7 @@ function refreshPlots() {
 }
 function measureAll() {
   if (!S.grid || !S.sel) return [];
-  const n = S.grid.n, c = (n - 1) / 2, sc = S.grid.scale, pts = [];
+  const n = S.grid.n, c = (n - 1) / 2, sc = S.grid.scale, pts = [], own = followed(), [rin, rout] = skyRing();
   S.haloDets = [];
   const body = bodyStops(), stopsOf = body && new Set(body.map(q => q.stop));
   for (let det = 1; det <= 6; det++) {
@@ -724,10 +763,10 @@ function measureAll() {
     }
     fr.forEach((f, i) => {
       const p = pos[i];
-      let a = useHalo ? memo(f, `halo${ring}:${at(p)}`, () => C.halo(f.data, n, sc, p[0], p[1], f.sig, ring)) : memo(f, `ap:${at(p)}`, () => C.aperture(f.data, n, sc, p[0], p[1], f.sig));
+      let a = useHalo ? memo(f, `halo${ring}:${at(p)}`, () => C.halo(f.data, n, sc, p[0], p[1], f.sig, ring)) : memo(f, `ap:${at(p)}:${rin}`, () => C.aperture(f.data, n, sc, p[0], p[1], f.sig, 9.2, rin, rout));
       if (a && a.halo && !(a.valid >= 0.7 && a.flux === a.flux)) a = null;
       if (!a) return;
-      pts.push({ lam: f.lam + f.lgx * (p[0] - c) + f.lgy * (p[1] - c), flux: a.flux, err: a.err, mjd: f.mjd, det, frame: f, halo: useHalo });
+      pts.push({ lam: f.lam + f.lgx * (p[0] - c) + f.lgy * (p[1] - c), flux: a.flux, err: a.err, mjd: f.mjd, det, frame: f, halo: useHalo, ...(own ? { spoiled: spoiledBy(f, a) } : {}) });
     });
   }
   // Saturated detectors follow the shape of the spectrum but not its level: join each to its neighbour.
@@ -745,18 +784,22 @@ function measureAll() {
 }
 function pct(v, f) { const s = [...v].sort((a, b) => a - b); return s[clamp(Math.round(f * (s.length - 1)), 0, s.length - 1)]; }
 function drawPlots() {
-  const pts = S.pts = measureAll(), cur = S.seq[S.idx]?.frame;
+  const pts = S.pts = measureAll(), cur = S.seq[S.idx]?.frame, own = followed();
   const fl = pts.map(p => p.flux);
+  // A followed comet is a hundred times as bright in a gas band as beside it, and at one visit as at another: its
+  // brightness is drawn in powers of ten, from a floor that the measurements of its faint visit still clear.
+  const floor = 0.03, peak = own ? Math.max(1, ...pts.filter(p => !p.spoiled).map(p => p.flux)) : 0;
   const relative = S.haloDets?.length > 0 && !S.haloAnchored;
   const inJy = !relative && fl.length > 0 && pct(fl, 0.9) >= 2000, u = inJy ? 0.001 : 1, unit = inJy ? 'Jy' : 'mJy';
-  const sp = pts.map(p => ({ x: p.lam, y: p.flux * u, err: p.err * u, color: epochColor(p.mjd), src: p, big: p.frame === cur, hollow: p.halo }));
+  const sp = pts.map(p => ({ x: p.lam, y: p.flux * u, err: p.err * u, color: epochColor(p.mjd), src: p, big: p.frame === cur, hollow: p.halo || !!p.spoiled, dim: own && p.flux <= floor }));
   const ymax = fl.length ? pct(fl, 0.98) * 1.25 * u : 1, ymin = fl.length ? Math.min(0, pct(fl, 0.02)) * u : 0;
   specPlot.set(sp, {
-    xlabel: G`wavelength (µm)`, ylabel: relative ? G`relative brightness` : G`brightness (${unit})`, ylim: [ymin - (ymax - ymin) * 0.04, ymax > ymin ? ymax : ymin + 1],
+    xlabel: G`wavelength (µm)`, ylabel: relative ? G`relative brightness` : G`brightness (${unit})`,
+    ...(own ? { logY: true, ylim: [floor, 2 * peak] } : { ylim: [ymin - (ymax - ymin) * 0.04, ymax > ymin ? ymax : ymin + 1] }),
     xlim: [0.7, 5.1], empty: S.failed ? G`No images to measure` : !S.grid ? G`Waiting for the images…` : S.sel ? G`Measuring…` : G`Click or tap a star in the image`,
     shade: [...(S.grid ? [{ x0: C.DET_BANDS[S.det][0], x1: C.DET_BANDS[S.det][1], color: '#ff7b3916' }] : []),
-      ...(S.showBands ? (bodyStops() ? C.ICES : C.MOLECULES).map((m, i) => ({ x0: m.band[0], x1: m.band[1], color: '#ffffff12', label: m.f, row: i % 2 })) : [])],
-    tipText: p => `${p.x.toFixed(3)} µm · ${relative ? `×${p.y.toFixed(2)}` : `${p.src.halo ? '≈ ' : ''}${p.y.toFixed(p.y >= 100 ? 0 : 2)}${p.src.halo ? '' : ` ± ${p.err.toFixed(2)}`} ${unit}`} · ${C.fmtDate(p.src.mjd)} · D${p.src.det}`,
+      ...(S.showBands ? (own ? C.GASES : bodyStops() ? C.ICES : C.MOLECULES).map((m, i) => ({ x0: m.band[0], x1: m.band[1], color: '#ffffff12', label: m.f, row: i % 2 })) : [])],
+    tipText: p => `${p.x.toFixed(3)} µm · ${relative ? `×${p.y.toFixed(2)}` : `${p.src.halo ? '≈ ' : ''}${p.y.toFixed(p.y >= 100 ? 0 : 2)}${p.src.halo ? '' : ` ± ${p.err.toFixed(2)}`} ${unit}`} · ${C.fmtDate(p.src.mjd)} · D${p.src.det}${p.src.spoiled === 'star' ? G` · a star behind it adds to this one` : p.src.spoiled === 'fault' ? G` · faulty pixels in the circle` : ''}`,
     onPick: p => jumpTo(p.src),
   });
   // Variability: each point relative to the spot's own median spectrum.
@@ -765,20 +808,30 @@ function drawPlots() {
   const lc = [];
   for (const p of pts) {
     if (p.det !== S.det) continue;
+    // a followed comet: its brightness itself, visit by visit, in powers of ten
+    if (own) { if (!p.spoiled) lc.push({ x: p.mjd, y: p.flux * u, err: p.err * u, color: epochColor(p.mjd), src: p, big: p.frame === cur, dim: p.flux <= floor }); continue; }
     const r = ref(p.lam);
     if (!(r > 5 * medErr)) continue;
     lc.push({ x: p.mjd, y: p.flux / r, err: p.err / r, color: epochColor(p.mjd), src: p, big: p.frame === cur });
   }
   const ly = lc.map(p => p.y), lo = ly.length ? Math.min(0.5, pct(ly, 0.02)) : 0, hi = ly.length ? Math.max(1.5, pct(ly, 0.98)) : 2;
-  const check = realityCheck(lc);
-  lcPlot.set(lc, {
+  const check = own ? followedChange(pts) : realityCheck(lc);
+  // the note under this plot is written in the page for a star (its brightness against its own spectrum); for a followed comet it says what is drawn instead
+  const lcnote = $('lcnote');
+  if (lcnote) { lcnote.dataset.usual ??= lcnote.textContent; lcnote.textContent = own ? G`Each measurement of the comet in the selected detector, on a scale in powers of ten: its visits lie far apart in brightness. Hollow points of the spectrum are left out.` : lcnote.dataset.usual; }
+  lcPlot.set(lc, own ? {
+    xlabel: G`date`, ylabel: G`brightness (${unit})`, logY: true, ylim: [floor, 2 * peak], xTicks: dateTicks,
+    empty: S.failed ? G`No images to measure` : G`Waiting for the images…`,
+    tipText: p => `${C.fmtDate(p.x)} · ${p.y.toFixed(p.y >= 100 ? 0 : 2)} ${unit} · ${p.src.lam.toFixed(2)} µm`,
+    onPick: p => jumpTo(p.src),
+  } : {
     xlabel: G`date`, ylabel: G`relative brightness`, ylim: [lo - 0.1, hi + 0.1], hline: 1, errors: lc.length < 400,
     band: check?.steady != null ? { y0: 1 - check.steady, y1: 1 + check.steady } : null,
     xTicks: dateTicks, empty: pts.length ? G`Too faint (or saturated) in D${S.det} to measure changes` : S.failed ? G`No images to measure` : !S.grid ? G`Waiting for the images…` : G`Click or tap a star in the image`,
     tipText: p => `${C.fmtDate(p.x)} · ×${p.y.toFixed(2)} · ${p.src.lam.toFixed(2)} µm`,
     onPick: p => jumpTo(p.src),
   });
-  renderMolecules(steadied(pts));
+  renderMolecules(own ? pts : steadied(pts));
   $('lctitle').textContent = G`Brightness over time · D${S.det} (${C.DET_BANDS[S.det].join('–')} µm)`;
   $('speclegend').innerHTML = (S.head?.epochs || []).map((e, i) => `<span><i style="background:${C.EPOCH_COLORS[i % C.EPOCH_COLORS.length]}"></i>${C.fmtMonth((e[0] + e[1]) / 2)}</span>`).join('');
   const loadingMore = !!S.head && [1, 2, 3, 4, 5, 6].some(d => +S.head.avail[d] > 0 && !S.dets[d]?.done);
@@ -786,7 +839,9 @@ function drawPlots() {
     : relative ? G`<b>Too bright for the camera in ${loadingMore ? G`the detectors loaded so far` : G`every detector`}.</b> The star's core is saturated, so it is measured from its faint outer glow instead (hollow points). The scale is relative${loadingMore ? G` until the other detectors arrive` : ''}; the changes over time are real. `
       : G`<b>Too bright for the camera in ${S.haloDets.map(d => 'D' + d).join(', ')}.</b> There the star's core is saturated, so it is measured from its faint outer glow and each detector is scaled to join its neighbour (hollow points). The overall shape is right; the level and the fine detail are approximate. `;
   const hollow = !S.haloDets?.length ? '' : relative ? G` The star is too bright for the camera, so the scale is relative (hollow points).` : G` Hollow points (${S.haloDets.map(d => 'D' + d).join(', ')}): the star is too bright for the camera there, so they are approximate.`;
-  $('specnote').innerHTML = !pts.length ? '' : G`<p class="hint">Each point is one exposure, coloured by visit: ${pts.length} so far. Click a point to see that exposure.${hollow}</p>
+  $('specnote').innerHTML = !pts.length ? '' : own ? G`<p class="hint">Each point is one exposure, coloured by visit: ${pts.length} so far. Click a point to see that exposure. Hollow points: a star behind the comet, or faulty pixels, add to that exposure.</p>
+    <details><summary>How this is measured</summary><p class="hint">Every exposure is cut out around the comet and sees it at a different wavelength, so stepping through them builds a spectrum. Measured in a circle of 9″ radius around its centre, with the sky taken from a ring 100″ to 140″ away, clear of most of its glow. A comet's glow has no edge: this is the part of it nearest the nucleus. The scale runs in powers of ten, so that the faint visit and the bright one both show; a measurement at or below the floor of the plot sits on its bottom line. Hollow points are exposures in which catalogued stars behind the comet add a quarter or more of the light measured (Gaia, 2MASS and WISE say where they are and how bright), or in which the pipeline marks a quarter of the circle as faulty.</p></details>`
+    : G`<p class="hint">Each point is one exposure, coloured by visit: ${pts.length} so far. Click a point to see that exposure.${hollow}</p>
     <details><summary>How this is measured</summary><p class="hint">${haloNote}Every exposure sees the spot at a different wavelength, so stepping through time builds a spectrum. Measured in a circle of 9″ radius, which reads roughly 10 to 15% low because some starlight falls outside it.</p></details>`;
 }
 /** Take out visit-to-visit brightness changes, detector by detector, so that a variable star's
@@ -804,7 +859,43 @@ function steadied(pts) {
   }
   return out;
 }
+/**
+ * A followed comet has brightened or faded from one visit to the next: said in the detector on show, from the middle
+ * value of each visit's measurements. No star is there to compare with, and none is needed for a change this large.
+ */
+function followedChange(pts) {
+  const el = $('lccheck'), by = new Map(), mid = v => { const s = [...v].sort((a, b) => a - b); return s[s.length >> 1]; };
+  for (const p of pts) if (p.det === S.det && !p.spoiled) { const k = gEpoch(p.mjd); if (!by.has(k)) by.set(k, []); by.get(k).push(p.flux); }
+  const v = [...by].filter(([, a]) => a.length >= 5).sort((a, b) => a[0] - b[0]).map(([k, a]) => ({ k, n: a.length, mid: mid(a) }));
+  const a = v[0], z = v[v.length - 1];
+  if (v.length < 2 || !(a.mid > 0) || !(z.mid > 0)) { el.innerHTML = ''; S.find.change = null; renderFindings(); return null; }
+  const eps = S.head.epochs, when = x => C.fmtMonth((eps[x.k][0] + eps[x.k][1]) / 2), up = z.mid >= a.mid, times = up ? z.mid / a.mid : a.mid / z.mid;
+  const shown = times >= 10 ? String(Math.round(times)) : times.toFixed(1), vis = S.target.body?.visits || [], far = vis[a.k], near = vis[z.k];
+  const au = x => x.sun.map(d => d.toFixed(2)).join('–');
+  const where = far && near ? G` It was ${au(far)} au from the Sun at the first of those visits and ${au(near)} au at the last: 1 au is the distance from the Earth to the Sun.` : '';
+  el.innerHTML = up
+    ? G`<p class="hint verdict"><b>${shown} times as bright in ${when(z)} as in ${when(a)}</b>, in D${S.det}: the middle value of ${z.n} exposures against that of ${a.n}, each the light within 9″ of the comet's centre.${where}</p>`
+    : G`<p class="hint verdict"><b>${shown} times fainter in ${when(z)} than in ${when(a)}</b>, in D${S.det}: the middle value of ${z.n} exposures against that of ${a.n}, each the light within 9″ of the comet's centre.${where}</p>`;
+  S.find.change = { cls: 'found', html: up ? G`<b>${shown} times as bright in ${when(z)} as in ${when(a)}</b>, in D${S.det}.` : G`<b>${shown} times fainter in ${when(z)} than in ${when(a)}</b>, in D${S.det}.` };
+  renderFindings();
+  return null;
+}
+/** A followed comet: which gases glow around it, visit by visit. What counts as a glow is said in core.js (glowBands). */
+function renderGlow(pts) {
+  const el = $('molecules'), eps = S.head?.epochs || [], good = pts.filter(p => !p.spoiled && !p.halo);
+  const visits = eps.map((e, k) => ({ when: C.fmtMonth((e[0] + e[1]) / 2), rows: C.glowBands(good.filter(p => gEpoch(p.mjd) === k)) })).filter(v => v.rows.some(m => m.times !== null));
+  if (!S.showBands || !visits.length) { el.innerHTML = ''; S.find.bands = null; renderFindings(); return; }
+  const and = a => (a.length > 1 ? G`${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}` : a[0]);
+  const lit = visits.map(v => ({ when: v.when, names: v.rows.filter(m => m.glows).map(m => G(m.said)) })).filter(v => v.names.length);
+  S.find.bands = lit.length ? { cls: 'found', html: G`<b>Gas glowing around it:</b> ${lit.map(v => `${and(v.names)} (${v.when})`).join('; ')}.` } : null;
+  renderFindings();
+  const cell = m => (m.times === null ? '–' : !m.glows ? G`no clear glow` : m.times > 100 ? G`more than ×100` : `×${m.times >= 10 ? Math.round(m.times) : m.times.toFixed(1)}`);
+  const rows = C.GASES.map((g, i) => `<tr><td>${G(g.name)} <span class="none">${g.f}</span></td><td>${g.band[0].toFixed(2)}–${g.band[1].toFixed(2)}</td>${visits.map(v => `<td class="${v.rows[i].glows ? 'peak' : 'none'}">${cell(v.rows[i])}</td>`).join('')}</tr>`).join('');
+  el.innerHTML = G`<table class="t mol"><thead><tr><th>Gas</th><th>Band <span class="asis">(µm)</span></th>${visits.map(v => `<th>${v.when}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+    <p class="hint">×49 means: inside the band the comet is, at its brightest measurement there, 49 times as bright as in the plain spectrum beside the band. A gas around a comet takes up sunlight and gives it back at its own wavelengths: that is the glow. It counts when two or more measurements in the band stand clear of the spectrum beside it; hollow points are left out. The SPHEREx team reports these gases from the same exposures: <a href="https://irsa.ipac.caltech.edu/data/SPHEREx/docs/comet3iatlas/index.html" target="_blank" rel="noopener">its papers, listed at IRSA</a>.</p>`;
+}
 function renderMolecules(pts) {
+  if (followed()) return renderGlow(pts);
   const el = $('molecules');
   if (!S.showBands || pts.length < 30) { el.innerHTML = ''; S.find.bands = null; renderFindings(); return; }
   // A star or a brown dwarf is checked for the gases of its atmosphere; a body of the solar system, which shines by
@@ -1100,7 +1191,8 @@ function renderScan() {
   const el = $('scan');
   if (!el) return;
   const D = S.dets[S.det];
-  if (!S.grid || !D?.done || !S.stacks || S.stacks.length < 2) { el.innerHTML = ''; scanResult = null; scanKey = ''; return; }
+  // (a followed body has other stars behind it in every exposure: there is no field of stars to check)
+  if (!S.grid || !D?.done || !S.stacks || S.stacks.length < 2 || followed()) { el.innerHTML = ''; scanResult = null; scanKey = ''; return; }
   const key = `${S.gen}:${S.det}:${D.frames.length}:${[...S.off].join()}`;
   if (key !== scanKey) { scanKey = key; try { scanResult = scanField(); } catch (e) { console.error(e); scanResult = null; } }
   const r = scanResult;
@@ -1122,7 +1214,7 @@ function renderScan() {
 // ------------------------------------------------------------ side panels
 function renderChips() {
   const el = $('examples'); el.innerHTML = '';
-  for (const t of S.targets) {          // a link to the object's plain page (a search engine, a new tab); a plain press opens the object here
+  for (const t of [...S.targets.filter(x => x.extra), ...tourTargets()]) {          // a link to the object's plain page (a search engine, a new tab); a plain press opens the object here
     const a = document.createElement('a'), file = OBJECT_FILES[t.slug];
     a.href = file ? (Lang.lang === 'en' ? '' : `${Lang.lang}/`) + file : `?target=${t.slug}`;
     a.textContent = nameOf(t);
@@ -1221,7 +1313,14 @@ function renderAbout() {
   const pm = pmSrc ? Math.hypot(pmSrc.pmra, pmSrc.pmdec) / 1000 : 0;          // arcseconds per year
   const fast = pm > 0.2;
   const body = t?.body || k?.body;
-  if (body) {
+  const led = !!(body?.visits && t?.follow);
+  if (led) {
+    // A body that is followed: when SPHEREx had it in view, and the two dates of its passage that are asked about most.
+    const b = body, on = mjd => C.fmtRange(mjd, mjd);
+    fact(G`Seen by SPHEREx`, b.visits.map(v => C.fmtRange(v.t0, v.t1)).join('<br>'), b.visits.map(v => nExp(v.exposures)).join(' + '), G`The days on which SPHEREx had it in view`);
+    if (b.peri) fact(G`Closest to the Sun`, on(b.peri.mjd), G`${b.peri.au.toFixed(2)} au; 1 au is the distance from the Earth to the Sun`, G`From ${b.source}`);
+    if (b.near) fact(G`Closest to Earth`, on(b.near.mjd), G`${b.near.au.toFixed(2)} au`, G`From ${b.source}`);
+  } else if (body) {
     // A body of the solar system has no place of its own in the sky: what is told is when it was here, and where it was then.
     const b = body;
     fact(G`Crossed this field`, span(b.from, b.to), G`${arc(b.moved)} across the sky`, G`The days on which it was inside these images, and how far it moved meanwhile`);
@@ -1245,7 +1344,7 @@ function renderAbout() {
   }
   if (i?.redshift > 0.002) fact(G`Redshift`, i.redshift.toFixed(4), G`its light is stretched by the expanding universe`);
   }
-  if (S.head) {
+  if (S.head && !led) {
     const eps = S.head.epochs, split = !!S.head.split;
     fact(G`SPHEREx has`, `${S.head.estimated ? G`about ` : ''}${nExp(S.head.total)}`,
       G`${Lang.N(eps.length, split ? 'time slice' : 'visit')}, ${C.fmtMonth(eps[0]?.[0] ?? 0)} to ${C.fmtMonth(eps.at(-1)?.[1] ?? 0)}`);
@@ -1253,7 +1352,7 @@ function renderAbout() {
   const w = S.wiki;
   // The encyclopedia's picture sits in the header only when it is a photograph (see isPhoto).
   const thumb = w?.thumb ? `<a class="thumb" href="${esc(w.url)}" target="_blank" rel="noopener" title="Wikipedia: ${esc(w.title)}"${photos.get(w.thumb) === true ? '' : ' hidden'}><img src="${esc(w.thumb)}" alt="${G`${esc(w.title)}, image from Wikipedia`}"></a>` : '';
-  const links = [...(w ? [{ label: 'Wikipedia', title: G`Encyclopedia article: ${w.title}`, url: w.url }] : []), ...(body ? (body.kind === 'planet' ? [] : Info.bodyLinks(body.number || body.id || t?.label)) : Info.externalLinks(S.ra, S.dec, i))]
+  const links = [...(w ? [{ label: 'Wikipedia', title: G`Encyclopedia article: ${w.title}`, url: w.url }] : []), ...(t?.links || []).map(l => ({ ...l, title: G(l.title) })), ...(body ? (body.kind === 'planet' ? [] : Info.bodyLinks(body.number || body.id || t?.label)) : Info.externalLinks(S.ra, S.dec, i))]
     .map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.title)}">${l.label}</a>`).join('');
   // The story first: under the name come what to look for and the pictures. Where it is, how far, how many exposures and
   // the links to other catalogues are one press away, folded under the name.
@@ -1274,9 +1373,9 @@ function renderAbout() {
   $('factsbtn').onclick = () => { S.factsOpen = !factsShown(); S.factsCoach = false; showFacts(); };
   if ($('howto')) $('howto').onclick = () => coachGo(0);
   if (mv) $('gomoved').onclick = () => {
-    const preset = S.targets.find(x => sepArcsec(mv.ra, mv.dec, x.ra, x.dec) < 20);
-    if (preset && +$('fov').value === preset.size) openTarget(preset);
-    else go({ ra: mv.ra, dec: mv.dec, size: +$('fov').value, track: mv, info: mv });
+    const preset = S.targets.find(x => !x.follow && sepArcsec(mv.ra, mv.dec, x.ra, x.dec) < 20);
+    if (preset && fovPick() === preset.size) openTarget(preset);
+    else go({ ra: mv.ra, dec: mv.dec, size: fovPick(), track: mv, info: mv });
   };
   if (w?.thumb && !photos.has(w.thumb)) isPhoto(w.thumb).then(() => { if (S.wiki?.thumb === w.thumb) { renderAbout(); } });
   renderLook(); renderWiki(); renderMotion();
@@ -1495,10 +1594,14 @@ function renderMotion() {
   sum('none', G`<b>No motion:</b> the same place to within ${Math.max(d, 0.1).toFixed(1)}″ between ${span}.`);
 }
 function renderModes() {
-  const body = !!(S.grid && bodyStops());
-  $('saveades').hidden = !body;          // the places of a body can be saved while one is followed
-  for (const b of $('modes').children) { b.setAttribute('aria-pressed', b.dataset.mode === S.mode); if (b.dataset.mode === 'trail') b.hidden = !body; }
-  $('explain').textContent = MODES[S.mode];
+  const body = !!(S.grid && bodyStops()), own = followed();
+  $('saveades').hidden = !body || own;          // the places of a body can be saved while one is followed through a field; the place of a body the images are centred on was not measured
+  for (const b of $('modes').children) {
+    const m = b.dataset.mode;
+    b.setAttribute('aria-pressed', m === S.mode);
+    b.hidden = m === 'trail' ? !body : own && ['color', 'diff', 'deep'].includes(m);          // views that set one patch of sky against itself: not for a followed body
+  }
+  $('explain').textContent = (own && FOLLOWED[S.mode]) || MODES[S.mode];
 }
 
 // ------------------------------------------------------------ bodies of the solar system passing through
@@ -1741,7 +1844,30 @@ $('huntbox').addEventListener('click', e => {
   else if (!(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey)) { e.preventDefault(); openSheet('hunt'); }
 });
 /** How far and how fast the followed body moved, from stop to stop; for a body whose path is known, how well the path fits. */
+/**
+ * A followed body: its images are centred on it, so there is no motion to measure in them. What is told instead
+ * comes from its path (stored with the object, from JPL Horizons), with one check made here: where its light really
+ * lies in the exposures of the detector on show, against the centre they were cut out around.
+ */
+function followedMotion(el, sum) {
+  const b = S.target.body, n = S.grid.n, c = (n - 1) / 2;
+  const rows = b.visits.map(v => `<tr><td>${C.fmtRange(v.t0, v.t1)}</td><td>${pace(v.rate)}</td><td>${v.sun.map(x => x.toFixed(2)).join('–')}</td><td>${v.earth.map(x => x.toFixed(2)).join('–')}</td></tr>`).join('');
+  // the check: the exposures in which it is bright and nothing else is in the circle
+  const off = [];
+  for (const f of usable(S.det)) {
+    if (f.fault || f.star) continue;
+    const m = C.centroid(f.data, n, c, c, 2);
+    if (m && m.peak > 12 * f.sig) off.push(Math.hypot(m.x - c, m.y - c) * S.grid.scale);
+  }
+  off.sort((p, q) => p - q);
+  const check = off.length >= 8 ? G` In the ${off.length} exposures of D${S.det} in which it is bright, its light lies typically ${off[off.length >> 1].toFixed(1)}″ from that place, at the worst ${off[off.length - 1].toFixed(1)}″. One SPHEREx pixel is 6.15″.` : '';
+  el.innerHTML = G`<table class="t wrap"><thead><tr><th>Visit</th><th title="How fast it moved across the sky">Across the sky</th><th title="1 au is the distance from the Earth to the Sun">From the Sun <span class="asis">(au)</span></th><th title="1 au is the distance from the Earth to the Sun">From Earth <span class="asis">(au)</span></th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="hint verdict"><b>Followed, not searched for.</b> Every exposure is cut out around the place that NASA's JPL Horizons gives for the comet at the middle of that exposure, seen from where the spacecraft was at that moment.${check}</p>`;
+  const last = b.visits[b.visits.length - 1];
+  sum('found', G`<b>Moving ${pace(last.rate)}</b> across the sky in ${C.fmtMonth((last.t0 + last.t1) / 2)}: every image is centred on it.`);
+}
 function bodyMotion(el, sum) {
+  if (followed()) return followedMotion(el, sum);
   const v = bodyStops(), t = S.sel?.trail, as = S.grid.scale;
   if (v.length < 2) {
     el.innerHTML = v.length ? G`<p class="hint">Caught at one stop of the telescope only: too little to measure a motion.</p>` : (S.dets[S.det]?.done ? G`<p class="hint">Its path does not cross these images.</p>` : '');
@@ -1834,7 +1960,7 @@ async function loadFlags(f) {
   if (flagStore.size > 60) flagStore.clear();
   flagStore.set(key, { state: 'reading' }); renderMeta();
   try {
-    const res = await Archive.readFlags(f, S.grid);
+    const res = await Archive.readFlags(f, f.c ? { ...S.grid, ra: f.c[0], dec: f.c[1] } : S.grid);          // an exposure cut out around a followed body has a centre of its own
     const count = new Map();
     for (let p = 0; p < res.bits.length; p++) { const v = res.bits[p]; if (v) for (const pl of res.planes) if (v & (1 << pl.bit)) count.set(pl.bit, (count.get(pl.bit) || 0) + 1); }
     flagStore.set(key, { state: 'done', res, count });
@@ -1975,7 +2101,7 @@ const sepArcsec = (ra1, dec1, ra2, dec2) => Math.hypot((ra1 - ra2) * Math.cos(de
 async function search(text) {
   text = text.trim();
   if (!text) return;
-  const size = +$('fov').value;
+  const size = fovPick();
   const co = C.parseCoords(text);
   if (co) {
     go({ ...co, size });
@@ -2000,7 +2126,10 @@ async function search(text) {
   }
   const plain = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');          // "Plüton" and "Plutón" are Pluto
   const q = plain(text);
-  const preset = q.length > 2 && S.targets.find(t => [t.label, t.slug, t.query, nameOf(t)].some(s => { const v = plain(s); return v.includes(q) || q.includes(v); }));
+  // a body that is followed has one view, whatever size of field is chosen: its names open it, and only its names
+  const led = followedNamed(text);
+  if (led) return openTarget(led);
+  const preset = q.length > 2 && S.targets.find(t => !t.follow && [t.label, t.slug, t.query, nameOf(t)].some(s => { const v = plain(s); return v.includes(q) || q.includes(v); }));
   if (preset && size === preset.size) return openTarget(preset);
   // "asteroid Iris", "(433) Eros", "2P/Encke": a body of the solar system is asked for outright
   const outright = Bodies.saysBody(text);
@@ -2035,6 +2164,8 @@ async function search(text) {
  */
 const orbitsDown = () => G`The service that knows the orbits of asteroids and comets (Miriade, Paris Observatory) could not be reached just now.`;
 async function openBody(text, when = null, view = {}, known = null) {
+  const led = followedNamed(text);          // an address written before the body became a showcase object, or a name written in full
+  if (led) { openTarget(led); return true; }
   const tok = ++S.openTok, say = (words, ms) => { if (tok === S.openTok) note(words, ms); };
   say(T('note.lookingUpName', { name: text }));
   let b, visits, fine, v, o, name;
@@ -2074,8 +2205,8 @@ async function openAt(ra, dec, mapFov) {
   }
   // How well can a click be aimed? A few pixels of the map, whatever that is on the sky at this zoom.
   const pixel = mapFov * 3600 / Math.max(200, $('map').clientWidth);
-  const tok = ++S.openTok, r = clamp(12 * pixel, 8, 90), aim = clamp(5 * pixel, 5, 200), size = +$('fov').value;
-  const preset = S.targets.find(t => sepArcsec(ra, dec, t.ra, t.dec) < Math.max(20, Math.min(aim, 60)));
+  const tok = ++S.openTok, r = clamp(12 * pixel, 8, 90), aim = clamp(5 * pixel, 5, 200), size = fovPick();
+  const preset = S.targets.find(t => !t.follow && sepArcsec(ra, dec, t.ra, t.dec) < Math.max(20, Math.min(aim, 60)));          // a followed body is not at the place the list gives for it any more
   if (preset && size === preset.size) return openTarget(preset);
   note(T('note.lookingUp'));
   const info = await Info.identify(ra, dec, r, aim, true).catch(() => null);          // by hand: a click inside a bright star's glare means the star
@@ -2195,6 +2326,7 @@ cv.addEventListener('wheel', e => { if (!S.grid) return; e.preventDefault(); zoo
 cv.addEventListener('dblclick', e => { if (S.grid) zoomAt(e.offsetX, e.offsetY, 2); });
 
 function pick(X, Y) {
+  if (followed()) return;          // the images are centred on the body: no other spot keeps its place in them
   const [gx, gy] = c2g(X, Y), it = S.seq[S.idx];
   // Clicking on the tracked target's predicted spot re-attaches the moving aperture.
   if (S.track && it) { const t = trackPos(it.mjd); if (Math.hypot(t[0] - gx, t[1] - gy) < 3) { S.sel = { follow: true }; paint(); renderMotion(); refreshPlots(); return; } }
@@ -2233,7 +2365,7 @@ $('savecsv').onclick = () => {
   const relative = S.haloDets?.length > 0 && !S.haloAnchored, q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const head = ['date_utc', 'mjd', 'detector', 'wavelength_um', relative ? 'relative_brightness' : 'flux_mJy', relative ? 'relative_error' : 'flux_error_mJy', 'method', 'release', 'exposure', 'source_file'];
   const rows = [...pts].sort((a, b) => a.mjd - b.mjd).map(p => [C.fmtDate(p.mjd, true).replace(' UTC', ''), p.mjd.toFixed(5), p.det, p.lam.toFixed(4),
-    p.flux.toPrecision(5), p.err.toPrecision(3), p.halo ? (relative ? 'halo (relative)' : 'halo joined to neighbouring detector (approximate)') : 'aperture 9.2 arcsec',
+    p.flux.toPrecision(5), p.err.toPrecision(3), p.halo ? (relative ? 'halo (relative)' : 'halo joined to neighbouring detector (approximate)') : `aperture 9.2 arcsec${p.spoiled === 'star' ? '; a catalogued star behind it adds to this one' : p.spoiled === 'fault' ? '; faulty pixels in the aperture' : ''}`,
     q(p.frame.coll), q(p.frame.id), q(p.frame.url)].join(','));
   // Say which spot was measured: the object itself, or another star the user circled in its field.
   const trail = S.sel?.trail, path = bodyStops();
@@ -2505,7 +2637,7 @@ function relayout() {
  */
 let tourMeasured = '';
 function measureTour() {
-  if (!tourSteps.length) tourSteps = buildTour(S.targets, T, nameOf);
+  if (!tourSteps.length) tourSteps = buildTour(tourTargets(), T, nameOf);
   const narrow = isNarrow(), W = window.innerWidth, key = `${narrow}|${W}|${tourSteps.length}|${document.fonts?.status || ''}`;
   if (key === tourMeasured) return;
   tourMeasured = key;
@@ -2558,7 +2690,7 @@ window.addEventListener('resize', () => tourFit());
 document.fonts?.ready.then(() => tourFit(true));
 function tourGo(i) {
   coachEnd();
-  if (!tourSteps.length) tourSteps = buildTour(S.targets, T, nameOf);
+  if (!tourSteps.length) tourSteps = buildTour(tourTargets(), T, nameOf);
   seatFigures(); measureTour();
   if (i < 0) return;
   if (i >= tourSteps.length) return tourEnd();
@@ -2824,7 +2956,7 @@ function tourTiles() {
     for (const z of TOUR_FRAMES) add(266.4, -29.0, 110, size, z);
     add(83.82, -5.39, 60, size);
   }
-  for (const t of S.targets) { add(t.ra, t.dec, Sky.objectFov(t.size, open[0]), open); add(t.ra, t.dec, Sky.objectFov(t.size, wide[0]), wide); }
+  for (const t of tourTargets()) { add(t.ra, t.dec, Sky.objectFov(t.size, open[0]), open); add(t.ra, t.dec, Sky.objectFov(t.size, wide[0]), wide); }
   return [...urls];
 }
 /**
@@ -2835,7 +2967,7 @@ async function saveTourOffline(full) {
   if (!('caches' in window)) return;
   const el = $('offline'), say = html => { if (el) el.innerHTML = html; };
   const files = [];
-  for (const t of S.targets) {
+  for (const t of tourTargets()) {
     const d = t.view?.det || 2;
     files.push(dataUrl(t, `d${d}.ndjson`), dataUrl(t, 'gaia.json'));       // what each tour step shows first
     if (t.eph && !full) for (let k = 1; k <= 6; k++) if (k !== d) files.push(dataUrl(t, `d${k}.ndjson`));      // a body is shown stop by stop, across the detectors
@@ -2843,8 +2975,8 @@ async function saveTourOffline(full) {
     if (t.wikiCard && Lang.locale !== 'en') Info.wikipediaIn(Lang.locale, t.wikiCard);          // asked once here, the encyclopedia card in the page's language is kept for offline use too
   }
   if (full) {
-    for (const t of S.targets) for (let d = 1; d <= 6; d++) if (d !== (t.view?.det || 2)) files.push(dataUrl(t, `d${d}.ndjson`));
-    for (const t of S.targets) files.push(dataUrl(t, 'catwise.json'));
+    for (const t of tourTargets()) for (let d = 1; d <= 6; d++) if (d !== (t.view?.det || 2)) files.push(dataUrl(t, `d${d}.ndjson`));
+    for (const t of tourTargets()) files.push(dataUrl(t, 'catwise.json'));
     files.push(...tourTiles());
   }
   let done = 0, failed = 0, next = 0;
@@ -2876,7 +3008,7 @@ const TOUR_SAVED = esc(T('off.saved'));
  * are kept on this device like any position already opened, and open without a connection too.
  */
 async function offerLastObjects(say) {
-  if (!tourSteps.length) tourSteps = buildTour(S.targets, T, nameOf);          // the tour may not have been started yet
+  if (!tourSteps.length) tourSteps = buildTour(tourTargets(), T, nameOf);          // the tour may not have been started yet
   const list = (tourSteps.at(-1)?.tryNext || []).map(placeNow);
   if (!list.length || !('caches' in window)) return;
   const kept = await Promise.all(list.map(o => Store.has(liveKey(o.ra, o.dec, TRY_SIZE, 'kept'))));

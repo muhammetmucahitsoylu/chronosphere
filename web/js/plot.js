@@ -63,12 +63,14 @@ export class Plot {
     if (y0 === y1) { y0 -= 1; y1 += 1; }
     const xp = (x1 - x0) * 0.03, yp = (y1 - y0) * 0.06;
     if (!o.xlim) { x0 -= xp; x1 += xp; } if (!o.ylim) { y0 -= yp; y1 += yp; }
-    const X = v => L + (v - x0) / (x1 - x0) * pw, Y = v => T + ph - (v - y0) / (y1 - y0) * ph;
+    // logY: the vertical scale runs in powers of ten (ylim must be given, both ends above zero); what lies at or below its floor is drawn on the bottom line
+    const log = !!o.logY && y0 > 0 && y1 > y0, lg = v => Math.log10(Math.max(v, y0));
+    const X = v => L + (v - x0) / (x1 - x0) * pw, Y = log ? v => T + ph - (lg(v) - Math.log10(y0)) / (Math.log10(y1) - Math.log10(y0)) * ph : v => T + ph - (v - y0) / (y1 - y0) * ph;
 
     c.strokeStyle = grid; c.fillStyle = ink; c.lineWidth = 1;
-    const yt = niceTicks(y0, y1, 4);
+    const yt = log ? { ticks: Array.from({ length: Math.floor(Math.log10(y1)) - Math.ceil(Math.log10(y0)) + 1 }, (_, i) => 10 ** (Math.ceil(Math.log10(y0)) + i)), step: 0 } : niceTicks(y0, y1, 4);
     c.textAlign = 'right'; c.textBaseline = 'middle';
-    for (const v of yt.ticks) { c.beginPath(); c.moveTo(L, Y(v)); c.lineTo(W - R, Y(v)); c.stroke(); c.fillText(fmtNum(v, yt.step), L - 6, Y(v)); }
+    for (const v of yt.ticks) { c.beginPath(); c.moveTo(L, Y(v)); c.lineTo(W - R, Y(v)); c.stroke(); c.fillText(log ? String(+v.toPrecision(1)) : fmtNum(v, yt.step), L - 6, Y(v)); }
     c.textAlign = 'center'; c.textBaseline = 'top';
     if (o.xTicks) { const tk = o.xTicks(x0, x1), every = Math.max(1, Math.ceil(tk.length * 58 / pw)); tk.forEach((t, i) => { if (i % every) return; c.beginPath(); c.moveTo(X(t.v), T + ph); c.lineTo(X(t.v), T + ph + 4); c.stroke(); c.fillText(t.label, X(t.v), T + ph + 6); }); }
     else { const xt = niceTicks(x0, x1, 6); for (const v of xt.ticks) { c.beginPath(); c.moveTo(X(v), T + ph); c.lineTo(X(v), T + ph + 4); c.stroke(); c.fillText(fmtNum(v, xt.step), X(v), T + ph + 6); } }

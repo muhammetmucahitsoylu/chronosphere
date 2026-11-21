@@ -241,6 +241,32 @@ def body(t):
     print(f"{t['slug']}: {len(pics)} pictures, one per stop of the telescope ({labels[0]} to {labels[-1]}), {(OUT / (t['slug'] + '.gif')).stat().st_size // 1024} kB gif")
 
 
+def followed(t):
+    """A body that is followed (every exposure cut out around it, scripts/build_body.mjs): one picture for each of its
+    visits, the median of that visit's exposures in one detector. The stars behind it differ from exposure to exposure
+    and drop out. Both on one scale of brightness, the brighter visit's, as the site shows them; the middle half of
+    the field, where the body is."""
+    det = t["view"]["det"]
+    head, frames = read(WEB / "data" / t["slug"] / f"d{det}.ndjson")
+    g, n = head["grid"], head["grid"]["n"]
+    stacks = []
+    for a, b in head["epochs"]:
+        fr = [f for f in frames if a - 1e-6 <= f["mjd"] <= b + 1e-6]
+        if len(fr) >= 3:
+            img = median(fr, n)
+            stacks.append((img, max(np.nanpercentile(img, 99.7), 25 * robust_sig(img)), (fr[0]["mjd"] + fr[-1]["mjd"]) / 2, len(fr)))
+    top = max(s[1] for s in stacks)
+    w = n // 2
+    crop, scale, c = ((n - w) // 2, (n - w) // 2, w), 4, (n - 1) / 2
+    ring = 18 / g["scale"]
+    pics = [picture(stretch(img, top), scale, [(c, c, ring)], date(mid, False), f"SPHEREx D{det}", crop) for img, _, mid, _ in stacks]
+    labels = [date(mid, False) for _, _, mid, _ in stacks]
+    OUT.mkdir(exist_ok=True)
+    save_gif(pics, OUT / f"{t['slug']}.gif", 1300)
+    preview(pics, f"{t['label']} · SPHEREx · {labels[0]} → {labels[-1]}", OUT / f"{t['slug']}.jpg")
+    print(f"{t['slug']}: {len(pics)} pictures, one per visit ({', '.join(f'{lab}: {k} exposures' for lab, (_, _, _, k) in zip(labels, stacks))}), {(OUT / (t['slug'] + '.gif')).stat().st_size // 1024} kB gif")
+
+
 def pluto(src, eph_path):
     eph = json.load(open(eph_path, encoding="utf-8"))["eph"]
     def at(mjd):
@@ -282,4 +308,4 @@ if __name__ == "__main__":
         for t in json.load(open(WEB / "data" / "targets.json", encoding="utf-8")):
             if want and t["slug"] not in want:
                 continue
-            (body if t.get("eph") else showcase)(t)
+            (followed if t.get("follow") else body if t.get("eph") else showcase)(t)

@@ -229,7 +229,13 @@ function tableAt(t, arr, px, py) {       // bilinear lookup; px, py are 1-based 
 }
 
 // ------------------------------------------------------------------ one exposure
-/** Cut out, resample and background-subtract one exposure. Null when it does not cover the stamp. */
+/**
+ * Cut out, resample and background-subtract one exposure. Null when it does not cover the stamp.
+ * `grid` may be a function instead: it is given what the exposure's own header says ({ mjd, sc }: the middle of the
+ * exposure and where the spacecraft was then) and returns the grid for this exposure, or null to leave it out. That
+ * is how a moving body is followed: every exposure is cut out around the place the body had at that moment, seen
+ * from the spacecraft. The record then says which centre was used (`c`: [ra, dec]).
+ */
 export async function readFrame(f, grid, signal) {
   let key = null, head = null, lastErr = null;
   for (const k of f.keys) {
@@ -238,6 +244,8 @@ export async function readFrame(f, grid, signal) {
   }
   if (!head) throw lastErr || new Error('exposure not found');
   const h1 = readHeader(head, 0), img = readHeader(head, h1.next), h = img.cards, dataOff = img.next;
+  const own = typeof grid === 'function';
+  if (own) { grid = grid({ mjd: h['MJD-AVG'] ?? f.mjd, sc: spacecraft(h) }); if (!grid) return null; }
   const wcs = makeWcs(h), n = grid.n, npx = n * n;
   const xs = new Float64Array(npx), ys = new Float64Array(npx);
   let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
@@ -295,6 +303,7 @@ export async function readFrame(f, grid, signal) {
     exp: h.XPOSURE ?? h.EXPTIME ?? null, url: IBE + key, ...(spacecraft(h) ? { sc: spacecraft(h) } : {}),
     lam: s0 / npx, lgx: sx / sxx, lgy: sy / sxx, bw: tableAt(t, t.bw, xs[pc] + 1, ys[pc] + 1),
     bg: med, sig, cov, fwhm: +(h.PSF_FWHM || 0).toFixed(2), px: [+xs[pc].toFixed(1), +ys[pc].toFixed(1)], data: out,
+    ...(own ? { c: [+grid.ra.toFixed(6), +grid.dec.toFixed(6)] } : {}),
   };
 }
 

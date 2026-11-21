@@ -350,6 +350,7 @@ table.t th { font: 500 10.5px var(--mono); letter-spacing: .8px; text-transform:
 table.t td { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
 table.t td:first-child { font-family: var(--sans); font-size: 13px; }
 table.mol td:first-child, table.mol td:last-child { white-space: normal; }
+table.t.wrap td, table.t.wrap th { white-space: normal; }          /* a table of words rather than numbers: on a narrow screen its cells break instead of running off the edge */
 table.t td i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; }
 .dip { color: var(--mint); } .peak { color: var(--gold); } .none { color: var(--ink-3); }
 .verdict b { color: var(--ink); font-weight: 600; }
