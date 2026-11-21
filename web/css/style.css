@@ -373,6 +373,7 @@ table.t td i { display: inline-block; width: 8px; height: 8px; border-radius: 50
 #years { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 #years:empty { display: none; }
 .yearssay { margin: 0 0 10px; font-size: 14px; line-height: 1.5; }
+.yearssay.huntsay, .yearssay.lcsay { margin-top: 14px; }
 .yearsnote { margin: 0; font-size: 13.5px; line-height: 1.5; }
 .yearsnote button { border: 1px solid var(--gold); color: var(--gold); border-radius: 999px; padding: 3px 12px; font-size: 13px; min-height: 30px; margin-left: 6px; }
 .yearsnote button:hover { background: #f2c14e22; }

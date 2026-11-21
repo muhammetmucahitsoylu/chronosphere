@@ -602,7 +602,100 @@ function renderYears() {
   const none = unseen.map(f => G`It does not show in the ${f.survey} image (${f.band}, ${Years.LAM[f.band].toFixed(2)} µm, ${f.guessed ? '1997–2001' : C.fmtMonth(f.mjd)}): at that wavelength it is too faint for ${f.survey}.`).join(' ');
   el.innerHTML = `<p class="yearssay">${say} ${G`Its light lies ${rms.toFixed(1)}″ (r.m.s.) from where the catalogue puts it on each date.`}${none ? ` ${none}` : ''}</p>${notes}
     <table class="t"><thead><tr><th>${G`Telescope`}</th><th>${G`Images`}</th><th>${G`Years`}</th><th>${G`Off the catalogue`}</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  yearsHunt(el, name);
   yearsBrightness(el, name);
+}
+/**
+ * Without being told where to look: anything that moves in a straight line through the WISE and NEOWISE visits of a
+ * built field. Each visit minus the median of all visits leaves what was not always in one place; its bright dots
+ * (7σ, after a light smoothing) are linked from the first third of the years to the last, and a line counts when a dot
+ * lies on it in 90% of the visits it crosses, at 1″ a year or faster, away from the field's edge. Lines with the same
+ * motion are one star and the reflections and glare that move with it: the strongest stands for them. A line that moves
+ * like the object in the ring but passes elsewhere is its reflection in WISE's optics, and is not reported.
+ * Checked on the ten bands of the five test fields (spike/years_blind.py): WISE 0855 in W2 (8.10″ a year, 23 of 23
+ * visits; catalogue 8.15) and Epsilon Indi B in W1 and W2 (4.69; 4.68), and nothing else.
+ */
+function yearsHunt(el, name) {
+  if (S.years?.src !== 'built') return;
+  const band = Years.NEAR[S.det][1], g = vg(), n = g.n;
+  const fr = S.seq.filter(it => it.years && it.years.band === band && (it.years.survey === 'WISE' || it.years.survey === 'NEOWISE'));
+  if (fr.length < 10) return;
+  const key = `${S.gen}:${band}`;
+  if (S.huntMemo?.key !== key) S.huntMemo = { key, tracks: findMovers(fr, n, g.scale) };
+  const mine = [];
+  for (const t of S.huntMemo.tracks) {
+    // the object in the ring, where the catalogue puts it at the line's own date
+    const p = S.track && !S.track.eph ? trackPos(51544.5 + (t.t - 2000) * 365.25, g) : null;
+    const pmx = S.track ? -(S.track.pmra || 0) / 1000 / g.scale : 0, pmy = S.track ? (S.track.pmdec || 0) / 1000 / g.scale : 0;
+    // moving the way the object in the ring does (within 10° and 30%) but elsewhere: its reflection in WISE's optics, or the
+    // glare of a companion moving with it (Epsilon Indi A, just outside its field): not reported
+    const v = Math.hypot(t.vx, t.vy), w = Math.hypot(pmx, pmy), turn = Math.abs(((Math.atan2(t.vy, t.vx) - Math.atan2(pmy, pmx)) * 180 / Math.PI + 540) % 360 - 180);
+    const same = !!S.track && w > 0 && turn < 10 && v > 0.7 * w && v < 1.3 * w;
+    const at = !!p && Math.hypot(t.x - p[0], t.y - p[1]) < 3;
+    if (same && !at) continue;
+    mine.push({ ...t, it: at });
+  }
+  if (!mine.length) return;
+  const lam = Years.LAM[band].toFixed(1);
+  const lines = mine.map(t => {
+    const speed = Math.hypot(t.vx, t.vy) * g.scale, dir = compass(-t.vx, t.vy);
+    return t.it ? G`moving ${speed.toFixed(2)}″ a year towards the ${dir}, in ${t.hits} of the ${t.inside} visits: it is ${esc(name)}${S.track ? G` (${(Math.hypot(S.track.pmra || 0, S.track.pmdec || 0) / 1000).toFixed(2)}″ a year by the catalogue)` : ''}`
+      : G`moving ${speed.toFixed(2)}″ a year towards the ${dir}, in ${t.hits} of the ${t.inside} visits: not the object in the ring. Check it in the other tools before believing it`;
+  });
+  const cold = mine.some(t => t.it) && (S.target?.resolved?.otype || S.info?.otype) === 'BD*';          // a brown dwarf: the kind of world this is how one finds
+  el.insertAdjacentHTML('beforeend', `<p class="yearssay huntsay"><b>${G`Found without being told where to look.`}</b> ${G`In the ${fr.length} visits of WISE and NEOWISE at ${lam} µm, the page looked for anything that moves in a straight line. It found:`} ${lines.join('; ')}.${cold ? ` ${G`This is how cold, faint worlds near the Sun are found: by their motion, in infrared images years apart.`}` : ''}</p>`);
+}
+/** Lines of moving dots through a set of images on one grid (the visits of one band of WISE), as described above. */
+function findMovers(fr, n, scale) {
+  const K = fr.length, npx = n * n, med = new Float32Array(npx), buf = new Float32Array(K);
+  for (let p = 0; p < npx; p++) {
+    let m = 0;
+    for (let k = 0; k < K; k++) { const v = fr[k].img[p]; if (v === v) buf[m++] = v; }
+    if (!m) { med[p] = NaN; continue; }
+    const a = buf.subarray(0, m).sort(); med[p] = m & 1 ? a[m >> 1] : 0.5 * (a[m / 2 - 1] + a[m / 2]);
+  }
+  const W = [0.25, 0.5, 0.25], dets = [];
+  fr.forEach((it, k) => {
+    const d = new Float32Array(npx), sm = new Float32Array(npx), out = new Float32Array(npx);
+    for (let p = 0; p < npx; p++) { const v = it.img[p] - med[p]; d[p] = v === v ? v : 0; }
+    for (let j = 0; j < n; j++) for (let i = 1; i < n - 1; i++) { const p = j * n + i; sm[p] = W[0] * d[p - 1] + W[1] * d[p] + W[2] * d[p + 1]; }
+    for (let j = 1; j < n - 1; j++) for (let i = 0; i < n; i++) { const p = j * n + i; out[p] = W[0] * sm[p - n] + W[1] * sm[p] + W[2] * sm[p + n]; }
+    const sig = C.robustStats(out).sig;
+    for (let j = 6; j < n - 6; j++) for (let i = 6; i < n - 6; i++) {
+      const v = out[j * n + i]; if (!(v > 7 * sig)) continue;
+      let top = true;
+      for (let b = -2; b <= 2 && top; b++) for (let a = -2; a <= 2; a++) if ((a || b) && out[(j + b) * n + i + a] > v) { top = false; break; }
+      if (top) dets.push({ k, x: i, y: j, snr: v / sig, t: C.mjdToYear(it.mjd) });
+    }
+  });
+  const t0 = C.mjdToYear(fr[0].mjd), t1 = C.mjdToYear(fr[K - 1].mjd), years = fr.map(it => C.mjdToYear(it.mjd));
+  // the dots of each visit in cells of 2 pixels, so that a dot near a place is found at once
+  const cell = (x, y) => `${Math.floor(x / 2)},${Math.floor(y / 2)}`, byK = Array.from({ length: K }, () => new Map());
+  for (const d of dets) { const m = byK[d.k], c = cell(d.x, d.y); if (!m.has(c)) m.set(c, []); m.get(c).push(d); }
+  const near = (k, px, py) => {
+    const cx = Math.floor(px / 2), cy = Math.floor(py / 2);
+    for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) for (const d of byK[k].get(`${cx + a},${cy + b}`) || []) if (Math.hypot(d.x - px, d.y - py) < 1.6) return d;
+    return null;
+  };
+  const early = dets.filter(d => d.t < t0 + 0.35 * (t1 - t0)), late = dets.filter(d => d.t > t0 + 0.65 * (t1 - t0)), tracks = [];
+  for (const a of early) for (const b of late) {
+    const dt = b.t - a.t, vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt, speed = Math.hypot(vx, vy) * scale;
+    if (speed < 1 || speed > 15) continue;
+    let hits = 0, inside = 0, snr = 0, sx = 0, sy = 0;
+    for (let k = 0; k < K; k++) {
+      const px = a.x + vx * (years[k] - a.t), py = a.y + vy * (years[k] - a.t);
+      if (!(px > 2 && py > 2 && px < n - 3 && py < n - 3)) continue;
+      inside++; sx += px; sy += py;
+      const q = near(k, px, py);
+      if (q) { hits++; snr += q.snr; } else if (inside - hits > 0.1 * K + 1) break;          // it can no longer be in 90% of the visits
+    }
+    const mx = sx / Math.max(1, inside), my = sy / Math.max(1, inside);
+    if (inside >= 8 && hits >= 0.9 * inside && mx > 12 && my > 12 && mx < n - 13 && my < n - 13) tracks.push({ hits, inside, vx, vy, x: a.x, y: a.y, t: a.t, snr });
+  }
+  tracks.sort((p, q) => q.snr - p.snr);
+  const kept = [];
+  for (const t of tracks) if (!kept.some(k => Math.hypot(t.vx - k.vx, t.vy - k.vy) < 0.15 * Math.hypot(k.vx, k.vy))) kept.push(t);
+  return kept;
 }
 /**
  * How bright a star that changes was, visit by visit of WISE and NEOWISE, in the band of WISE in view: as measured in

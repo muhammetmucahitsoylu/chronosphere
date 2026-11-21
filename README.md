@@ -65,8 +65,10 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   also draws its brightness at each visit of WISE and NEOWISE, measured in these images (the light of a ring
   around its saturated core) and given by WISE's own catalogue, and only when the two agree: RW Aurigae grew
   brighter at 4.6 microns from 2014 to the end of 2017, to 2.3 times its usual brightness in the images (4.2 by
-  the catalogue), and was back below it by 2021. Under "What to look for", each of the five test objects has one
-  button to its Years view.
+  the catalogue), and was back below it by 2021. And without being told where to look, the page searches the
+  WISE and NEOWISE visits of the field for anything that moves in a straight line: in WISE 0855's field it finds
+  WISE 0855 (8.10 arcseconds a year, in all 23 visits), in Epsilon Indi B's the pair (4.69), and in the five
+  fields nothing else. Under "What to look for", each of the five test objects has one button to its Years view.
 - **Did it move?** For any spot you click, its position is measured in every visit and compared with how
   well ordinary stars in the same images repeat. A catalogued fast mover is also set against its predicted path.
 - **Did it change?** Brightness changes between visits are checked against ordinary stars in the same images:
@@ -371,6 +373,17 @@ talking directly to NASA's open data.
   which is steady, spans a factor of five from visit to visit in them. So the page draws a brightness curve only
   when the images and the catalogue agree (correlation 0.8 or more over at least eight visits) and the images show
   a change of a third or more; of the five test objects only RW Aurigae passes.
+  *Found without being told where to look.* Each WISE or NEOWISE visit minus the median of all of them leaves
+  what was not always in one place; its dots of 7σ or more are linked from the first third of the years to the
+  last, and a line counts when a dot lies on it in 90% of the visits it crosses, at 1 arcsecond a year or more,
+  away from the edge (`spike/years_blind.py`, then the same in the page). Of the ten bands of the five fields, it
+  finds WISE 0855 in W2 (8.10, catalogue 8.15; it does not show in W1) and Epsilon Indi B in W1 and W2 (4.69,
+  catalogue 4.68). It does not find Barnard's Star: saturated, it leaves no clean dot. What it does find there,
+  in W1, moves exactly like Barnard's Star 2.8 arcminutes away from it, a reflection of the star in WISE's
+  optics; in Epsilon Indi B's field the glare of Epsilon Indi A, just outside it, moves the same way. A line that
+  moves like the object in the ring (within 10° and 30%) but passes elsewhere is therefore not reported. A first
+  rule set (60% of the visits, 0.4 arcseconds a year) found up to nine lines per field, nearly all of them noise:
+  the rules above keep only the two brown dwarfs.
   *On the sky maps, for any star.* Five fast stars typed into the search box, nothing built for them: the motion
   measured on the 2MASS and AllWISE pictures and the SPHEREx visits against the catalogue (SIMBAD), arcseconds a
   year: Proxima Centauri 3.80 (3.86), Wolf 359 4.68 (4.72), Luhman 16 2.76 (2.79), Teegarden's Star 5.13 (5.12),
