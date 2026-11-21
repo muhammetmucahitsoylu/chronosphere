@@ -721,7 +721,7 @@ belong to the sources named above, under their own terms.
 
 ## Use of AI
 
-This project was written with an AI coding assistant (Claude, Anthropic) during the hackathon: the data
+This project was written with an AI coding assistant (Claude, Anthropic), during the hackathon and since: the data
 pipeline and the web page. The team chose the approach, checked the results against catalogue values and
 independent tools, and is responsible for the content. No AI-generated images, audio or video are used; every
 image shown is telescope data.

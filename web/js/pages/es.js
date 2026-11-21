@@ -111,8 +111,8 @@ export default {
 
     about: () => `
     <p class="eyebrow">Acerca de</p>
-    <h1>Hecho en un fin de semana, para que más gente pueda mirar</h1>
-    <p class="lead">Chronosphere se construyó el 14 y el 15 de noviembre de 2026 en el NASA Space Apps Challenge, para el reto <i>Planet X and SPHEREx</i>, por el equipo ${TEAM.name}.</p>
+    <h1>Hecho para que más gente pueda mirar</h1>
+    <p class="lead">Chronosphere nació el 14 y el 15 de noviembre de 2026 en el NASA Space Apps Challenge, para el reto <i>Planet X and SPHEREx</i>, de la mano del equipo ${TEAM.name}, y desde entonces seguimos construyéndolo. En la semana siguiente llegaron la búsqueda de asteroides y cometas que cruzan un campo, la caza de asteroides con un informe listo para el Minor Planet Center, el cometa 3I/ATLAS y la vista «Años», que reúne 27 años de imágenes de 2MASS, WISE y SPHEREx en una misma cuadrícula.</p>
     ${team('El equipo')}
     <h2>Por qué lo hicimos</h2>
     <p>Plutón fue encontrado en 1930 por una persona que comparaba dos fotografías. Todavía hoy se encuentran mundos nuevos de esa manera. Voluntarios han localizado la mayoría de los más de 5000 cometas descubiertos en las imágenes de la nave SOHO, y unas 3000 candidatas a enana marrón en las imágenes del telescopio WISE de la NASA. SPHEREx está fotografiando ahora cientos de millones de objetos, una y otra vez: más de lo que cualquier grupo de profesionales puede inspeccionar.</p>

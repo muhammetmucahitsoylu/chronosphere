@@ -111,8 +111,8 @@ export default {
 
     about: () => `
     <p class="eyebrow">O projekcie</p>
-    <h1>Zrobione w jeden weekend, by mogło patrzeć więcej osób</h1>
-    <p class="lead">Chronosphere powstał 14 i 15 listopada 2026 roku podczas NASA Space Apps Challenge, w ramach wyzwania <i>Planet X and SPHEREx</i>, a zbudował go zespół ${TEAM.name}.</p>
+    <h1>Zrobione po to, by mogło patrzeć więcej osób</h1>
+    <p class="lead">Chronosphere powstał 14 i 15 listopada 2026 roku podczas NASA Space Apps Challenge, w ramach wyzwania <i>Planet X and SPHEREx</i>; zaczął go zespół ${TEAM.name} i od tamtej pory dalej go rozwijamy. W kolejnym tygodniu doszły wyszukiwanie planetoid i komet przecinających pole, polowanie na planetoidy z gotowym raportem dla Minor Planet Center, kometa 3I/ATLAS oraz widok „Lata”, który układa 27 lat obrazów z 2MASS, WISE i SPHEREx na jednej siatce.</p>
     ${team('Zespół')}
     <h2>Dlaczego to zbudowaliśmy</h2>
     <p>Plutona odnalazł w 1930 roku człowiek porównujący dwie fotografie. Ludzie wciąż znajdują w ten sposób nowe światy. Wolontariusze wypatrzyli większość z ponad 5000 komet odkrytych na zdjęciach z sondy SOHO oraz około 3000 kandydatów na brązowe karły na zdjęciach z teleskopu WISE należącego do NASA. SPHEREx fotografuje teraz setki milionów obiektów, raz za razem: więcej, niż jakakolwiek grupa zawodowców zdoła przejrzeć.</p>

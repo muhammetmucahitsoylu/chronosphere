@@ -138,8 +138,8 @@ const ENGLISH = {
 
   about: () => `
     <p class="eyebrow">About</p>
-    <h1>Made in a weekend, to help more people look</h1>
-    <p class="lead">Chronosphere was built on 14 and 15 November 2026 at the NASA Space Apps Challenge, for the challenge <i>Planet X and SPHEREx</i>, by the team ${TEAM.name}.</p>
+    <h1>Built so that more people can look</h1>
+    <p class="lead">Chronosphere began on 14 and 15 November 2026 at the NASA Space Apps Challenge, for the challenge <i>Planet X and SPHEREx</i>, by the team ${TEAM.name}, and we have kept building it since. In the week that followed came the search for asteroids and comets crossing a field, the asteroid hunt with a report ready for the Minor Planet Center, the comet 3I/ATLAS, and the Years view, which lays 27 years of images from 2MASS, WISE and SPHEREx on one grid.</p>
     ${team('The team')}
     <h2>Why we built it</h2>
     <p>Pluto was found in 1930 by a person comparing two photographs. People still find new worlds that way. Volunteers have spotted most of the more than 5,000 comets discovered in images from the SOHO spacecraft, and about 3,000 candidate brown dwarfs in images from NASA's WISE telescope. SPHEREx is now photographing hundreds of millions of objects, again and again: more than any group of professionals can inspect.</p>

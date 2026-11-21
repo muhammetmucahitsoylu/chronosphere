@@ -111,8 +111,8 @@ export default {
 
     about: () => `
     <p class="eyebrow">Hakkında</p>
-    <h1>Bir hafta sonunda, daha çok insan bakabilsin diye yapıldı</h1>
-    <p class="lead">Chronosphere, 14 ve 15 Kasım 2026’da NASA Space Apps Challenge’da, <i>Planet X and SPHEREx</i> görevi için ${TEAM.name} takımı tarafından yapıldı.</p>
+    <h1>Daha çok insan bakabilsin diye yapıldı</h1>
+    <p class="lead">Chronosphere’e 14 ve 15 Kasım 2026’da NASA Space Apps Challenge’da, <i>Planet X and SPHEREx</i> görevi için ${TEAM.name} takımı olarak başladık ve o günden beri geliştirmeye devam ediyoruz. Sonraki hafta bir alandan geçen asteroit ve kuyruklu yıldızları bulma, Minor Planet Center’a gönderilecek raporuyla birlikte asteroit avı, 3I/ATLAS kuyruklu yıldızı ve 2MASS, WISE ve SPHEREx’in 27 yıllık görüntülerini tek bir ızgarada birleştiren Yıllar görünümü eklendi.</p>
     ${team('Ekip')}
     <h2>Neden yaptık</h2>
     <p>Plüton 1930’da iki fotoğrafı karşılaştıran bir insan tarafından bulundu. İnsanlar hâlâ yeni dünyaları bu yolla buluyor. SOHO uzay aracının görüntülerinde keşfedilen 5.000’den fazla kuyruklu yıldızın çoğunu ve NASA’nın WISE teleskobunun görüntülerindeki yaklaşık 3.000 kahverengi cüce adayını gönüllüler fark etti. SPHEREx şimdi yüz milyonlarca cismi tekrar tekrar fotoğraflıyor: hiçbir uzman grubunun inceleyebileceğinden çok fazlası.</p>
