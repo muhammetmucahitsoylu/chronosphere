@@ -530,7 +530,8 @@ python -m venv .venv
 .venv/Scripts/python scripts/build_index.py          # bring the sky index up to date (downloads only what is new)
 .venv/Scripts/python scripts/prebuild.py             # rebuild the five showcase objects
 .venv/Scripts/python scripts/prebuild.py --meta      # refresh only their descriptions and catalogue facts
-.venv/Scripts/python scripts/build_years.py          # the Years view of the five test objects: 2MASS, WISE and NEOWISE, SPHEREx (about 10 minutes each)
+.venv/Scripts/python scripts/build_years.py          # the Years view of the five test objects and the tour's three stars: 2MASS, WISE and NEOWISE, SPHEREx (about 10 minutes each)
+.venv/Scripts/python scripts/build_years.py --measure   # the motion the built images show, for the plain pages (then run build_pages.mjs)
 .venv/Scripts/python scripts/build_images.py --years barnard   # its moving picture for the plain pages (also --hero, --share for the front page)
 node scripts/build_body.mjs pluto                    # rebuild Pluto: its path from JPL Horizons, its field from the archive
 node scripts/build_body.mjs 3i-atlas                 # rebuild comet 3I/ATLAS: every exposure that had it in view, cut out around it
@@ -580,6 +581,9 @@ web/barnards-star.html, web/epsilon-indi-b.html, web/wise-0855.html, web/rw-auri
                       the five test objects as plain pages, each with its SPHEREx pictures (generated); the
                       front page's example objects are links to these pages and to Pluto's, and a plain press
                       opens the object in the tool instead
+web/proxima-centauri.html, web/luhman-16.html, web/teegardens-star.html
+                      the stars of the tour's last step as plain pages: their walk over 27 years and the motion
+                      measured from those images (generated)
 web/pluto.html        Pluto as a plain page: one SPHEREx picture for every stop of the telescope that caught it (generated)
 web/3i-atlas.html     comet 3I/ATLAS as a plain page: its two visits, the gases that glow around it, how the pictures
                       are known to be centred on it; the numbers are worked out from the stored exposures (generated)
