@@ -288,6 +288,7 @@ function maybeAutoplay() {
   if (!S.wantPlay || !S.head || S.playing) return;
   const ready = S.mode === 'bands' || S.mode === 'trail'
     ? [1, 2, 3, 4, 5, 6].every(d => !+S.head.avail[d] || S.dets[d]?.done)
+    : S.mode === 'years' ? !!S.dets[S.det]?.done && !!S.years?.frames && !S.years.busy          // the Years view waits for its older images too
     : !!S.dets[S.det]?.done;
   if (!ready) return;
   S.wantPlay = false;
@@ -480,7 +481,7 @@ async function loadYears() {
     Y.failed = true; Y.frames ||= [];
   } finally { if (gen === S.gen) Y.busy = false; }
   setStatus('');
-  if (S.mode === 'years') rebuild();
+  if (S.mode === 'years') { rebuild(); maybeAutoplay(); }
   if (Y.need !== det && S.mode === 'years') loadYears();          // the detector changed while these were on their way
 }
 /**
@@ -1646,7 +1647,7 @@ function renderLook() {
   $('lookbox').innerHTML = on && look ? `<p class="look"><b>${G`What to look for`}</b>${esc(look)}</p>${times}${invite}` : '';
   $('lookbox').querySelectorAll('[data-at]').forEach(x => { x.onclick = () => openBody(b.query, +x.dataset.at); });
   $('lookbox').querySelector('[data-years]')?.addEventListener('click', () => {
-    S.mode = 'years'; S.wantPlay = !calmMotion(); renderModes(); rebuild(); syncUrl();
+    S.mode = 'years'; S.wantPlay = !calmMotion(); renderModes(); rebuild(); syncUrl(); maybeAutoplay();
     $('sky').scrollIntoView({ block: 'nearest', behavior: calmMotion() ? 'auto' : 'smooth' });
   });
   leadState();
