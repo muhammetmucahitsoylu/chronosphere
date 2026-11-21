@@ -74,8 +74,9 @@ Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHERE
   WISE and NEOWISE visits of the field for anything that moves in a straight line: in WISE 0855's field it finds
   WISE 0855 (8.10 arcseconds a year, in all 23 visits), in Epsilon Indi B's the pair (4.69), and in the five
   fields nothing else. Under "What to look for", each of the five test objects has one button to its Years view.
-  The three stars that the guided tour's last step offers, Proxima Centauri, Luhman 16 and Teegarden's Star, have
-  their WISE and NEOWISE images built as well and get them when opened by name: Luhman 16, the nearest pair of
+  The three stars that the guided tour's last step offers, Proxima Centauri, Luhman 16 and Teegarden's Star, and
+  Kapteyn's Star and Wolf 359 have their WISE and NEOWISE images built as well, a plain page each, and get them
+  when opened by name: Luhman 16, the nearest pair of
   brown dwarfs, found in 2013 by its motion in WISE's images, is found again here without being told where to
   look (2.95 arcseconds a year in 25 of 25 visits; its motion measured over 30 images, 2.79, as the catalogue).
 - **Did it move?** For any spot you click, its position is measured in every visit and compared with how
@@ -397,7 +398,10 @@ talking directly to NASA's open data.
   wanders as WISE's image turns with each scan, which is why lines slower than 1.5 arcseconds a year are not
   taken. One object linked from different dots is reported once. The three stars of the tour's last step, built
   the same way: Proxima Centauri 3.85 arcseconds a year over 28 images (catalogue 3.86; saturated in WISE, not
-  found by the search), Luhman 16 2.79 (2.79; found, 2.95), Teegarden's Star 5.14 (5.12; found, 5.26).
+  found by the search), Luhman 16 2.79 (2.79; found, 2.95), Teegarden's Star 5.14 (5.12; found, 5.26),
+  Kapteyn's Star 8.66 over 27 images (8.64) and Wolf 359 4.72 (4.72), both saturated in WISE and not found by the
+  search. The plain pages give these numbers as `scripts/build_years.py --measure` works them out, the same way
+  as the page: for all ten stars it reproduces the page's figures to the hundredth.
   *On the sky maps, for any star.* Five fast stars typed into the search box, nothing built for them: the motion
   measured on the 2MASS and AllWISE pictures and the SPHEREx visits against the catalogue (SIMBAD), arcseconds a
   year: Proxima Centauri 3.80 (3.86), Wolf 359 4.68 (4.72), Luhman 16 2.76 (2.79), Teegarden's Star 5.13 (5.12),
@@ -581,8 +585,8 @@ web/barnards-star.html, web/epsilon-indi-b.html, web/wise-0855.html, web/rw-auri
                       the five test objects as plain pages, each with its SPHEREx pictures (generated); the
                       front page's example objects are links to these pages and to Pluto's, and a plain press
                       opens the object in the tool instead
-web/proxima-centauri.html, web/luhman-16.html, web/teegardens-star.html
-                      the stars of the tour's last step as plain pages: their walk over 27 years and the motion
+web/proxima-centauri.html, web/luhman-16.html, web/teegardens-star.html, web/kapteyns-star.html, web/wolf-359.html
+                      the stars of the tour's last step, Kapteyn's Star and Wolf 359 as plain pages: their walk over 27 years and the motion
                       measured from those images (generated)
 web/pluto.html        Pluto as a plain page: one SPHEREx picture for every stop of the telescope that caught it (generated)
 web/3i-atlas.html     comet 3I/ATLAS as a plain page: its two visits, the gases that glow around it, how the pictures
