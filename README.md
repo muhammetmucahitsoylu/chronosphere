@@ -12,6 +12,8 @@ Live: https://chronospherex.com/ · guided tour: add `?tour` · an asteroid hunt
 
 Seven slides about it: https://chronospherex.com/chronosphere-slides.pdf
 
+![Barnard's Star from 2000 to 2026 in the Years view: 2MASS, WISE and NEOWISE, SPHEREx; the ring is where the catalogue puts the star on each date](web/img/barnard-years.webp)
+
 ![Epsilon Indi B in Chronosphere: the sky map, the image sequence, and a spectrum showing water and methane](web/preview.png)
 
 Built during the 2026 NASA Space Apps Challenge (challenge: *Planet X and SPHEREx*) by team The Bright Nobles.
